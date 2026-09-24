@@ -1,0 +1,44 @@
+---
+title: Questions teams ask
+description: Short answers to what a team lead asks before running Urai on their own agent.
+---
+
+## Does Urai keep my key?
+
+No. Your SERV key lives in the page's memory, goes to our server in a request header on each call, is forwarded to SERV for that one call, and is dropped. It is never written to the database, a log, an error, a response or a report. Reload the page and it is gone. Details on [Your SERV key](/docs/getting-started/serv-key), and the rule is C1 in the [threat model](/docs/security/threat-model).
+
+## What does a run cost?
+
+Each case under each setting is one SERV call, billed to your key at SERV's prices. 40 cases under two settings is 80 calls. The builder shows the count and a rough estimate before you start, and the report shows the real drop in your SERV balance afterwards. For scale, our 40-case good-layout sample on `gpt-6-luna`, SERV off and SERV plain, cost 0.05 USD. Two SERV charges come on top of tokens: building the reasoning graph the first time SERV sees a system prompt, about 0.60 USD in our runs, and the full setting at about 0.25 USD per call.
+
+## Is the demo free?
+
+For you, yes. The live demo on [/try](/try) runs on our own SERV key, on our sample agents, up to their first 12 cases, under a daily budget checked against our real balance. When the day's budget is spent, the demo pauses until the next day and points you to the saved full reports. You cannot run your own text on the demo: that needs your own key.
+
+## Why is SERV sometimes worse?
+
+SERV rewrites your system prompt into its own compressed reasoning graph. That compression can drop things your agent needs. Data in the system prompt is the clearest case: on our sample, moving the supplier book out of the prompt took SERV from 67.5% to 97.5%. A long, layered rulebook is another: on our 152-clause set, SERV plain scored 47.5% where the model alone scored 97.5%. On a well laid out agent the two were close, 95% against 100%, with 31% fewer tokens. See [Where SERV fits](/docs/concepts/where-serv-fits).
+
+## What is the difference between plain and Multipath?
+
+SERV plain sends your request to the model id you picked, with SERV's reasoning on and nothing else added. SERV Multipath sends it to the model's Multipath variant, the same id with `-serv-multipath` on the end. SERV full is Multipath plus PromptGuard and Shadow Agent. Start with SERV off against SERV plain on the same model: that isolates what SERV's reasoning alone does. See [SERV settings](/docs/concepts/serv-modes).
+
+## Which models can I test?
+
+Any model in SERV's live model list. The picker on [/new](/new) reads it from SERV, through `GET /api/models`, with each model's input and output price per million tokens. Urai refreshes the list at most once an hour. If SERV cannot be reached, you see the last saved list marked "Not verified", and you can type a model id by hand.
+
+## How long is my workload kept?
+
+30 days from when you save it. Then a daily clean-up deletes the workload, its runs, their results and the report together, and any report link answers not found. Our sample workloads do not expire.
+
+## Can I take a shared report down?
+
+Yes. Press "Unshare" on the run page and the link answers not found straight away. Share again and the same link comes back. Unsharing needs the run's owner token, which lives in the tab that ran it and dies when that tab closes. The run's private link carries it too: open that link in any browser and press "Make sure it is private". See [Share a report](/docs/guides/share-a-report).
+
+## What data should I not send?
+
+Anything sensitive. Use synthetic or non-sensitive cases. Depending on your SERV account's data collection setting, OpenServ may keep the content of requests made with your key. Urai also stores your prompt, cases, expected answers and the model's answers for 30 days, and a shared report shows all of them to anyone with the link.
+
+## What happens if I close the tab?
+
+The run stops where it is. Nothing new is sent, and answers already stored stay stored. The run's owner token dies with the tab, on purpose, unless you pressed "Copy private link" first: opening that link in any browser brings the run back, and you paste your key again before anything is spent. Anyone with the link can see and share the results, so keep it to yourself. If you shared the report first, its link keeps working. A reload is different: the run stays yours, the page asks for your key again, and it carries on without running any finished call twice. See [How a run works](/docs/concepts/how-it-works).

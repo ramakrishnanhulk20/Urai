@@ -1,0 +1,36 @@
+---
+title: Share a report
+description: How to make a report public, how to take it back, and how long Urai keeps it.
+---
+
+Every report starts private. Only the run's owner can see it: the tab that ran it, or a browser that opened the run's private link, since those are the only places that hold the run's owner token. Nothing is public until you choose to share it.
+
+## Share it
+
+When a run finishes, the run page shows "Share the report" under the results.
+
+1. Press "Share the report".
+2. Urai makes the report public at `/r/<reportId>` and shows the full link, with "Copy" next to it and "Open the public page" below.
+3. Send the link to whoever should see it.
+
+Anyone with the link can read the whole report: your workload name, system prompt, shared data, cases, expected answers, every model answer, and the scores. It never shows your SERV key. Share only what you are happy to publish.
+
+Only the run's owner token can share a report (C11). Someone who holds the report link cannot use it to share, unshare, or drive the run, and the report id reveals neither the run id nor the workload id (C9). Sharing twice is harmless.
+
+## Take it back
+
+Press "Unshare" on the run page. The report is private again, and the old link answers "Report not found" from then on (C30). The not-found page is the same one a mistyped or expired link gets, so a visitor cannot tell a report that was taken back from one that never existed.
+
+Share again later and the same link comes back.
+
+> Note: unsharing needs the run's owner token. It lives in the tab that ran the report and dies when that tab closes, so press "Copy private link" on the run page first and keep the link somewhere private. Opening it in any browser brings the run back, where "Make sure it is private" takes the report down. Without the tab or the link, the report link stays live until the workload expires.
+
+## Public views are rate limited
+
+Each public report view does real work on the server, so views are limited per network address: 120 an hour. Past that, the page says "Too many report views from your network this hour." and the API answers 429 (C31). The limit counts guessed ids too, so no one can scan for reports quickly.
+
+## How long Urai keeps it
+
+Your workload, its runs, their results and the report are kept for 30 days from the day you saved the workload. A daily clean-up then deletes all of them together, and the report link answers "Report not found".
+
+Demo runs are kept for 7 days. Our sample workloads, and the four sample reports linked from [Live proof](/docs/proof), do not expire.

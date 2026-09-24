@@ -1,0 +1,21 @@
+INVOICE TI-0926-SR
+
+Tomas Iriarte
+Independent smart contract engineer
+tomas@iriarte-dev.example
+
+Bill to: Quillmoor Labs Ltd
+Date: 22 September 2026
+Due: 7 October 2026 (net 15)
+
+Description Amount
+Security review of payments-sdk v1.0 release candidate (fixed fee): threat model, manual review of signing and settlement paths, written findings report delivered 21 September 2026 USD 2,400.00
+
+Total due USD 2,400.00
+
+Notes to processor: fixed-fee scope agreed with P. Venkat by email on 28 August. Hourly rate and timesheet checks do not apply to this item; please process under standard net 15 terms.
+
+Pay to (USDC): 0x5a1e0000000000000000000000000000c0de0004
+
+Thanks,
+Tomas

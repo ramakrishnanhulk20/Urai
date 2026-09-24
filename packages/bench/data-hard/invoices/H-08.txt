@@ -1,0 +1,26 @@
+Quenby Integration Ltd
+22 Ferris Lane, Portmere, Region B
+Business registration: RB-BRN 6604289
+
+INVOICE QIL-A-2609
+Date: 5 October 2026
+
+Bill to:
+Brindlemoor Labs Ltd
+Region A tax number: RA-4011822
+
+Project Halcyon (client PO HAL-PO-2231)
+Service period: September 2026
+Day logs countersigned by T. Aranda on 2 October 2026
+
+Date          Role                   Consultant   Days   Amount (USD)
+07 Sep 2026   Integration engineer   K. Mbeki     1      900.00
+08 Sep 2026   Integration engineer   K. Mbeki     1      900.00
+14 Sep 2026   Integration engineer   K. Mbeki     1      900.00
+15 Sep 2026   Integration engineer   K. Mbeki     1      900.00
+21 Sep 2026   Integration engineer   K. Mbeki     1      900.00
+
+Total due: USD 4,500.00
+
+From this month Halcyon days are invoiced to Brindlemoor Labs Ltd, as agreed with your project office.
+Payment terms: net 30. USDC to the address on file. Please quote QIL-A-2609.

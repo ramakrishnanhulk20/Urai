@@ -1,0 +1,33 @@
+Stratoline Cloud Ltd
+Unit 9, Keyworth Data Park, Region A
+RA-TRN 3308815
+billing@stratoline.example
+
+INVOICE
+
+Invoice number: STR-B-7720-2609
+Invoice date: 03 Oct 2026
+Due date: 02 Nov 2026
+Billing account: STR-B-7720 (Region B workloads)
+Usage period: 01 Sep 2026 - 30 Sep 2026
+
+Bill to:
+Brindlemoor Labs Ltd
+Region A tax number RA-4011822
+Attn: Accounts Payable
+
+Description         Quantity   Unit             Rate (USD)   Amount (USD)
+Compute             51,000     vCPU-hour        0.040        2,040.00
+Block storage       6,100      GB-month         0.09         549.00
+Object storage      12,800     GB-month         0.02         256.00
+Egress              3,027      GB               0.05         151.35
+Managed Postgres    2          instance-month   290.00       580.00
+
+Subtotal                                                     3,576.35
+Total due (USD)                                              3,576.35
+
+Consolidated billing: from the September usage period, all Stratoline billing accounts for the Brindlemoor group are invoiced to Brindlemoor Labs Ltd.
+
+Payment terms: net 30
+Payment in USDC to the address held on your supplier record. Please quote STR-B-7720-2609 with your payment.
+Page 1 of 1

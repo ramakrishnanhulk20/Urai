@@ -1,0 +1,26 @@
+Invoice VEN-08
+
+Dario Venn
+Flat 4, 19 Salt Market, Portmere, Region B
+dario.venn@devmail.example
+
+To: Brindlemoor Networks Ltd, Region B tax number RB-88-2041137
+Date: 4 September 2026
+Month of supply: August 2026
+
+Frontend development, August 2026
+03 Aug   Checkout flow: layout and routing          4.0 h
+05 Aug   Checkout flow: fee display                 3.5 h
+10 Aug   Wallet balance widget                      4.0 h
+12 Aug   Transaction history list                   3.0 h
+17 Aug   Transaction history filters                4.5 h
+19 Aug   Unit tests for checkout components         3.0 h
+24 Aug   Bug fixes from QA round 1                  4.0 h
+26 Aug   Build and release notes                    4.0 h
+
+Total hours: 30.0
+Rate: USD 75.00 per hour
+Amount: USD 2,250.00
+
+Payable net 15 to my USDC address on your records.
+Dario

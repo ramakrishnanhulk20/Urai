@@ -1,0 +1,21 @@
+TIDEWELL MARKET DATA LTD
+Level 6, 40 Estuary Road, Portmere, Region B
+RB-BRN 7730142
+invoices@tidewell-data.example
+
+Invoice: TMD-2608
+Date: 30 September 2026
+
+Customer: Brindlemoor Labs Ltd
+Customer tax number: RA-4011822
+Licence: API data licence, account BRL-TRD-01
+Usage month: August 2026
+
+Platform fee, August 2026                                            600.00
+API calls: 38,000,000 calls at USD 0.08 per 1,000                  3,040.00
+
+Total (USD)                                                        3,640.00
+
+Issued late following a metering reconciliation with your trading analytics team.
+Payment terms: net 30. Please remit in USDC to the address on your supplier record, quoting TMD-2608.
+Tidewell Market Data Ltd is registered in Region B.

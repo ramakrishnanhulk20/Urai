@@ -1,0 +1,25 @@
+HARBOURLINE WORKSPACE LTD
+Harbourline House, 40 Quay Road
+members@harbourline.example
+
+TAX INVOICE
+
+| Invoice No.     | HW-2026-10              |
+| Invoice Date    | 20/09/2026              |
+| Member          | Quillmoor Labs Ltd      |
+| Member ID       | HL-0412                 |
+| Account contact | Dana Okafor             |
+| Terms           | 2/10 net 30             |
+
+| Item                          | Period          | Qty | Rate   | Amount   |
+|-------------------------------|-----------------|-----|--------|----------|
+| Dedicated desk, 4th floor     | 01/10 to 31/10  | 12  | 180.00 | 2,160.00 |
+| Meeting room 4B, hours over   | August 2026     | 9   | 40.00  | 360.00   |
+| allowance (29 used, 20 incl.) |                 |     |        |          |
+
+| Subtotal (USD) | 2,520.00 |
+| Total (USD)    | 2,520.00 |
+
+Pay in USDC to the Harbourline address on your member account. Reference HW-2026-10.
+
+Thank you for being a Harbourline member.

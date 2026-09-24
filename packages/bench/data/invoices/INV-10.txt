@@ -1,0 +1,32 @@
+From: Loomdesk Billing <billing@loomdesk.example>
+To: ap@quillmoor.example
+Date: Thu, 10 Sep 2026 14:03
+Subject: Loomdesk invoice LD-453610 for Quillmoor Labs Ltd
+
+Hi Quillmoor Labs Ltd,
+
+Seats were added to your Loomdesk workspace today, so here is a prorated invoice for the rest of your current billing month.
+
+Invoice: LD-453610
+Invoice date: 10 Sep 2026
+Customer: Quillmoor Labs Ltd
+Plan: Team (monthly)
+Requested by: Dana Okafor (workspace admin)
+
+Seats before change: 25
+Seats added: 3
+Seats after change: 28
+
+Line item
+Team plan seats, prorated 10 Sep 2026 to 30 Sep 2026 (21 of 30 days)
+3 seats x USD 18.00 x 21/30 = USD 37.80
+
+Total due: USD 37.80
+Terms: due on receipt
+
+Your next regular invoice will reflect 28 seats.
+
+You can pay in USDC to the Loomdesk address on your account. Please include the invoice number LD-453610 with your payment.
+
+Thanks for using Loomdesk,
+The Loomdesk Billing Team

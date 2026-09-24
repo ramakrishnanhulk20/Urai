@@ -1,0 +1,24 @@
+KEELHAVEN PAYROLL SERVICES LTD
+3 Weir Street, Portmere, Region B
+RB-BRN 5520917 | billing@keelhaven-payroll.example
+
+TAX INVOICE
+
+Invoice number: KH-2026-1003
+Invoice date: 03/10/2026
+Clearance code: RBC-7719203354
+
+Customer: Brindlemoor Networks Ltd
+Customer tax number: RB-88-2041137
+Month of supply: September 2026 (line 1); January 2027 (line 2)
+
+Line  Description                                               Quantity      Unit price (BD)   Amount (BD)
+1     Payroll processing, September 2026 monthly run            41 payslips   22.00             902.00
+2     2026 year-end filing package, filing due January 2027,
+      billed in October                                         1             1,400.00          1,400.00
+
+Total (BD)                                                                                      2,302.00
+
+Payment due within 10 days of the invoice date.
+Settlement in USDC to the address on your supplier record at the contract rate of 0.80 USD per BD: USD 1,841.60.
+Please quote KH-2026-1003.

@@ -1,0 +1,27 @@
+fernhill
+studio
+
+Fernhill Studio Ltd
+Unit 7, The Printworks, 88 Kiln Lane
+hello@fernhill-studio.example
+
+Invoice FS-2026-032
+Issued 2 September 2026
+Due 17 September 2026
+
+Client
+Quillmoor Labs Ltd
+Leah Brandt, Head of Product
+
+Project
+Quillmoor dashboard and marketing site redesign
+
+Change request CR-01: onboarding flow screens
+Two additional onboarding screens for the dashboard (wallet connection and first deposit), with empty, loading and error states. Raised by Leah in writing on 11 August 2026. Delivered 26 August 2026.
+
+Change request fee 1,200.00
+
+Total USD 1,200.00
+
+Payment terms: net 15
+Please pay in USDC to our address on file and include FS-2026-032 as the reference.

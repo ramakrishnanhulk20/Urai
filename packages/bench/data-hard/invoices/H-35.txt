@@ -1,0 +1,29 @@
+OAKHOLLOW PRATT LLP
+Chartered Accountants and Registered Auditors
+Pratt House, 18 Cloister Walk, Region A
+RA-TRN 1984402 | fees@oakhollowpratt.example
+
+Client: Brindlemoor Labs Ltd
+Region A tax number: RA-4011822
+Client code: BRL01
+
+INVOICE OPA-26-A128
+Date of invoice: 30 September 2026
+
+Statutory audit of Brindlemoor Labs Ltd, year ending 31 December 2026: travel and accommodation for fieldwork at your Harbour District office, 7 to 11 September 2026, recharged at cost. Receipts attached.
+
+Date         Description                                        Receipt ref       Amount (USD)
+07/09/2026   Hotel, two staff, 4 nights                         HB-77120          744.00
+07/09/2026   Rail fares, two staff, return                      RL-30418          248.00
+07-11/09     Local taxis                                        TX-1101 to 1104   88.00
+
+Fee      USD 0.00
+Travel   USD 1,080.00
+Total    USD 1,080.00
+
+Travel previously billed on this engagement: invoice OPA-26-B114 (interim review fieldwork at Brindlemoor Networks Ltd), USD 1,560.00.
+
+Payment terms: net 30.
+Remittance: USDC to the address held on our client record. Please quote OPA-26-A128.
+
+Oakhollow Pratt LLP. Registered auditors.

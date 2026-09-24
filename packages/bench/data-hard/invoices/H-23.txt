@@ -1,0 +1,27 @@
+Yusuf Harlan
+Research contractor
+27 Lantern Hill, Portmere, Region B
+Region B personal tax number: PTN33190452
+y.harlan@research-mail.example
+
+Invoice HAR-2026-09
+Date: 1 October 2026
+
+Client: Brindlemoor Labs Ltd
+Region A tax number: RA-4011822
+Service period: September 2026
+
+Hours
+02/09   Settlement network: fee model scenarios       4.0
+04/09   Liquidity stress model, first pass            5.0
+09/09   Stress model review with treasury             2.5
+11/09   Validator incentive analysis                  4.5
+16/09   Launch parameter memo, draft                  5.0
+18/09   Memo revisions after review                   3.0
+23/09   Post-launch monitoring metrics                4.0
+28/09   Launch week analysis and write-up             5.0
+
+Total: 33.0 hours at USD 70.00 per hour
+Amount due: USD 2,310.00
+
+Payment in USDC to the address you hold for me, within 15 days.

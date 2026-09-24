@@ -1,0 +1,39 @@
+ASHCOMBE & RELL LLP
+Solicitors
+2 Vintner's Yard, Third Floor
+accounts@ashcombe-rell.example
+
+Quillmoor Labs Ltd
+For the attention of: Dana Okafor, COO
+
+Our ref: QML/0002/DO
+Invoice no: AR-2026-093
+Date: 5 September 2026
+
+FEE NOTE
+
+Matter: Series A financing, under engagement letter EL-2026-03 dated 12 May 2026
+Professional services, August 2026, charged at USD 420.00 per hour
+
+Date Fee earner Narrative Hours Amount
+04/08/2026 JR Review of term sheet mark-up from lead investor's counsel 1.5 630.00
+11/08/2026 JR Drafting amendments to shareholders' agreement 2.0 840.00
+19/08/2026 JR Call with D. Okafor on disclosure schedule; note of call 1.0 420.00
+26/08/2026 JR Review of subscription letter and board minutes 1.0 420.00
+
+Total hours 5.5
+Professional fees 2,310.00
+Disbursements 0.00
+
+TOTAL (USD) 2,310.00
+
+Engagement letter EL-2026-03 fee summary
+Billed before this invoice: USD 7,980.00 (AR-2026-077, AR-2026-084)
+This invoice: USD 2,310.00
+Billed to date: USD 10,290.00 of the USD 12,000.00 agreed cap
+
+Terms: payable on receipt.
+
+Settlement in USDC to the receiving address previously provided to your finance team. Kindly quote invoice number AR-2026-093.
+
+Ashcombe & Rell LLP is a limited liability partnership. A list of members is available at our office.

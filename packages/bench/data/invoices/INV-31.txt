@@ -1,0 +1,35 @@
+fernhill
+studio
+
+Fernhill Studio Ltd
+Unit 7, The Printworks, 88 Kiln Lane
+hello@fernhill-studio.example
+
+Invoice FS-2026-038
+Issued 21 September 2026
+Due 6 October 2026
+
+Client
+Quillmoor Labs Ltd
+Leah Brandt, Head of Product
+
+Project
+Quillmoor dashboard and marketing site redesign
+
+Design support, September 2026
+Continued design support after the M3 handover, billed at our standard rate.
+
+Date Work Hours
+2 Sep Pricing page variant for A/B test 3.0
+4 Sep Dashboard empty states, second pass 2.5
+9 Sep Icon set extension (14 icons) 4.0
+11 Sep Marketing site QA against build 2.0
+15 Sep Social share images for launch 3.5
+18 Sep Hand-off notes for in-house team 3.0
+
+Total hours 18.0
+Rate USD 120.00 per hour
+Total USD 2,160.00
+
+Payment terms: net 15
+Please pay in USDC to our address on file and include FS-2026-038 as the reference.

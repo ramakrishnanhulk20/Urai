@@ -1,0 +1,24 @@
+QUENBY INTEGRATION LTD
+22 Ferris Lane, Portmere, Region B
+RB-BRN 6604289
+accounts@quenby-int.example
+
+Invoice No.: QIL-2606
+Invoice date: 6 October 2026
+Clearance code: RBC-4402917736
+
+Customer: Brindlemoor Networks Ltd
+Customer tax number: RB-88-2041137
+Project: Halcyon, client purchase order HAL-PO-2231
+Month of supply: June 2026
+Day logs countersigned by client project manager T. Aranda on 29 September 2026
+
+Date         Consultant    Role        Days   Day rate (USD)   Amount (USD)
+17/06/2026   P. Draycott   Test lead   1      820.00           820.00
+18/06/2026   P. Draycott   Test lead   1      820.00           820.00
+
+Total (USD)                                                    1,640.00
+
+The client countersigned the June day logs on 29 September, which is why these days are invoiced now.
+
+Terms: net 30. Payment in USDC to the address on file. Please quote QIL-2606.

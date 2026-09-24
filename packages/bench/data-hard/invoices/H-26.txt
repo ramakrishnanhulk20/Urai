@@ -1,0 +1,26 @@
+Noor Aldane | Aldane Design
+Studio 2, 8 Glassworks Yard, Portmere, Region B
+RB-BRN 8812065
+
+INVOICE ALD-2609
+Date: 2 October 2026
+Clearance code: RBC-3308126650
+
+To: Brindlemoor Networks Ltd (Region B tax number RB-88-2041137)
+Month of supply: September 2026
+
+Design work, September 2026
+01 Sep   Payout flow wireframes                          5.0 h
+03 Sep   Payout flow high-fidelity screens               4.5 h
+08 Sep   Merchant onboarding revisions                   5.0 h
+10 Sep   Error and empty states                          4.0 h
+15 Sep   Design system: tables and filters               5.5 h
+17 Sep   Usability sessions with two merchants           4.0 h
+22 Sep   Iteration after usability sessions              4.5 h
+24 Sep   Accessibility review of colour and contrast     3.5 h
+29 Sep   Handoff files and specs                         4.0 h
+
+Total: 40.0 hours at USD 65.00 = USD 2,600.00
+
+Payable within 15 days to my USDC address on your records.
+Noor

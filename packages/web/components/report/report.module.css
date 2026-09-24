@@ -1,0 +1,1179 @@
+/*
+ * The report page in the Touchstone style: black stone, one gold accent, condensed poster type for
+ * headings and wide black numbers for the hallmarks. Right and wrong use the colder status pair
+ * from globals.css, never a second warm colour.
+ */
+
+.root {
+  position: relative;
+  min-height: 100svh;
+  overflow-x: clip;
+  color: var(--text);
+}
+
+.content {
+  position: relative;
+  z-index: 1;
+  padding-bottom: clamp(24px, 6vh, 64px);
+}
+
+/* Shared type. */
+
+.marker {
+  display: flex;
+  align-items: center;
+  gap: 0.75em;
+  margin: 0;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.78rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--gold-hi);
+}
+
+.markerSlash {
+  height: 1.5em;
+  width: 0.9em;
+}
+
+.smallLabel {
+  margin: 0 0 0.4rem;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.textLink {
+  color: var(--gold-hi);
+  text-decoration: none;
+  background: linear-gradient(var(--gold), var(--gold)) 0 100% / 100% 1px no-repeat;
+  padding-bottom: 2px;
+  transition:
+    color 0.25s ease,
+    background-size 0.35s var(--ease-out);
+}
+
+.textLink:hover {
+  color: var(--text);
+  background-size: 100% 2px;
+}
+
+.textLink:focus-visible {
+  outline: 2px solid var(--gold-hi);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+.pre {
+  margin: 0;
+  padding: 1rem 1.15rem;
+  max-height: 26rem;
+  overflow: auto;
+  border-radius: 6px;
+  background: rgb(0 0 0 / 0.38);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.8rem;
+  line-height: 1.6;
+  color: var(--dim);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.cut {
+  display: inline-block;
+  margin: 0.5rem 0;
+  padding: 0.3rem 0.55rem;
+  border: 1px dashed var(--gold-lo);
+  border-radius: 4px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gold-hi);
+}
+
+.none {
+  margin: 0.4rem 0 0;
+  font-size: 0.92rem;
+  color: var(--faint);
+}
+
+.chevron {
+  justify-self: end;
+  width: 0.55rem;
+  height: 0.55rem;
+  margin-top: -0.2rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  color: var(--faint);
+  transform: rotate(45deg);
+  transition:
+    transform 0.35s var(--ease-out),
+    color 0.25s ease;
+}
+
+details[open] > summary .chevron {
+  margin-top: 0.25rem;
+  transform: rotate(225deg);
+}
+
+/* Entrance on load. CSS rather than script, so the first screen never waits for hydration. */
+
+.enter {
+  animation: enter 0.9s var(--ease-out) both;
+}
+
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.rise {
+  display: inline-block;
+  animation: rise 1s var(--ease-out) both;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(0.55em);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* The opening screen: title block on the left, the cold visitor's aside low on the right. */
+
+.opening {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(15rem, 21rem);
+  align-items: end;
+  align-content: end;
+  gap: 3rem clamp(3rem, 7vw, 8rem);
+  min-height: calc(100svh - 84px);
+  padding: clamp(40px, 10vh, 120px) var(--pad-x) clamp(40px, 8vh, 96px);
+  box-sizing: border-box;
+}
+
+/* A soft floor under the opening, so the verdict rises out of shadow rather than off a hard edge. */
+.opening::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: -1;
+  height: 55%;
+  pointer-events: none;
+  background: linear-gradient(to top, rgb(6 6 7 / 0.7), transparent);
+}
+
+.summary {
+  min-width: 0;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  row-gap: 0.4rem;
+  margin: 1.4rem 0 0;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.78rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.metaItem {
+  display: inline-flex;
+  align-items: center;
+}
+
+.metaSlash {
+  height: 1.1em;
+  margin: 0 0.95em;
+}
+
+.title {
+  margin: 0.18em 0 0;
+  font-weight: 900;
+  font-stretch: 70%;
+  line-height: 0.9;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+.title[data-size="short"] {
+  font-size: clamp(3rem, 10vw, 9rem);
+}
+
+.title[data-size="medium"] {
+  font-size: clamp(2.6rem, 7vw, 6.5rem);
+}
+
+.title[data-size="long"] {
+  font-size: clamp(2.2rem, 5vw, 4.75rem);
+}
+
+.titleLine {
+  display: block;
+  overflow: hidden;
+  padding: 0.04em 0 0.06em;
+  margin: -0.04em 0 -0.06em;
+}
+
+.deck {
+  max-width: 34ch;
+  margin: 0.8rem 0 0;
+  font-size: clamp(1.2rem, 2.2vw, 2rem);
+  font-weight: 500;
+  font-stretch: 96%;
+  line-height: 1.15;
+  color: var(--dim);
+}
+
+.deck::first-letter {
+  text-transform: uppercase;
+}
+
+.sentence {
+  position: relative;
+  max-width: 44ch;
+  margin: clamp(1.75rem, 4vh, 2.75rem) 0 0;
+  padding-left: 1.2rem;
+  font-size: clamp(1.15rem, 1.7vw, 1.55rem);
+  font-weight: 500;
+  font-stretch: 104%;
+  line-height: 1.35;
+  color: var(--text);
+}
+
+/* The rub mark down the side of the verdict sentence, the motif set vertical. */
+.sentence::before {
+  content: "";
+  position: absolute;
+  top: 0.2em;
+  bottom: 0.2em;
+  left: 0;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--gold-rub);
+}
+
+.sentenceNumber {
+  font-weight: 900;
+  font-stretch: 112%;
+  color: var(--gold-hi);
+}
+
+.what {
+  padding-top: 1.25rem;
+  border-top: 1px solid rgb(239 233 223 / 0.16);
+}
+
+.whatTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  margin: 0;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.74rem;
+  font-weight: 400;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gold-hi);
+}
+
+.whatSlash {
+  height: 1.4em;
+  width: 0.84em;
+}
+
+.whatText {
+  margin: 0.9rem 0 0;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--dim);
+}
+
+.whatLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 1.5rem;
+  margin: 1rem 0 0;
+  font-weight: 600;
+}
+
+/* Sections. */
+
+.section {
+  position: relative;
+  padding: clamp(72px, 13vh, 150px) var(--pad-x) 0;
+}
+
+.sectionHead {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 30rem);
+  align-items: end;
+  gap: 0.9rem clamp(2rem, 6vw, 6rem);
+}
+
+.sectionHead > .marker {
+  grid-column: 1 / -1;
+}
+
+.sectionTitle {
+  max-width: 14ch;
+  margin: 0;
+  font-size: clamp(2.25rem, 5.4vw, 5.25rem);
+  font-weight: 900;
+  font-stretch: 72%;
+  line-height: 0.92;
+  letter-spacing: -0.015em;
+  text-transform: uppercase;
+}
+
+.sectionLede p {
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: var(--dim);
+}
+
+/* The verdict. */
+
+.verdictRows {
+  display: grid;
+  gap: clamp(2.5rem, 6vh, 4rem);
+  margin-top: clamp(2.5rem, 6vh, 4rem);
+}
+
+.vRow {
+  display: grid;
+  gap: 0.85rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgb(239 233 223 / 0.12);
+}
+
+.vLabel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem 1.1rem;
+}
+
+.vName {
+  margin: 0;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.86rem;
+  font-weight: 400;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.vModel {
+  font-size: 0.98rem;
+  color: var(--faint);
+}
+
+.vBar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: clamp(1rem, 2.6vw, 2.75rem);
+}
+
+.vTrack {
+  position: relative;
+  display: block;
+  height: clamp(34px, 5.4vh, 58px);
+  overflow: hidden;
+  border-radius: 3px;
+  background: rgb(226 176 74 / 0.05);
+  box-shadow: inset 0 0 0 1px rgb(226 176 74 / 0.42);
+}
+
+/* Grain for the gold: long striations with gaps, the texture a rub leaves on stone. */
+.vFill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  display: block;
+  border-radius: 3px;
+  background: var(--gold-rub);
+  box-shadow:
+    inset 0 1px 0 rgb(255 246 220 / 0.75),
+    inset 0 -1px 0 rgb(80 52 12 / 0.7),
+    0 0 26px -6px rgb(226 176 74 / 0.45);
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22360%22%20height%3D%2260%22%20preserveAspectRatio%3D%22none%22%3E%3Cfilter%20id%3D%22r%22%20x%3D%220%22%20y%3D%220%22%20width%3D%22100%25%22%20height%3D%22100%25%22%3E%3CfeTurbulence%20type%3D%22fractalNoise%22%20baseFrequency%3D%220.012%200.45%22%20numOctaves%3D%223%22%20seed%3D%225%22%20stitchTiles%3D%22stitch%22%2F%3E%3CfeColorMatrix%20values%3D%220%200%200%200%201%20%200%200%200%200%201%20%200%200%200%200%201%20%203.2%200%200%200%20-0.75%22%2F%3E%3C%2Ffilter%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20filter%3D%22url(%23r)%22%2F%3E%3C%2Fsvg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22360%22%20height%3D%2260%22%20preserveAspectRatio%3D%22none%22%3E%3Cfilter%20id%3D%22r%22%20x%3D%220%22%20y%3D%220%22%20width%3D%22100%25%22%20height%3D%22100%25%22%3E%3CfeTurbulence%20type%3D%22fractalNoise%22%20baseFrequency%3D%220.012%200.45%22%20numOctaves%3D%223%22%20seed%3D%225%22%20stitchTiles%3D%22stitch%22%2F%3E%3CfeColorMatrix%20values%3D%220%200%200%200%201%20%200%200%200%200%201%20%200%200%200%200%201%20%203.2%200%200%200%20-0.75%22%2F%3E%3C%2Ffilter%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20filter%3D%22url(%23r)%22%2F%3E%3C%2Fsvg%3E");
+  -webkit-mask-size: 360px 100%;
+  mask-size: 360px 100%;
+}
+
+.vNumber {
+  margin: 0;
+  font-size: clamp(3rem, 7.6vw, 7.5rem);
+  font-weight: 900;
+  font-stretch: 125%;
+  line-height: 0.85;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* Reserved width, so the count changing digits never resizes the bar beside it. */
+.vNumber > span:first-child {
+  display: inline-block;
+  min-width: 3.6ch;
+}
+
+.vNumber[data-best="true"] > span:first-child {
+  background: var(--gold-rub);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.vNumber[data-unknown="true"] {
+  font-size: clamp(1.5rem, 3vw, 2.5rem);
+  font-stretch: 100%;
+  letter-spacing: 0;
+  color: var(--faint);
+}
+
+.pctSign {
+  margin-left: 0.04em;
+  font-size: 0.42em;
+  vertical-align: 0.95em;
+  color: var(--gold);
+}
+
+.vCounts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.4rem;
+  margin: 0;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.74rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.rightText {
+  color: var(--right);
+}
+
+.wrongText {
+  color: var(--wrong);
+}
+
+.vStats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem 2rem;
+  margin: 0.6rem 0 0;
+  max-width: 56rem;
+}
+
+.vStats dt {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.66rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.vStats dd {
+  margin: 0.3rem 0 0;
+  font-size: clamp(1.15rem, 1.6vw, 1.45rem);
+  font-weight: 700;
+  font-stretch: 112%;
+  font-variant-numeric: tabular-nums;
+}
+
+.balance {
+  max-width: 62rem;
+  margin: clamp(2rem, 5vh, 3rem) 0 0;
+  padding-left: 1rem;
+  border-left: 2px solid var(--gold-lo);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--dim);
+}
+
+/* Status marks. */
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.status[data-tone="right"],
+.tCell[data-tone="right"] {
+  color: var(--right);
+}
+
+.status[data-tone="wrong"],
+.status[data-tone="other"],
+.tCell[data-tone="wrong"],
+.tCell[data-tone="other"] {
+  color: var(--wrong);
+}
+
+.status[data-tone="pending"],
+.tCell[data-tone="pending"] {
+  color: var(--faint);
+}
+
+.dot {
+  display: inline-block;
+  flex: none;
+  width: 0.62rem;
+  height: 0.62rem;
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+
+.dot[data-tone="right"] {
+  background: var(--right);
+  box-shadow: 0 0 10px rgb(94 196 187 / 0.55);
+}
+
+.dot[data-tone="wrong"] {
+  background: var(--wrong);
+}
+
+/* Filtered, refused, timed out, failed: a hollow ring, so it never passes for a plain wrong answer. */
+.dot[data-tone="other"] {
+  border: 2px solid var(--wrong);
+}
+
+.dot[data-tone="pending"] {
+  border: 1px dashed var(--faint);
+}
+
+/* Answer fields. */
+
+.fields {
+  display: grid;
+  gap: 0.3rem;
+  margin: 0;
+}
+
+.field {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.65rem;
+}
+
+.field dt {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  color: var(--faint);
+}
+
+.field dd {
+  min-width: 0;
+  margin: 0;
+  font-size: 1.02rem;
+  font-weight: 700;
+  font-stretch: 104%;
+  overflow-wrap: anywhere;
+}
+
+.reason {
+  margin: 0.75rem 0 0;
+  font-size: 0.93rem;
+  line-height: 1.55;
+  color: var(--dim);
+  overflow-wrap: anywhere;
+}
+
+.rawTag {
+  margin: 0.6rem 0 0.35rem;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.64rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.latency {
+  margin: 0.6rem 0 0;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.66rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+/* Where they disagreed. */
+
+.dList {
+  display: grid;
+  margin: clamp(2.5rem, 6vh, 4rem) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dCase {
+  display: grid;
+  grid-template-columns: minmax(0, 23rem) minmax(0, 1fr);
+  gap: 1.5rem clamp(2rem, 4vw, 4rem);
+  padding: 2rem 0;
+  border-top: 1px solid rgb(239 233 223 / 0.12);
+}
+
+.dMeta {
+  min-width: 0;
+}
+
+.caseId {
+  margin: 0 0 1rem;
+  font-size: clamp(1.6rem, 2.4vw, 2.25rem);
+  font-weight: 900;
+  font-stretch: 90%;
+  line-height: 1;
+  letter-spacing: 0.01em;
+}
+
+.dExpected {
+  margin-bottom: 1.1rem;
+}
+
+.excerpt {
+  max-height: 9.6em;
+  margin: 0;
+  overflow: hidden;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--dim);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  -webkit-mask-image: linear-gradient(to bottom, #000 60%, transparent);
+  mask-image: linear-gradient(to bottom, #000 60%, transparent);
+}
+
+.dAnswers {
+  display: grid;
+  grid-template-columns: repeat(var(--n, 2), minmax(0, 1fr));
+  gap: 1rem;
+  align-content: start;
+}
+
+.dAnswer,
+.tAnswer {
+  min-width: 0;
+  padding: 1.1rem 1.2rem 1.2rem;
+  border: 1px solid rgb(239 233 223 / 0.1);
+  border-top: 2px solid rgb(239 233 223 / 0.2);
+  border-radius: 8px;
+  background: rgb(11 11 12 / 0.6);
+}
+
+.dAnswer[data-tone="right"],
+.tAnswer[data-tone="right"] {
+  border-top-color: var(--right);
+  background: linear-gradient(to bottom, rgb(94 196 187 / 0.07), transparent 5rem), rgb(11 11 12 / 0.6);
+}
+
+.dAnswer[data-tone="wrong"],
+.tAnswer[data-tone="wrong"] {
+  border-top-color: var(--wrong);
+}
+
+.dAnswer[data-tone="other"],
+.tAnswer[data-tone="other"] {
+  border-top-style: dashed;
+  border-top-color: var(--wrong);
+}
+
+.dAnswerHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.9rem;
+}
+
+.dConfig {
+  margin: 0;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.74rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+/* Setup findings. */
+
+.findings {
+  display: grid;
+  margin: clamp(2.5rem, 6vh, 4rem) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.finding {
+  display: grid;
+  grid-template-columns: minmax(0, 11rem) minmax(0, 1fr);
+  align-items: start;
+  gap: 0.8rem 2.5rem;
+  padding: 1.75rem 0;
+  border-top: 1px solid rgb(239 233 223 / 0.12);
+}
+
+.severity {
+  display: flex;
+  align-items: center;
+  gap: 0.7em;
+  margin: 0.35rem 0 0;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.74rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+/* The motif as a severity mark: bright gold must be fixed, dull gold is a warning, faint is a note. */
+.severityMark {
+  display: inline-block;
+  width: 0.5em;
+  height: 1.3em;
+  transform: skewX(-22deg);
+  background: rgb(239 233 223 / 0.3);
+}
+
+.severity[data-severity="error"] {
+  color: var(--gold-hi);
+}
+
+.severity[data-severity="error"] .severityMark {
+  background: var(--gold);
+}
+
+.severity[data-severity="warning"] {
+  color: var(--text);
+}
+
+.severity[data-severity="warning"] .severityMark {
+  background: var(--gold-lo);
+}
+
+.findingBody {
+  min-width: 0;
+  max-width: 68ch;
+}
+
+.findingTitle {
+  margin: 0;
+  font-size: clamp(1.3rem, 2vw, 1.75rem);
+  font-weight: 800;
+  font-stretch: 90%;
+  line-height: 1.12;
+}
+
+.findingDetail {
+  margin: 0.6rem 0 0;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--dim);
+}
+
+.evidence {
+  margin: 0.75rem 0 0;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.8rem;
+  line-height: 1.55;
+  color: var(--faint);
+  overflow-wrap: anywhere;
+}
+
+.evidence .smallLabel {
+  margin-right: 0.5rem;
+}
+
+.fixLine {
+  margin: 0.9rem 0 0;
+  font-size: 0.98rem;
+  color: var(--text);
+}
+
+.prompts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 1rem;
+  margin-top: clamp(2rem, 5vh, 3rem);
+}
+
+.prompt {
+  min-width: 0;
+  border: 1px solid rgb(239 233 223 / 0.14);
+  border-radius: 8px;
+  background: rgb(11 11 12 / 0.55);
+  transition: border-color 0.25s ease;
+}
+
+.prompt[open] {
+  padding-bottom: 1rem;
+}
+
+.prompt > .cut,
+.prompt > .pre {
+  margin-left: 1rem;
+  margin-right: 1rem;
+}
+
+.promptSummary {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.2rem;
+  list-style: none;
+  cursor: pointer;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.76rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  transition: color 0.25s ease;
+}
+
+.promptSummary::-webkit-details-marker {
+  display: none;
+}
+
+.promptSize {
+  margin-left: auto;
+  color: var(--faint);
+  letter-spacing: 0.1em;
+}
+
+.prompt:hover {
+  border-color: var(--gold-lo);
+}
+
+.promptSummary:hover,
+.promptSummary:hover .chevron {
+  color: var(--gold-hi);
+}
+
+.promptSummary:focus-visible,
+.tCase > summary:focus-visible {
+  outline: 2px solid var(--gold-hi);
+  outline-offset: -2px;
+  border-radius: 8px;
+}
+
+/* Every case. */
+
+.table {
+  margin-top: clamp(2.5rem, 6vh, 4rem);
+}
+
+.tRow {
+  display: grid;
+  grid-template-columns: minmax(6.5rem, 10rem) repeat(var(--n, 2), minmax(0, 1fr)) minmax(8rem, 1.3fr) 1.5rem;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.85rem 0.9rem;
+}
+
+.tHead {
+  padding-top: 0;
+  padding-bottom: 0.8rem;
+  border-bottom: 1px solid rgb(239 233 223 / 0.18);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.66rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.tCase {
+  border-bottom: 1px solid rgb(239 233 223 / 0.08);
+}
+
+.tCase > summary {
+  list-style: none;
+  cursor: pointer;
+  transition: background-color 0.25s ease;
+}
+
+.tCase > summary::-webkit-details-marker {
+  display: none;
+}
+
+.tCase > summary:hover,
+.tCase[open] > summary {
+  background: rgb(226 176 74 / 0.06);
+}
+
+.tCase > summary:hover .tId,
+.tCase > summary:hover .chevron {
+  color: var(--gold-hi);
+}
+
+.tId {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+  font-weight: 800;
+  font-stretch: 100%;
+  overflow-wrap: anywhere;
+  transition: color 0.25s ease;
+}
+
+.tFlag {
+  flex: none;
+  padding: 0.12rem 0.4rem;
+  border: 1px solid var(--gold-lo);
+  border-radius: 4px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.58rem;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold-hi);
+}
+
+.tCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* The setting's name is spoken by screen readers everywhere, but shown only where the header row is gone. */
+.tCellLabel {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.tExpected {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 0.92rem;
+  color: var(--dim);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tBody {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 1.5rem 2rem;
+  padding: 1.25rem 0.9rem 2.25rem;
+  animation: enter 0.5s var(--ease-out) both;
+}
+
+.tInput {
+  min-width: 0;
+}
+
+.tAnswers {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  align-content: start;
+  gap: 1rem;
+}
+
+/* The expected answer is short, so it runs as a strip above the answers instead of taking a column. */
+.tAnswers > .tAnswer:first-child {
+  grid-column: 1 / -1;
+}
+
+.tAnswer .pre {
+  max-height: 18rem;
+  padding: 0.75rem 0.85rem;
+  font-size: 0.76rem;
+}
+
+.tAnswerWord {
+  margin-left: 0.5rem;
+  color: var(--wrong);
+}
+
+.tAnswer[data-tone="right"] .tAnswerWord {
+  color: var(--right);
+}
+
+/* Narrower screens. */
+
+@media (max-width: 1100px) {
+  .dCase {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .excerpt {
+    max-height: 6.2em;
+  }
+
+  .tBody {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .opening {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
+    padding-top: clamp(40px, 8vh, 72px);
+  }
+
+  .what {
+    max-width: 36rem;
+  }
+}
+
+@media (max-width: 767px) {
+  .meta {
+    font-size: 0.68rem;
+    letter-spacing: 0.14em;
+  }
+
+  .metaSlash {
+    margin: 0 0.6em;
+  }
+
+  .sectionHead {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .vBar {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.6rem;
+  }
+
+  .vTrack {
+    height: 30px;
+  }
+
+  .vNumber {
+    order: -1;
+    font-size: clamp(3.25rem, 17vw, 4.75rem);
+    text-align: left;
+  }
+
+  .vNumber > span:first-child {
+    min-width: 0;
+  }
+
+  .vStats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dAnswers {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .finding {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.6rem;
+  }
+
+  .prompts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .promptSize {
+    letter-spacing: 0.04em;
+  }
+
+  /* The table becomes a list: each case a block, each setting a line with its name. */
+  .tHead {
+    display: none;
+  }
+
+  .tCase > summary.tRow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    padding: 1rem 0.25rem;
+  }
+
+  .tId {
+    flex: 1 1 auto;
+    font-size: 1.1rem;
+  }
+
+  .tCase > summary .chevron {
+    order: 1;
+    margin-left: auto;
+  }
+
+  .tCell {
+    order: 2;
+    flex: 1 1 100%;
+  }
+
+  .tCellLabel {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip-path: none;
+    color: var(--dim);
+  }
+
+  .tExpected {
+    order: 3;
+    flex: 1 1 100%;
+    white-space: normal;
+  }
+
+  .tBody {
+    padding: 0.5rem 0.25rem 1.75rem;
+  }
+
+  .tInput .pre {
+    max-height: 16rem;
+  }
+
+  .tAnswers {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .enter,
+  .rise,
+  .tBody {
+    animation: none;
+  }
+}

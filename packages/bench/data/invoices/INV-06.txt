@@ -1,0 +1,32 @@
+INVOICE TI-0826
+
+Tomas Iriarte
+Independent smart contract engineer
+tomas@iriarte-dev.example
+
+Bill to: Quillmoor Labs Ltd
+Date: 3 September 2026
+Due: 18 September 2026 (net 15)
+Period: August 2026
+
+Timesheet
+Date Repository Work Hours
+03 Aug payments-core Escrow release path refactor 3.0
+04 Aug payments-core Unit tests for release path 2.5
+06 Aug payments-core Fuzz tests, fee rounding 3.0
+10 Aug payments-sdk Typed errors for SDK client 2.0
+12 Aug payments-sdk Permit signing helper and tests 3.5
+17 Aug payments-core Code review PR 214 2.0
+19 Aug payments-core Gas pass on batch settle 3.0
+24 Aug payments-sdk Code review PR 88 and 91 2.5
+26 Aug payments-core Invariant tests for escrow balances 2.0
+31 Aug payments-sdk Release notes review, v0.9.0 tag 2.5
+
+Total hours 26.0
+Rate USD 95.00 / hour
+Amount due USD 2,470.00
+
+Pay to (USDC): 0x5a1e0000000000000000000000000000c0de0004
+
+Thanks,
+Tomas

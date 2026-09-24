@@ -1,0 +1,19 @@
+{
+  "name": "haggle",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "haggle": "tsx src/run.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "openai": "7.23.0",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.2",
+    "tsx": "4.23.15",
+    "typescript": "7.0.2"
+  }
+}

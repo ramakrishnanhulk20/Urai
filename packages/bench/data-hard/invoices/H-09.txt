@@ -1,0 +1,29 @@
+Lena Marsh
+Technical writer
+7 Orchard Close, Millbrook, Region A
+lena.marsh@writermail.example
+
+INVOICE MSH-0926
+Date: 5 October 2026
+
+To: Brindlemoor Labs Ltd, Region A tax number RA-4011822
+Attn: Hana Ribeiro
+For: technical writing, September 2026
+
+Date    Task                                              Hours
+01/09   Settlement API reference: endpoints section       4.0
+03/09   Settlement API reference: errors and retries      3.5
+07/09   Integration guide: webhook verification          4.5
+10/09   Integration guide: sandbox walkthrough            3.0
+14/09   Review round with engineering                     2.0
+17/09   SDK quickstart (TypeScript)                       5.0
+22/09   SDK quickstart (Python)                           4.5
+25/09   Changelog and migration notes for v0.9            3.0
+29/09   Final edits and publishing                        5.0
+
+Total hours: 34.5
+Rate: USD 80.00 per hour
+Amount due: USD 2,760.00
+
+Payment within 30 days to my USDC address on your records. Thank you!
+Lena

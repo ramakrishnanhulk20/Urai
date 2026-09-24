@@ -1,0 +1,37 @@
+PELLOW HART ASSURANCE LLP
+Chartered Accountants and Registered Auditors
+Pellow Hart House, 9 Bridgewater Row
+fees@pellowhart.example
+
+Client: Quillmoor Labs Ltd
+Client code: QUIL01
+Engagement: SOC 2 Type I readiness assessment
+
+INVOICE PHA-26-0927
+Date of invoice: 10 September 2026
+
+To our professional fees for the SOC 2 Type I readiness assessment of Quillmoor Labs Ltd, per our engagement letter dated 24 June 2026:
+
+Readiness assessment, fixed fee. Readiness report (version 1.0) delivered to Dana Okafor on 9 September 2026, covering control design gaps across the security, availability and confidentiality criteria, with a prioritised remediation plan.
+
+Fee USD 2,400.00
+Expenses USD 0.00
+Total USD 2,400.00
+
+TERMS OF PAYMENT AND GENERAL CONDITIONS
+
+1. Payment terms are 2/10 net 30: a discount of 2 percent of fees applies where payment is received within 10 days of the date of this invoice. The discount does not apply to expenses. The full amount is otherwise due within 30 days of the date of this invoice.
+
+2. Payment should be made in USDC to the receiving address held on our client record. Please quote the invoice number PHA-26-0927 so that we can allocate your payment.
+
+3. Any query or dispute about this invoice should be raised in writing with the engagement partner within 14 days of the date of this invoice. If no query is raised in that time, the invoice is deemed accepted by the client.
+
+4. We reserve the right to charge statutory interest on overdue amounts in accordance with applicable law. We will write to you before doing so.
+
+5. Our fees are based on the scope set out in the engagement letter. Work outside that scope is agreed separately in writing before it starts.
+
+6. This invoice is issued subject to our standard terms of business, a copy of which is available on request.
+
+7. Pellow Hart Assurance LLP is registered to carry on audit work. The firm's professional indemnity insurance details are available on request.
+
+Pellow Hart Assurance LLP. Registered auditors.

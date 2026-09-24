@@ -1,0 +1,26 @@
+HARBOURLINE WORKSPACE LTD
+Harbourline House, 40 Quay Road
+members@harbourline.example
+
+TAX INVOICE
+
+Invoice No. HW-2026-E14
+Invoice Date 15/09/2026
+Member Quillmoor Labs Ltd
+Member ID HL-0412
+Account contact Dana Okafor
+
+Item Details Qty Rate Amount
+Event space hire Level 2 Commons, Thu 10 Sep 2026, 18:00 to 22:00, community meetup 4 hrs 250.00 1,000.00
+Event AV package Projector, 2 wireless mics, PA 1 300.00 300.00
+Post-event cleaning Level 2 Commons 1 150.00 150.00
+
+P3a. Amendment effective 1 September 2026: event space booked through Harbourline Workspace Ltd is within the scope of the coworking contract and may be paid without further approval. Approved: Ines Morrow, Finance Lead.
+
+Subtotal USD 1,450.00
+Total USD 1,450.00
+
+Terms: 2/10 net 30
+Pay in USDC to the Harbourline address on your member account. Reference HW-2026-E14.
+
+Thank you for hosting with Harbourline.

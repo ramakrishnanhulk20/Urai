@@ -1,0 +1,33 @@
+WEXCOMBE FARRANT LLP
+Solicitors
+11 Chandler Quay, Harbour District, Region A
+RA-TRN 2270451
+accounts@wexcombe-farrant.example
+
+To: Brindlemoor Networks Ltd
+Region B tax number: RB-88-2041137
+For the attention of: Sunniva Lark, Managing Director
+
+Invoice no: WF-26-1004
+Date: 5 October 2026
+Matter: EL-02, Region B payment services licence application
+Period: 1 September 2026 to 30 September 2026
+
+FEE NOTE
+
+Date        Fee earner   Description                                                          Hours   Rate     Amount
+03/09/2026  R. Okonjo    Review of regulator's second information request; response outline   1.5     520.00   780.00
+09/09/2026  R. Okonjo    Call with Region B regulator case officer on capital requirements     2.0     520.00   1,040.00
+17/09/2026  M. Farrant   Review of safeguarding policy for submission                          1.0     520.00   520.00
+24/09/2026  R. Okonjo    Finalise and file response to information request                    2.0     520.00   1,040.00
+
+Total hours                 6.5
+Professional fees (USD)     3,380.00
+Disbursements (USD)         0.00
+TOTAL DUE (USD)             3,380.00
+
+EL-02 fees billed to date: USD 21,120.00 before this invoice, USD 24,500.00 including it.
+
+Terms: payable on receipt. Settlement in USDC to the receiving address held on your supplier record. Kindly quote WF-26-1004.
+
+Wexcombe Farrant LLP is a limited liability partnership registered in Region A. A list of members is available at our office.

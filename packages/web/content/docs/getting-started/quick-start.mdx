@@ -1,0 +1,40 @@
+---
+title: Quick start
+description: Watch a live run on a sample agent with no key, then run your own agent on your own SERV key.
+---
+
+There are two ways in. The live demo needs nothing from you. Your own run needs a workload and a SERV key.
+
+## 1. Try the live demo
+
+The demo runs one of our sample agents, a payables agent that decides whether to pay, hold or reject a supplier invoice. It is paid from our own SERV key under a daily budget, so you need no key and pay nothing.
+
+1. Open [/try](/try).
+2. Under "Pick a sample agent", choose one of the three:
+   - "Data in the wrong place": the supplier book pasted into the system prompt, the mistake the setup check catches.
+   - "The same agent, set up right": rules in the system prompt, supplier data in the user message.
+   - "The 152-rule hard rulebook": 152 clauses from four layered rule sources.
+   Each row also shows the result of that sample's saved full run, with a link to "Open the saved report".
+3. Press "Run it live".
+4. Urai runs the first 12 cases of the sample, once with SERV off and once with SERV on, three calls at a time. Each call takes about 5 to 15 seconds, because the model really reads the whole rulebook. You watch every answer land in the grid, marked right or wrong against the expected verdict.
+5. When "Every answer is back.", Urai publishes the report and gives you "Open the full report".
+
+If the day's demo budget runs out mid-run, the page says "The demo budget is used up for now.", keeps the answers that already came back, and points you to the saved full reports instead.
+
+> Note: the demo only runs our samples, with the settings we allow for them. Your own text never travels on our key. That rule is C4 in the [threat model](/docs/security/threat-model).
+
+## 2. Run your own agent
+
+You need three things: your agent's system prompt, the JSON Schema of its answer, and a set of cases where you know the right answer. The format is on [Workload format](/docs/getting-started/workload-format). You also need a SERV key: see [Your SERV key](/docs/getting-started/serv-key).
+
+1. Open [/new](/new). Nothing is saved or spent until you press Start.
+2. "Start from a sample" (optional): each button fills every field with one of our sample agents, so you can see a finished setup first. Running a sample on your key spends your credit like any other run.
+3. "Your agent": fill in Name and System prompt. Put tables, lists and records every case needs in Shared data, not in the system prompt.
+4. "Answer shape": paste your Answer JSON Schema, then press "Add a scoring rule" for each field that decides whether an answer is right. Pick Exact match, "Number, with tolerance" or "One of a list".
+5. "Test cases": paste a JSON array or a CSV into "Cases, JSON or CSV", or press "Upload CSV".
+6. "Setup check": it runs by itself a couple of seconds after you stop typing, or press "Check setup". If it offers "Fix layout", press it. You can press "Undo the fix".
+7. "Settings to compare": pick the Model, then tick the settings. SERV off and SERV plain side by side is the fair first test.
+8. "Your SERV key": paste it into "SERV API key".
+9. "Run it": check the calls count and the estimate, then press "Start the run".
+
+Urai saves your test set, opens the run at `/run/<id>`, and starts sending cases. The full walk-through, including pause, resume and what happens if SERV refuses your key, is on [Run your agent](/docs/guides/run-your-agent).

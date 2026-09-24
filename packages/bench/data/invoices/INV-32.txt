@@ -1,0 +1,33 @@
+PELLOW HART ASSURANCE LLP
+Chartered Accountants and Registered Auditors
+Pellow Hart House, 9 Bridgewater Row
+fees@pellowhart.example
+
+Client: Quillmoor Labs Ltd
+Client code: QUIL01
+Engagement: Statutory audit, year ending 31 December 2026
+
+INVOICE PHA-26-0968
+Date of invoice: 21 September 2026
+
+Expenses incurred during audit fieldwork at your offices, 14 to 17 September 2026, recharged at cost without markup. Copies of all receipts are attached.
+
+Item Receipt ref Amount (USD)
+Rail fares, 2 staff, return, 2 x 148.00 TR-7781, TR-7782 296.00
+Hotel, 2 rooms x 3 nights at 129.00 HT-30914 774.00
+Taxis between station and your office TX-5512, TX-5519 79.60
+Working lunch, fieldwork team, 15 September ML-0918 35.00
+
+Fees USD 0.00
+Expenses USD 1,184.60
+Total USD 1,184.60
+
+Expenses billed under this engagement
+Before this invoice: USD 1,960.00 (PHA-26-0455, kick-off travel, July 2026)
+This invoice: USD 1,184.60
+Total to date: USD 3,144.60
+
+Payment terms: net 30 on expenses. The early payment discount applies to fees only.
+Remittance: USDC to the address held on our client record. Please quote PHA-26-0968.
+
+Pellow Hart Assurance LLP. Registered auditors.

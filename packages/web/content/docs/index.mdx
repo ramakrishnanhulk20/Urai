@@ -1,0 +1,32 @@
+---
+title: Urai overview
+description: Urai tests OpenServ's SERV Reasoning on your own agent, on your own cases, before you switch it on.
+---
+
+Urai runs your agent's own test cases through the same model with SERV Reasoning off and on, and scores every answer against the answer you expected. It also checks your setup for the layout that makes SERV worse, and fixes it in one click.
+
+The name is Tamil. Urai means testing gold on a touchstone, and it also means explanation. Urai tests SERV on your agent, then shows you why the numbers came out that way.
+
+## Who it is for
+
+You run an AI agent in production, or close to it, and you are deciding whether to route it through SERV. You have a set of inputs where you already know the right answer. You want to know what SERV does to your accuracy, tokens and latency before your users find out.
+
+That covers the team lead making the call and the engineer setting it up.
+
+## What you get
+
+- A setup check before anything is spent. It reads your system prompt, answer schema and settings for the mistakes we measured SERV making worse, and offers a one-click fix for the worst one: data sitting inside the system prompt.
+- A live run. Every case goes to SERV once under every setting you pick, on your own key, and you watch the answers come back.
+- A scored report, side by side: accuracy per setting, the cases where the settings disagreed, tokens, latency, and the real drop in your SERV balance. It is private until you share it, and a shared link can be taken back.
+
+## Why test first
+
+On our payables sample of 40 invoices, the setup mistake cost 30 points under SERV: 67.5% with the supplier book in the system prompt, 97.5% after the fix. On a 152-clause rulebook, SERV scored 47.5% where the model alone scored 97.5%. Your agent will land somewhere on that range, and only your own cases can say where.
+
+## Where to go next
+
+- [Quick start](/docs/getting-started/quick-start): try the live demo with no key, then run your own agent.
+- [How a run works](/docs/concepts/how-it-works): one case, end to end.
+- [Where SERV fits](/docs/concepts/where-serv-fits): the honest results, good and bad.
+- [Live proof](/docs/proof): every sample report, the security record, and the prove command.
+- [Security](/docs/security): what happens to your key and your data.

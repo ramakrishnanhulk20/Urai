@@ -1,0 +1,24 @@
+QUENBY INTEGRATION LTD
+22 Ferris Lane, Portmere, Region B
+RB-BRN 6604289
+accounts@quenby-int.example
+
+Invoice No.: QIL-2609
+Invoice date: 5 October 2026
+Clearance code: RBC-6120448975
+
+Customer: Brindlemoor Networks Ltd
+Customer tax number: RB-88-2041137
+Project: Halcyon, client purchase order HAL-PO-2231
+Month of supply: September 2026
+Day logs countersigned by client project manager T. Aranda on 2 October 2026
+
+Date         Consultant   Role                   Days   Day rate (USD)   Amount (USD)
+07/09/2026   K. Mbeki     Integration engineer   1      900.00           900.00
+08/09/2026   K. Mbeki     Integration engineer   1      900.00           900.00
+14/09/2026   K. Mbeki     Integration engineer   1      900.00           900.00
+15/09/2026   K. Mbeki     Integration engineer   1      900.00           900.00
+
+Total (USD)                                                              3,600.00
+
+Terms: net 30. Payment in USDC to the address on file. Please quote QIL-2609.

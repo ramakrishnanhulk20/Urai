@@ -1,0 +1,77 @@
+---
+title: How a run works
+description: One Urai run end to end, from the Start button to a scored answer in the grid.
+full: true
+---
+
+A run is every case in your workload under every setting you picked. Two settings and 40 cases is 80 calls. Your browser drives the run. The server runs one case under one setting per request, makes exactly one SERV call for it, scores the answer and stores it.
+
+## One case, end to end
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant B as Browser (/run/:id)
+  participant S as Case route
+  participant P as Postgres
+  participant E as Engine
+  participant V as SERV Reasoning
+
+  B->>S: POST /api/runs/:id/<br/>cases/:caseId?config=i<br/>x-urai-owner, x-serv-key
+  S->>P: run exists,<br/>owner token matches,<br/>case in run (C10)
+  S->>S: payer fixed on the run agrees<br/>with the key header (C3)
+  S->>P: advisory lock, then claim<br/>(run, case, config) once (C5)
+  alt demo run
+    S->>P: reserve one call<br/>on today's budget,<br/>atomically (C6)
+  end
+  S->>E: runCase(workload,<br/>case, config, key)
+  E->>V: POST /v1/chat/completions<br/>system: rules,<br/>user: context + input
+  V-->>E: answer, usage, request id
+  E->>E: validate the response (C17),<br/>score against<br/>the expected answer (C15)
+  E-->>S: CaseResult, key scrubbed (C1)
+  S->>P: store the result under the claim
+  alt demo run
+    S->>P: settle the real cost,<br/>and on every 20th call<br/>read SERV's balance (C28)
+  end
+  S-->>B: 200 CaseResult
+```
+
+In words:
+
+1. When you press "Start the run" on [/new](/new), Urai saves your workload, creates the run, and hands your browser a one-time owner token for it. The run fixes who pays at that moment: your key for your own workloads, our key only for the demo samples. It cannot change later (C3).
+2. The run page asks the server to run one case under one setting. The request carries the owner token in `x-urai-owner` and your key in `x-serv-key`.
+3. The server checks the run, the token and the case before anything else. A wrong token looks exactly like a run that does not exist (C10).
+4. It claims that case and setting in the database. The claim is the guard against paying twice.
+5. The engine builds the request, sends it to SERV, and waits up to 120 seconds for the answer.
+6. It checks every field SERV sent back, then scores the answer against your expected answer.
+7. The server stores the result, forgets your key, and returns the scored result to your browser, which paints it into the grid.
+
+## Each call is spent once
+
+Every (run, case, setting) is claimed once. Ask again for a case that already finished and you get the stored result back, with no second SERV call. Ask while the first request is still running and you get 202, and the browser asks again shortly (C5). Clicking twice, reloading, or a flaky network cannot make you pay twice for the same answer.
+
+One exception is in your favour. If SERV refuses your key with 401, no account was billed, so Urai releases the claim instead of storing it. Paste a working key and that case runs again.
+
+## Four calls at a time
+
+The server allows at most four calls in flight per run. The run page sends three at a time, one under the limit, so a slow call releasing its claim never trips it. Rows fill from the top: every setting of a case is sent next to each other.
+
+## The browser drives it
+
+Nothing runs on a schedule in the background. The run moves forward only while its page is open and asking.
+
+- Pause stops new calls. The button reads "Pausing" while the calls already sent finish and are stored. Press "Resume the run" to carry on from where it stopped.
+- Reloading the page keeps the run, because the owner token lives in the tab's `sessionStorage`. Your key does not survive a reload, so the page asks for it again, and nothing finished is run twice.
+- Closing the tab stops the run where it is, and nothing new is sent. The owner token dies with the tab, on purpose, unless you pressed "Copy private link" first. That link carries the token after a `#`, which browsers never send to a server, so opening it in any browser brings the run back without the token ever reaching Urai in a URL. It never carries your key, so nothing is spent until you paste the key again. Answers already stored stay stored, and if you shared the report before closing, its link keeps working.
+
+## Scoring
+
+Each answer goes through the same checks, in this order:
+
+1. No usable response, or a response that fails validation, is recorded as an upstream error or a timeout and is not scored.
+2. A refusal from PromptGuard is recorded as refused.
+3. An answer SERV's content filter cut is recorded as filtered.
+4. An empty answer, one that is not JSON, one that breaks your answer schema, or one over 20,000 characters is recorded as failed.
+5. Everything else is scored: each scoring rule compares one field against your expected value, and the answer is correct only when every rule matches.
+
+In the accuracy numbers, anything that is not a correct scored answer counts as wrong. The report names how many of the wrong ones never got scored, so a model that disagreed is never mixed up with a call that failed. The rules themselves are on [Workload format](/docs/getting-started/workload-format), and the statuses are explained on [Read a report](/docs/guides/read-a-report).

@@ -1,0 +1,31 @@
+INVOICE TI-0726-B
+
+Tomas Iriarte
+Independent smart contract engineer
+tomas@iriarte-dev.example
+
+Bill to: Quillmoor Labs Ltd
+Date: 19 September 2026
+Due: 4 October 2026 (net 15)
+Period: July 2026 (payments-sdk hours)
+
+Second invoice for July 2026. My payments-core hours for July were billed separately on TI-0726-A; this one covers the payments-sdk work only, which I had not logged in time.
+
+Timesheet
+Date Repository Work Hours
+02 Jul payments-sdk Client scaffolding and config 2.0
+07 Jul payments-sdk Quote and settle calls 2.5
+09 Jul payments-sdk Retry and idempotency keys 3.0
+14 Jul payments-sdk Tests against local fork 2.0
+16 Jul payments-sdk Docs comments and examples 2.5
+21 Jul payments-sdk Code review PR 41 2.0
+28 Jul payments-sdk v0.8.0 release checks 3.0
+
+Total hours 17.0
+Rate USD 95.00 / hour
+Amount due USD 1,615.00
+
+Pay to (USDC): 0x5a1e0000000000000000000000000000c0de0004
+
+Thanks,
+Tomas

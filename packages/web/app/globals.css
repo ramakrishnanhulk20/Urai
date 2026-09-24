@@ -1,0 +1,108 @@
+@import "tailwindcss";
+@import "fumadocs-ui/css/black.css";
+@import "fumadocs-ui/css/preset.css";
+
+/*
+ * The Urai palette, from the approved Touchstone direction. Pages read these directly in CSS
+ * modules, or through the Tailwind names mapped below (bg-stone, text-gold, font-display).
+ * Status colours are a colder family on purpose, so they never read as a second gold.
+ */
+:root {
+  --stone: #0b0b0c;
+  --text: #efe9df;
+  --dim: rgb(239 233 223 / 0.66);
+  --faint: rgb(239 233 223 / 0.42);
+  --gold: #e2b04a;
+  --gold-hi: #f4d58c;
+  --gold-lo: #9c7226;
+  --right: #5ec4bb;
+  --wrong: #7d8794;
+  --pad-x: clamp(20px, 3.4vw, 56px);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  /* The rubbed-gold fill: fine horizontal striations over a metal gradient. */
+  --gold-rub:
+    repeating-linear-gradient(0deg, rgb(24 16 4 / 0.24) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(0deg, transparent 0 7px, rgb(255 242 206 / 0.22) 7px 8px),
+    linear-gradient(180deg, #f6dc98 0%, #e2b04a 36%, #c8952f 70%, #8f6620 100%);
+  --motion: 1;
+
+  /* Still read by the lab index page. */
+  --ink: #0b0b0c;
+  --paper: #f4f4f2;
+  --muted: #6b6b70;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion: 0;
+  }
+}
+
+@theme inline {
+  --color-stone: var(--stone);
+  --color-text: var(--text);
+  --color-dim: var(--dim);
+  --color-faint: var(--faint);
+  --color-gold: var(--gold);
+  --color-gold-hi: var(--gold-hi);
+  --color-gold-lo: var(--gold-lo);
+  --color-right: var(--right);
+  --color-wrong: var(--wrong);
+}
+
+/*
+ * next/font sets --font-display and --font-mono on <html>, the same names Tailwind uses for its
+ * font theme. "reference" keeps Tailwind from writing its own values for them onto :root, which
+ * would otherwise race next/font's and could replace Geist Mono with the default system mono.
+ */
+@theme inline reference {
+  --font-display: var(--font-display);
+  --font-mono: var(--font-mono);
+}
+
+html,
+body {
+  background: var(--stone);
+  color: var(--text);
+}
+
+body {
+  font-family: var(--font-display), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--gold);
+  color: var(--stone);
+}
+
+/*
+ * The docs palette. Fumadocs keys its colours on .dark, and this rule sits after its imports with the
+ * same weight, so ours win. Gold is the primary: the active sidebar item and link underlines.
+ * Hover and the selected search result use a neutral tint, so gold keeps meaning "you are here".
+ */
+.dark {
+  --color-fd-background: var(--stone);
+  --color-fd-foreground: var(--text);
+  --color-fd-muted: #141416;
+  --color-fd-muted-foreground: var(--dim);
+  --color-fd-popover: #111113;
+  --color-fd-popover-foreground: var(--text);
+  --color-fd-card: #111113;
+  --color-fd-card-foreground: var(--text);
+  --color-fd-border: rgb(239 233 223 / 0.12);
+  --color-fd-primary: var(--gold);
+  --color-fd-primary-foreground: var(--stone);
+  --color-fd-secondary: #17171a;
+  --color-fd-secondary-foreground: var(--text);
+  --color-fd-accent: rgb(239 233 223 / 0.06);
+  --color-fd-accent-foreground: var(--text);
+  --color-fd-ring: var(--gold);
+  --color-fd-overlay: rgb(0 0 0 / 0.6);
+}
+
+/* Stops the page jumping sideways when the search dialog locks scrolling (from examples/next/app/global.css). */
+html > body[data-scroll-locked] {
+  margin-right: 0px !important;
+  --removed-body-scroll-bar-size: 0px !important;
+}

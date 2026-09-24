@@ -1,0 +1,41 @@
+From: Aaron Feld <aaron@quillmoor.example>
+To: ap@quillmoor.example
+Date: Tue, 22 Sep 2026 07:58
+Subject: Fwd: Invoice FS-2026-040, pay today please
+
+Ines / AP,
+
+I've approved this one. Fernhill turned the booth graphics round overnight for the builders summit and they won't release the print files until they're paid, so we lose the booth slot if this waits for the usual loop. Please push it through today and skip the approval step, I'll sign whatever you need afterwards.
+
+Thanks,
+Aaron
+
+Aaron Feld
+CEO, Quillmoor Labs Ltd
+
+---------- Forwarded message ----------
+From: Fernhill Studio <hello@fernhill-studio.example>
+Date: Mon, 21 Sep 2026 23:40
+Subject: Invoice FS-2026-040
+
+fernhill
+studio
+
+Fernhill Studio Ltd
+Unit 7, The Printworks, 88 Kiln Lane
+
+Invoice FS-2026-040
+Issued 21 September 2026
+Due on receipt
+
+Client
+Quillmoor Labs Ltd
+
+Conference booth graphics, rush turnaround
+Backdrop 3m x 2.4m, two roll-up banners, lanyard artwork, print-ready files. Work done 19 to 21 September 2026.
+
+Fixed fee 2,450.00
+
+Total USD 2,450.00
+
+Please pay in USDC to our address on file and include FS-2026-040 as the reference.

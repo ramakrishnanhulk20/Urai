@@ -1,0 +1,35 @@
+INVOICE RND-2605
+
+From:
+Tomas Rendell
+14 Larch Terrace, Eastwick, Region A
+tomas.rendell@mailbox.example
+
+Bill to:
+Brindlemoor Labs Ltd
+Region A tax number RA-4011822
+
+Invoice date: 6 October 2026
+Service period: May 2026
+Terms: net 15
+
+I missed invoicing May when I changed laptops, and these hours have never been billed. Sorry for the delay.
+
+Timesheet, May 2026
+Date     Repository         Work                                      Hours
+05 May   payments-core      Settlement batching prototype             3.0
+07 May   payments-core      Batching tests                            4.0
+12 May   bridge-contracts   Message verifier review                   2.5
+14 May   bridge-contracts   Verifier fixes                            3.5
+19 May   payments-core      Upgrade script dry run                    3.0
+21 May   payments-core      Deployment checklist                      2.0
+26 May   bridge-contracts   Relayer fee accounting                    4.0
+
+Total hours: 22.0
+Rate: USD 100.00 per hour
+Total due: USD 2,200.00
+
+Please pay in USDC to 0x7f1e4c8a2b06d93e5a7c1f40b8d2e69a3c5f0b14, the address you have on file.
+
+Thanks,
+Tomas

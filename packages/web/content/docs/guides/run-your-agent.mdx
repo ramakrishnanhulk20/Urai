@@ -1,0 +1,71 @@
+---
+title: Run your agent
+description: A full walk through the builder and the live run page, including pause, resume, a refused key and an empty balance.
+---
+
+This guide takes one agent from a blank builder to a finished report. You need a SERV key ([Your SERV key](/docs/getting-started/serv-key)) and your test cases ([Workload format](/docs/getting-started/workload-format)).
+
+## Part 1: the builder on /new
+
+Open [/new](/new). The rail on the left lists eight steps, and each one turns done, or flags that it needs attention, as you fill it in. Nothing is saved or spent until you press Start.
+
+### Fill in the workload
+
+1. "Start from a sample" is optional. Each sample button fills every field, which is the quickest way to see a finished setup. Running a sample on your key spends your credit.
+2. "Your agent". Give the test set a Name, then paste the System prompt exactly as your agent sends it today. Urai sends it to SERV byte for byte, so what you measure is what you would ship. Put reference data, such as tables, lists and records every case needs, in Shared data.
+3. "Answer shape". Paste your Answer JSON Schema. When it reads as valid JSON, the field list fills in. Press "Add a scoring rule" for each field that decides whether an answer is right, pick the Field and the Rule, and for a number rule set the Tolerance. Only scored fields count toward accuracy.
+4. "Test cases". Paste a JSON array or a CSV into "Cases, JSON or CSV", or press "Upload CSV". Everything is read in your browser first. The page shows how many cases it read, previews the first three, and lists every problem with the row it sits in.
+
+### Fix what the setup check flags
+
+5. "Setup check" runs by itself a couple of seconds after you stop typing, or press "Check setup". Read the findings, most serious first. If it offers "Fix layout", the card shows which blocks of data will move out of the system prompt and the sizes before and after. Press "Fix layout", and press "Undo the fix" if you change your mind. What each finding means is on [Setup check](/docs/concepts/setup-check).
+
+You can still start a run with an error in place, for example to measure what a mistake costs. Fix it first if you want a fair test of SERV.
+
+### Pick the settings and paste the key
+
+6. "Settings to compare". Pick the Model from SERV's live list, which shows its price per million tokens. Then tick the settings: SERV off, SERV plain, SERV with PromptGuard, SERV Multipath, SERV full. Every case runs once under each one you tick. SERV off and SERV plain side by side is the fair first test. What each one sends is on [SERV settings](/docs/concepts/serv-modes).
+7. "Your SERV key". Paste it into "SERV API key". It stays in the page's memory only.
+8. "Run it". The page shows cases times settings as a number of calls, a rough cost estimate from SERV's listed prices, and the size of your test set against the 300 KB limit. Anything still missing is listed. When the list is empty, press "Start the run".
+
+The button reads "Saving your test set", then "Starting the run", then "Opening the run", and the page moves to `/run/<id>`. If saving or starting fails, the message says what happened, and nothing was spent.
+
+## Part 2: the live run page
+
+### Start
+
+The run page reads your SERV balance once, then starts sending cases three at a time. Rows fill from the top. A cell reads "Waiting", then "Reading" while its call is out, then shows the answer as right or wrong.
+
+### Pause and resume
+
+- Press "Pause" to stop sending new calls. It reads "Pausing" while the calls already sent come back.
+- Press "Resume the run" to carry on from where it stopped. A finished call is never run twice.
+- While paused, "Forget my key" clears the key from the page. The page asks for it again when you resume.
+
+If you reload, the run is still yours in this tab, but the key is gone from memory. The page shows "Paste your key to continue." Paste it and press "Continue the run". If you close the tab, the run stops where it is. To come back to it later, or from another browser, press "Copy private link" on the run page first and keep the link somewhere private. Opening it reopens the run and asks for your key again. The link never includes your key, but anyone who has it can see and share the results. See [How a run works](/docs/concepts/how-it-works).
+
+### If SERV refuses the key
+
+If SERV answers 401, meaning it does not accept your key, the run stops and the page says "SERV refused the key." That usually means the key is wrong, revoked or from another account.
+
+- The key is cleared from the tab.
+- Nothing is charged or recorded for the refused calls. Urai releases each one instead of storing it.
+- Paste a working key and press "Continue the run". The run picks up where it stopped, including the refused calls.
+
+A refusal with any other code, such as 403, is not documented by SERV as unbilled, so Urai cannot safely retry it. Those calls are recorded as "No response", and the notice tells you how many.
+
+If the key does not even look like a SERV key, Urai refuses it before anything is sent: "That does not look like a SERV key."
+
+Each network gets a budget of 30 calls SERV refuses per hour, so Urai cannot be used to test stolen keys against SERV. Once it is spent, Urai stops calls from that network before they reach SERV, charges nothing, clears the key and says "Too many refused keys from your network." Wait up to an hour, then paste a working key (C33).
+
+### If your credit runs out
+
+If SERV answers 402, your balance cannot cover the next call. SERV decides that before any model runs, so nothing is charged. The run pauses and the page says "Your SERV balance ran out." Nothing more is sent, and the call SERV turned down goes back to "Waiting" with the rest, so nothing is lost. Top up your balance on your SERV account, then press "Resume the run" to send everything still waiting.
+
+### If some calls do not come back
+
+A call can fail on the way, for example when the network drops. Those cells show "Did not come back", and when the other calls are done the page lists them and offers "Run the missing calls". If it keeps happening, wait a minute: SERV or Urai may be busy.
+
+### Finish
+
+When the last answer is back, the page reads your SERV balance once more and shows the report: the measured spend, accuracy per setting, the cases where settings disagreed, the setup findings, and every case in full. How to read it is on [Read a report](/docs/guides/read-a-report). The report is private until you press "Share the report". See [Share a report](/docs/guides/share-a-report).

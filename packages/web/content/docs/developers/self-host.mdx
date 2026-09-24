@@ -1,0 +1,84 @@
+---
+title: Run Urai yourself
+description: Install Urai, point it at your own database and SERV key, then prove it works and attack it.
+---
+
+Urai is one repository with two packages: `packages/engine`, the library that talks to SERV, and `packages/web`, the Next.js app. You need Node.js and npm, a free Neon Postgres project, and a SERV key.
+
+## 1. Install
+
+From the repository root:
+
+```bash
+npm install
+```
+
+The root `package.json` is an npm workspace, so this installs both packages and links the engine into the web app.
+
+## 2. Set the environment
+
+Copy `.env.example` to `.env` at the repository root and fill it in. Never commit `.env`.
+
+| Variable | What to put in it |
+|---|---|
+| `SERV_API_KEY` | The operator's SERV key, from console.openserv.ai (Settings, Keys). It pays only for public demo runs on the sample workloads. Teams bring their own key for their own workloads. |
+| `SERV_BASE_URL` | Read only by the research benchmark in `packages/bench`. The app does not read it: the SERV address is fixed in the engine's code, so no setting can send a key anywhere else (C2). |
+| `DATABASE_URL` | The pooled connection string of a free Neon Postgres project. |
+| `URAI_IP_SALT` | A random secret, 64 hex characters, used to hash visitor addresses for the rate limits. The raw address is never stored. |
+| `DEMO_DAILY_BUDGET_USD` | The daily cap on the operator key for public demo runs, in USD. `.env.example` sets 1.00. |
+| `CRON_SECRET` | The secret Vercel Cron sends to `/api/cron/cleanup`, at least 32 characters, for example from `openssl rand -hex 32`. If it is missing or shorter, the clean-up refuses every call. |
+
+The server checks these the first time it needs them, and its error names any variable that is missing or malformed, never its value.
+
+## 3. Create the tables and the samples
+
+```bash
+cd packages/web
+npm run migrate
+npm run seed
+```
+
+`migrate` applies every file in `packages/web/db/migrations` that has not run yet, in name order, each in its own transaction. Running it twice is safe.
+
+`seed` adds the three invoice sample workloads: `sample-invoices-good`, `sample-invoices-bad` and `sample-invoices-hard`. Each goes through the same parser as a team's upload. The only settings the operator key will pay for on them are `gpt-6-luna` with SERV off and SERV plain. Running it again changes nothing unless a sample file changed.
+
+## 4. Start the app
+
+```bash
+npm run dev -- --port 3101
+```
+
+Open `http://localhost:3101`. Port 3101 is the one the prove command expects by default.
+
+The daily clean-up runs on Vercel from `packages/web/vercel.json`, at 03:00 UTC. It deletes workloads past their 30 days with their runs and results, demo runs older than 7 days, old rate-limit windows and old demo budget days. It never touches the samples. Locally, nothing calls it unless you do, with the header `Authorization: Bearer` followed by your `CRON_SECRET`.
+
+## 5. Prove it works
+
+With the app running:
+
+```bash
+npm run prove
+```
+
+Five steps over HTTP: the model list, the setup check on the bad-layout sample, a small team run, a demo run, and sharing a report. It prints PASS or FAIL per step and exits 1 on any failure. It spends real money, about 0.05 USD, from the key in `SERV_API_KEY`, and stops before 0.10 USD. Point it at another server with `npm run prove -- --base https://your-host`. The full list of what it checks is on [Live proof](/docs/proof).
+
+## 6. Attack it
+
+The security suite tries to break every rule in the threat model against a running server. Run it against a production build, with the server's own output captured to a file, because one check searches that output for the test key.
+
+In one terminal:
+
+```bash
+cd packages/web
+npm run build
+npx next start --port 3102 > server.log 2>&1
+```
+
+In another:
+
+```bash
+cd packages/web
+npm run verify-security -- --base http://localhost:3102 --server-log server.log
+```
+
+Add `--skip-budget` to skip the two checks that make real demo calls on the operator key, about four calls and a fraction of a cent. The suite reads the root `.env` to reach the same database, never prints a value from it, and deletes everything it created when it finishes. It writes its record to `docs/security/checks`. What each result means is on [Security checks](/docs/security/checks).

@@ -1,0 +1,46 @@
+---
+title: Where SERV fits
+description: What SERV did on our own sample agents, the good result and the bad one, and what that means for yours.
+---
+
+We ran SERV on our own agent before asking anyone to run it on theirs. These are the results, including the one that does not flatter SERV.
+
+All runs below are on `gpt-6-luna`, 40 cases, SERV off against SERV plain. SERV off is the model on its own. SERV plain is SERV's reasoning with nothing else added.
+
+## A well laid out agent: close to parity
+
+The good-layout payables agent: rules in the system prompt, the supplier book in the user message.
+
+| | SERV off | SERV plain |
+|---|---|---|
+| Accuracy | 40 of 40, 100% | 38 of 40, 95% |
+| Input tokens | 240,522 | 159,562 |
+| Output tokens | 21,974 | 21,643 |
+| Mean latency | 10.8 s | 10.7 s |
+
+SERV plain used 31% fewer tokens in total, input and output together, and got two cases wrong that the model alone got right. The two settings disagreed on 2 of 40 cases. Latency was about the same.
+
+That is a real trade: 31% fewer tokens for 5 points of accuracy on this agent. Whether it is worth it depends on what a wrong answer costs you. [Open the report](/r/EcaTkn78IZ3bLHi0BJcXAg) and read the two cases.
+
+## A hard rulebook: SERV scored far lower
+
+The hard set: 152 clauses from four layered rule sources, where one missed exception flips a payment. Data in the user message, so the layout was right.
+
+| | SERV off | SERV plain |
+|---|---|---|
+| Accuracy | 39 of 40, 97.5% | 19 of 40, 47.5% |
+| Input tokens | 617,909 | 274,469 |
+| Output tokens | 31,844 | 31,886 |
+| Mean latency | 11.8 s | 12.4 s |
+
+SERV plain used 53% fewer tokens and lost 50 points of accuracy. The settings disagreed on 22 of 40 cases. Our best explanation is the one behind the setup check's long-prompt note: SERV compresses the system prompt into its own reasoning graph, and a long, layered rulebook has the most detail to lose. We have not proven that case by case, so read the 22 cases yourself. [Open the report](/r/VowHwvFGztQ-aGvCF_9PZw).
+
+## A bad layout: the mistake you can fix
+
+The third result is about setup, not SERV itself. With the supplier book pasted into the system prompt, SERV plain scored 67.5%. After the one-click fix moved it to the user message, the same run scored 97.5%. See [Setup check](/docs/concepts/setup-check).
+
+## What this means for your agent
+
+SERV is not a switch that makes every agent better. On one agent it came within 5 points of the model alone and used 31% fewer tokens. On another it lost 50 points of accuracy. On a third, the result depended on where one block of data sat.
+
+So test it on your own cases before you switch it on. Run SERV off against SERV plain on the same model, with the layout the setup check is happy with, and read the cases where they disagree. That is what Urai is for. Start on [/new](/new), or watch a run first on [/try](/try).

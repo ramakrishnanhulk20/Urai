@@ -1,0 +1,152 @@
+{
+  "company": {
+    "name": "Quillmoor Labs Ltd",
+    "today": "2026-09-24",
+    "treasuryCurrency": "USDC",
+    "autoPayLimitUsd": 2500,
+    "dailyLimitUsd": 10000
+  },
+  "suppliers": [
+    {
+      "id": "sup_01",
+      "legalName": "Northgate Cloud Services Ltd",
+      "aliases": ["Northgate Cloud", "NGC Hosting"],
+      "payoutAddress": "0x5a1e0000000000000000000000000000c10d0001",
+      "contract": {
+        "scope": "Usage-based supplier. Cloud compute, block storage, object storage, managed Postgres and bandwidth for Quillmoor production and staging. Two billing accounts, each invoiced separately: NG-PROD-4471 (production) and NG-STG-4472 (staging). Support is included in the rates. Professional services, consulting, architecture reviews and add-on security products are not covered.",
+        "pricing": "Metered usage billed monthly in arrears per billing account, at the rates in order form NG-OF-2025-118: compute $0.042 per vCPU-hour, block storage $0.10 per GB-month, object storage $0.021 per GB-month, egress $0.05 per GB, managed Postgres $310 per instance-month. No other charges.",
+        "startDate": "2025-10-01",
+        "endDate": "2027-09-30",
+        "monthlyCapUsd": 3200,
+        "paymentTerms": "net 30"
+      },
+      "approver": "Priya Venkat, Head of Engineering"
+    },
+    {
+      "id": "sup_02",
+      "legalName": "Ashcombe & Rell LLP",
+      "aliases": ["Ashcombe Rell", "A&R Legal"],
+      "payoutAddress": "0x5a1e00000000000000000000000000001e9a0002",
+      "contract": {
+        "scope": "Retainer. General corporate counsel: board and shareholder matters, commercial contract review, employment contract templates, and statutory and registry filings. Litigation, disputes, claims and regulatory licence applications are excluded. Engagement letters in force: EL-2026-03 (signed 2026-05-12) covers the Series A financing documents.",
+        "pricing": "Monthly retainer $2,400, billed in advance for the coming calendar month. Work under EL-2026-03 billed monthly in arrears at $420 per hour with dated time entries, capped at $12,000 in total for the whole engagement letter. Disbursements on the matters above (government filing fees, notary and courier costs) passed through at cost with receipts, no markup. No other hourly work.",
+        "startDate": "2026-01-01",
+        "endDate": "2026-12-31",
+        "monthlyCapUsd": 6600,
+        "paymentTerms": "due on receipt"
+      },
+      "approver": "Dana Okafor, COO"
+    },
+    {
+      "id": "sup_03",
+      "legalName": "Fernhill Studio Ltd",
+      "aliases": ["Fernhill Studio", "Fernhill Design"],
+      "payoutAddress": "0x5a1e0000000000000000000000000000de510003",
+      "contract": {
+        "scope": "Fixed-fee project. Product UI redesign of the Quillmoor dashboard and design of a new marketing site, in three milestones: M1 discovery and wireframes, M2 UI kit and high-fidelity screens, M3 marketing site design files. Development, copywriting, print, event and conference materials, and ongoing design support are out of scope.",
+        "pricing": "Fixed fee per milestone, invoiced on delivery: M1 $4,000, M2 $6,000, M3 $5,000. Change requests: up to two, at $1,200 each, when raised in writing and delivered during the contract period. No hourly work.",
+        "startDate": "2026-05-01",
+        "endDate": "2026-08-31",
+        "monthlyCapUsd": 6000,
+        "paymentTerms": "net 15"
+      },
+      "approver": "Leah Brandt, Head of Product"
+    },
+    {
+      "id": "sup_04",
+      "legalName": "Tomas Iriarte",
+      "aliases": ["T. Iriarte", "Iriarte Engineering"],
+      "payoutAddress": "0x5a1e0000000000000000000000000000c0de0004",
+      "contract": {
+        "scope": "Hourly contractor. Solidity development, testing and code review for the Quillmoor payments module, repositories quillmoor/payments-core and quillmoor/payments-sdk.",
+        "pricing": "$95 per hour, billed monthly in arrears with a dated timesheet. Maximum 40 hours per calendar month. No fixed-fee work and no expenses.",
+        "startDate": "2026-03-01",
+        "endDate": "2026-12-31",
+        "monthlyCapUsd": 3800,
+        "paymentTerms": "net 15"
+      },
+      "approver": "Priya Venkat, Head of Engineering"
+    },
+    {
+      "id": "sup_05",
+      "legalName": "Mira Castellane",
+      "aliases": ["M. Castellane"],
+      "payoutAddress": "0x5a1e0000000000000000000000000000d0c50005",
+      "contract": {
+        "scope": "Hourly contractor. Technical writing: developer documentation, API reference and integration guides for Quillmoor products.",
+        "pricing": "$70 per hour, billed monthly in arrears with a dated timesheet. Maximum 30 hours per calendar month. No expenses.",
+        "startDate": "2026-01-15",
+        "endDate": "2026-10-15",
+        "monthlyCapUsd": 2100,
+        "paymentTerms": "net 30"
+      },
+      "approver": "Leah Brandt, Head of Product"
+    },
+    {
+      "id": "sup_06",
+      "legalName": "Loomdesk Inc.",
+      "aliases": ["Loomdesk"],
+      "payoutAddress": "0x5a1e00000000000000000000000000005aa50006",
+      "contract": {
+        "scope": "Subscription. Loomdesk Team plan: shared docs, tasks and chat workspace for Quillmoor staff. Add-on products are not covered.",
+        "pricing": "$18 per seat per month, billed monthly in advance. 25 seats at signing; seats may be added up to 30 in total without an amendment, prorated by day. The contract auto-renews for 12 months on 1 October unless cancelled; renewal price must be confirmed by the approver.",
+        "startDate": "2025-10-01",
+        "endDate": "2026-09-30",
+        "monthlyCapUsd": 540,
+        "paymentTerms": "due on receipt"
+      },
+      "approver": "Dana Okafor, COO"
+    },
+    {
+      "id": "sup_07",
+      "legalName": "Pellow Hart Assurance LLP",
+      "aliases": ["Pellow Hart", "PHA Audit"],
+      "payoutAddress": "0x5a1e0000000000000000000000000000a0d10007",
+      "contract": {
+        "scope": "Fixed-fee project. Statutory audit of Quillmoor financial statements for the year ending 31 December 2026, and a SOC 2 Type I readiness assessment. SOC 2 Type II work and any other advisory work are not covered.",
+        "pricing": "Audit fixed fee $18,000 in three instalments of $6,000, each due on a trigger event: engagement start, start of fieldwork, delivery of the final audit report. SOC 2 Type I readiness assessment fixed fee $2,400, invoiced on delivery of the readiness report. Travel and out-of-pocket expenses passed through at cost with receipts, no markup, capped at $3,000 in total for the engagement.",
+        "startDate": "2026-07-01",
+        "endDate": "2027-03-31",
+        "monthlyCapUsd": 7500,
+        "paymentTerms": "2/10 net 30"
+      },
+      "approver": "Dana Okafor, COO"
+    },
+    {
+      "id": "sup_08",
+      "legalName": "Harbourline Workspace Ltd",
+      "aliases": ["Harbourline", "Harbourline Coworking"],
+      "payoutAddress": "0x5a1e0000000000000000000000000000de5c0008",
+      "contract": {
+        "scope": "Rent. 12 dedicated desks and use of meeting room 4B on the 4th floor, including utilities, internet and cleaning. Event space, lockers, storage and day passes are not covered.",
+        "pricing": "$2,160 per month flat for 12 desks ($180 per desk), billed on the 20th of the month before, in advance. 20 meeting-room hours per month included; extra hours at $40 per hour, billed in arrears on a later invoice. Desk count changes need a contract amendment.",
+        "startDate": "2026-01-01",
+        "endDate": "2026-12-31",
+        "monthlyCapUsd": 2800,
+        "paymentTerms": "2/10 net 30"
+      },
+      "approver": "Dana Okafor, COO"
+    }
+  ],
+  "paymentHistory": [
+    { "supplierId": "sup_03", "invoiceNumber": "FS-2026-014", "amountUsd": 4000.00, "paidOn": "2026-06-10" },
+    { "supplierId": "sup_08", "invoiceNumber": "HW-2026-07", "amountUsd": 2116.80, "paidOn": "2026-06-29" },
+    { "supplierId": "sup_07", "invoiceNumber": "PHA-26-0412", "amountUsd": 5880.00, "paidOn": "2026-07-09" },
+    { "supplierId": "sup_02", "invoiceNumber": "AR-2026-077", "amountUsd": 3360.00, "paidOn": "2026-07-10" },
+    { "supplierId": "sup_05", "invoiceNumber": "MC-2026-06", "amountUsd": 1820.00, "paidOn": "2026-07-22" },
+    { "supplierId": "sup_01", "invoiceNumber": "NG-4471-2606", "amountUsd": 2112.40, "paidOn": "2026-07-28" },
+    { "supplierId": "sup_01", "invoiceNumber": "NG-4472-2606", "amountUsd": 588.10, "paidOn": "2026-07-28" },
+    { "supplierId": "sup_08", "invoiceNumber": "HW-2026-08", "amountUsd": 2116.80, "paidOn": "2026-07-28" },
+    { "supplierId": "sup_02", "invoiceNumber": "AR-2026-081", "amountUsd": 2400.00, "paidOn": "2026-08-01" },
+    { "supplierId": "sup_06", "invoiceNumber": "LD-448120", "amountUsd": 450.00, "paidOn": "2026-08-01" },
+    { "supplierId": "sup_03", "invoiceNumber": "FS-2026-022", "amountUsd": 6000.00, "paidOn": "2026-08-05" },
+    { "supplierId": "sup_07", "invoiceNumber": "PHA-26-0455", "amountUsd": 1960.00, "paidOn": "2026-08-06" },
+    { "supplierId": "sup_02", "invoiceNumber": "AR-2026-084", "amountUsd": 4620.00, "paidOn": "2026-08-12" },
+    { "supplierId": "sup_04", "invoiceNumber": "TI-0726-A", "amountUsd": 1805.00, "paidOn": "2026-08-12" },
+    { "supplierId": "sup_05", "invoiceNumber": "MC-2026-07", "amountUsd": 2030.00, "paidOn": "2026-08-20" },
+    { "supplierId": "sup_01", "invoiceNumber": "NG-4471-2607", "amountUsd": 2247.90, "paidOn": "2026-08-29" },
+    { "supplierId": "sup_01", "invoiceNumber": "NG-4472-2607", "amountUsd": 601.75, "paidOn": "2026-08-29" },
+    { "supplierId": "sup_02", "invoiceNumber": "AR-2026-091", "amountUsd": 2400.00, "paidOn": "2026-09-01" },
+    { "supplierId": "sup_06", "invoiceNumber": "LD-452277", "amountUsd": 450.00, "paidOn": "2026-09-01" }
+  ]
+}

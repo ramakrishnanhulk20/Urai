@@ -1,0 +1,50 @@
+---
+title: SERV settings
+description: The five settings Urai can compare, and exactly what it sends SERV for each one.
+---
+
+SERV Reasoning sits in front of the model. You call it like any chat completions API, and it reasons over your system prompt before the model answers. Urai compares up to six settings in one run. Each setting is a model plus one of five modes.
+
+## What every request looks like
+
+Every call goes to `https://inference-api.openserv.ai/v1/chat/completions`, with your key in the `Authorization` header. The body is the same shape for every setting:
+
+- The system message is your `systemPrompt`, byte for byte. Every case in a run sends the identical prompt, so SERV builds its reasoning graph once and reuses it.
+- The user message is a JSON string holding your shared data and the case input: `{"context": ..., "input": ...}`, or just `{"input": ...}` when you have no shared data.
+- `response_format` asks for a strict JSON Schema answer, named `answer`, using your answer schema.
+
+What changes between settings is one header, the model name, and a list of SERV tools. SERV reads tools named `serv_*` and strips them before the model sees them.
+
+## The five modes
+
+| Mode | Label in Urai | What Urai sends | What it tests |
+|---|---|---|---|
+| `raw` | SERV off | Header `x-openserv-disable-braid: true`. The model id as is. No tools. | The model on its own, with SERV's reasoning switched off. The baseline. |
+| `plain` | SERV plain | The model id as is. Tool `serv_disable_content_filter`. | SERV's reasoning on, nothing else added. |
+| `guard` | SERV with PromptGuard | The model id as is. Tools `serv_prompt_guard` and `serv_disable_content_filter`. | SERV plus PromptGuard, which can refuse an input before the model runs. |
+| `multipath` | SERV Multipath | The model id with `-serv-multipath` added, for example `gpt-6-luna-serv-multipath`. Tool `serv_disable_content_filter`. | The model's SERV Multipath variant. |
+| `full` | SERV full | The model id with `-serv-multipath` added. Tools `serv_prompt_guard`, `serv_shadow_agent` and `serv_disable_content_filter`. | Multipath, PromptGuard and Shadow Agent together. |
+
+For a first test, compare SERV off with SERV plain on the same model. That isolates what SERV's reasoning does to your agent, with nothing else changing.
+
+### Shadow Agent
+
+In the full mode, Urai sends `serv_shadow_agent` with two settings: a `hint`, which is your workload's `shadowHint`, and `max_iterations` of 3. With no `shadowHint`, the hint is "The answer must follow the instructions and match the answer schema."
+
+The full mode is slow and costly. In our runs it cost about 0.25 USD and took about 60 seconds per call, against about 0.003 USD for plain SERV. The setup check reminds you when you tick it.
+
+### The content filter
+
+SERV has a default output filter that cuts any answer quoting the system prompt. An agent that cites its own rules does that by design. In our first bench run the filter cut 10 of 17 answers. So Urai switches the filter off with `serv_disable_content_filter` on every SERV setting, and the setup check warns you when your answer fields or prompt ask the agent to cite or quote. Add the same tool in production.
+
+If you want to measure the filter itself, the API takes `keepContentFilter: true` on a setting. The report labels that setting "content filter kept", so it never reads as the same column as one without it. The builder on [/new](/new) does not offer this switch. With SERV off, the flag changes nothing and is ignored.
+
+## Why your data belongs in the user message
+
+SERV compresses your system prompt into its own cached reasoning graph. In our runs a 6,600-token prompt became about 2,100 tokens. Rules survive that. Data does not reliably: SERV drops data it finds in the system prompt. That is why the workload has a separate `context` field, and why Urai sends it in the user message with each case instead of in the system prompt.
+
+Building the graph is not free either. The first call with a new system prompt paid about 0.60 USD in our runs, and any change to the prompt, even one character, builds a new graph. A prompt that changes per request, such as a template with the case pasted in, rebuilds the graph every time. The [setup check](/docs/concepts/setup-check) flags both.
+
+## Picking a model
+
+The model picker on [/new](/new) reads SERV's live model list, with the input and output price per million tokens for each model. Urai caches that list for up to an hour. If SERV cannot be reached, the picker shows the last list it saved and marks it "Not verified", and the setup check says it could not verify the model instead of guessing.

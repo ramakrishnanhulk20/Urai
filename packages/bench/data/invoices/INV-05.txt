@@ -1,0 +1,30 @@
+fernhill
+studio
+
+Fernhill Studio Ltd
+Unit 7, The Printworks, 88 Kiln Lane
+hello@fernhill-studio.example
+
+Invoice FS-2026-031
+Issued 2 September 2026
+Due 17 September 2026
+
+Client
+Quillmoor Labs Ltd
+Leah Brandt, Head of Product
+
+Project
+Quillmoor dashboard and marketing site redesign
+
+Milestone M3: Marketing site design files
+Final Figma files for 9 marketing pages (home, product, pricing, security, docs landing, about, careers, blog index, blog article), responsive at 3 breakpoints, with exported assets and a handover walkthrough.
+Delivered 28 August 2026 and walked through with Leah on the same day.
+
+Fixed fee 5,000.00
+
+Total USD 5,000.00
+
+Payment terms: net 15
+Please pay in USDC to our address on file and include FS-2026-031 as the reference.
+
+It has been a pleasure working on this with the Quillmoor team.

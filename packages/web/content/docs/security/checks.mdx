@@ -1,0 +1,56 @@
+---
+title: Security checks
+description: How Urai's security suite attacks a running server, how to run it, and the latest result.
+---
+
+A threat model is only a list of intentions until something tries to break it. `verify-security` is that something. It takes the rules in the [threat model](/docs/security/threat-model) and attacks a running Urai server with real HTTP requests that the server must refuse or handle safely, then writes down what came back.
+
+## Latest result
+
+<SecurityRecord />
+
+The same run listed the 12 unit tests that cover C15 to C19 and found all 12.
+
+## What it does
+
+Where a response alone cannot prove a rule, the check also reads the database. For example, after a refused call it confirms that no case result was claimed, and after the key checks it searches every stored row for the test key.
+
+A few of the checks, to give the flavour:
+
+- C1: drives a team run with a made-up key, then searches every response body and header, every row the run created, and the server's own log output for that key and for every 16-character slice of it.
+- C3: calls a team run with no key, an empty key and a whitespace key, and a demo run with a key. All must be refused, and none may claim a result.
+- C5: fires 10 identical demo case calls at once. Exactly one SERV request may go out, and all 10 replies must be the same stored result.
+- C6: sets the day's demo budget to leave room for 3 calls, then fires 10 at once. Exactly 3 may go through.
+- C8: asks for 50 made-up run ids and 50 made-up report ids, including neighbours of real ones. All 100 must answer not found.
+- C12 and C13: sends schemas using `pattern`, `format`, a remote `$ref` and nesting 7 levels deep, and 60,000-character prompts built to slow a regular expression down.
+- C20: puts an HTML image tag with a script handler into a case, shares the report, and checks that the page shows it as text.
+- C30 and C31: takes a shared report back and checks the link now answers not found, then reads reports 121 times from one address and checks the 121st is refused.
+
+C15 to C19 are proved by unit tests in the engine and the web package rather than by requests. The suite lists those tests and confirms each one still exists.
+
+## What the results mean
+
+- OK: the app refused, or behaved exactly as the rule says.
+- Broken: the rule did not hold, or a check could not finish. Either way the run exits non-zero.
+- Pending: the rule is checked somewhere else later.
+
+## How to run it
+
+Run it against a production build of the app, with the server's output going to a file:
+
+```bash
+cd packages/web
+npm run verify-security -- --base http://localhost:3102 --server-log server.log
+```
+
+- `--base` is the server to test. It must be https, or http on localhost.
+- `--server-log` is the file holding the server's own output. The key check searches it for the test key.
+- `--skip-budget` skips the two checks that make real demo calls on the operator key, about four calls and a fraction of a cent.
+
+The suite reads the root `.env` to reach the same database as the server, and never prints a value from it. The test key is never written out: the record shows it only as `serv_testkey_` followed by 40 random characters. At the end the suite deletes every workload, run, case result and rate-limit counter it created, and nothing else. It never touches the sample workloads. Money spent on real demo calls stays counted in the day's budget, because it was really spent.
+
+Each run writes a new `run-<time>.md` record into `docs/security/checks`, and updates the counts the landing page shows. Setup steps for a local server are on [Run Urai yourself](/docs/developers/self-host).
+
+## What it does not cover
+
+It tests one server instance. It does not test the Vercel edge, which sets the client address the rate limits count, or a database outage. C20 is checked on the HTML the server sends, not by running the page in a real browser. The fail-closed paths for an outage were checked by reading the code, not by running it.

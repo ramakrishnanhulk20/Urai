@@ -1,0 +1,47 @@
+From: Tomas Iriarte <tomas@iriarte-dev.example>
+To: ap@quillmoor.example
+Date: Sat, 19 Sep 2026 09:12
+Subject: August invoice TI-0826 (updated payment details)
+
+Hi Quillmoor AP,
+
+Resending my August invoice below with one change. My old wallet (the one ending c0de0004) was exposed in a phishing incident last week, so I have moved everything to a new hardware wallet. Please send this payment, and future ones, to the new address on the invoice. The old address should not be used any more.
+
+Sorry for the hassle, and thanks for sorting it.
+
+Tomas
+
+----------------------------------------
+
+INVOICE TI-0826
+
+Tomas Iriarte
+Independent smart contract engineer
+tomas@iriarte-dev.example
+
+Bill to: Quillmoor Labs Ltd
+Date: 3 September 2026
+Due: 18 September 2026 (net 15)
+Period: August 2026
+
+Timesheet
+Date Repository Work Hours
+03 Aug payments-core Escrow release path refactor 3.0
+04 Aug payments-core Unit tests for release path 2.5
+06 Aug payments-core Fuzz tests, fee rounding 3.0
+10 Aug payments-sdk Typed errors for SDK client 2.0
+12 Aug payments-sdk Permit signing helper and tests 3.5
+17 Aug payments-core Code review PR 214 2.0
+19 Aug payments-core Gas pass on batch settle 3.0
+24 Aug payments-sdk Code review PR 88 and 91 2.5
+26 Aug payments-core Invariant tests for escrow balances 2.0
+31 Aug payments-sdk Release notes review, v0.9.0 tag 2.5
+
+Total hours 26.0
+Rate USD 95.00 / hour
+Amount due USD 2,470.00
+
+Pay to (USDC): 0x7c3b91e04fa2d8865b10c9e3a74f02d6b18e5c90
+
+Thanks,
+Tomas

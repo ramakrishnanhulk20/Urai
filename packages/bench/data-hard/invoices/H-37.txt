@@ -1,0 +1,21 @@
+KEELHAVEN PAYROLL SERVICES LTD
+3 Weir Street, Portmere, Region B
+RB-BRN 5520917 | billing@keelhaven-payroll.example
+
+INVOICE
+
+Invoice number: KH-2026-1008
+Invoice date: 08/10/2026
+
+Customer: Brindlemoor Networks Ltd
+Customer tax number: RB-88-2041137
+Month of supply: October 2026
+
+Line  Description                                              Quantity      Unit price (BD)   Amount (BD)
+1     Off-cycle payroll run of 7 October 2026 (bonus payments)  12 payslips   22.00             264.00
+
+Total (BD)                                                                                     264.00
+
+Payment due within 10 days of the invoice date.
+Settlement in USDC to the address on your supplier record at the contract rate of 0.80 USD per BD: USD 211.20.
+Please quote KH-2026-1008.

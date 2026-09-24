@@ -1,0 +1,23 @@
+Northgate Cloud Services Ltd
+14 Farrow Street, Unit 3
+Registered no. 11820457
+billing@northgate-cloud.example
+
+PAYMENT REMINDER
+
+Customer: Quillmoor Labs Ltd
+Statement date: 20 Sep 2026
+
+Our records show the following invoice as unpaid:
+
+Invoice number Invoice date Billing account Period Amount (USD) Due date Status
+NG-4471-2607 03 Aug 2026 NG-PROD-4471 01 Jul 2026 - 31 Jul 2026 2,247.90 02 Sep 2026 Overdue
+
+Total outstanding (USD) 2,247.90
+
+If you have already paid, please send us the payment date and transaction reference so we can match it, and accept our thanks. Otherwise please pay in USDC to the address held on your supplier record, quoting NG-4471-2607.
+
+No late fee has been applied.
+
+Northgate Cloud Services Ltd, Accounts Receivable
+billing@northgate-cloud.example

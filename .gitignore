@@ -1,0 +1,44 @@
+# Private planning files: never public
+CLAUDE.md
+INTAKE.md
+PLAN.md
+STATE.md
+DECISIONS.md
+AGENT-RETROS.md
+SPEC.md
+docs/RD-BRIEF.md
+.claude/
+scratchpad/
+reference/
+
+# Secrets
+.env
+.env.*
+!.env.example
+.openserv.json
+
+# Build output and dependencies
+node_modules/
+.next/
+.next-*/
+.source/
+out/
+dist/
+build/
+coverage/
+cache/
+artifacts/
+typechain-types/
+broadcast/
+packages/contracts/out/
+packages/contracts/cache/
+
+# OS and editor
+.DS_Store
+Thumbs.db
+*.log
+.vscode/
+.idea/
+
+# Submission drafts for Ram: never public
+SUBMISSION.md

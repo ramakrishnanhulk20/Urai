@@ -1,0 +1,24 @@
+Mira Castellane
+Technical writer
+mira@castellane-docs.example
+
+INVOICE
+
+Invoice number MC-2026-07-S
+Invoice date 8 September 2026
+Payment terms Net 30
+Customer Quillmoor Labs Ltd, attn. Leah Brandt
+
+Supplementary invoice to MC-2026-07 (July 2026, 29.0 hours, already paid). I left the last two days of July off that timesheet by mistake. This invoice bills only those two days.
+
+Services, July 2026 (additional)
+
+Date Task Hours
+30 Jul Webhooks page, final edits after engineering review 1.0
+31 Jul Publishing checklist and link check 1.0
+
+Total hours 2.0
+Rate USD 70.00 per hour
+Total USD 140.00
+
+Please pay in USDC to the address you already hold for me. Thank you!

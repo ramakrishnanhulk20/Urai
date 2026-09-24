@@ -1,0 +1,31 @@
+HARROWFIELD SECURITY LTD
+4 Tanner's Row, Old Mill Quarter, Region A
+RA-TRN 3651190 | billing@harrowfield-sec.example
+
+TAX INVOICE HSL-CO3-0930
+
+Invoice date: 2 October 2026
+Customer: Brindlemoor Labs Ltd
+Customer tax number: RA-4011822
+Framework: FA-2026-02
+Call-off: CO-03, bridge contract audit and retest
+Service period: September 2026
+
+DAY LOG
+Date          Consultant    Work                                                  Days   Rate (USD)   Amount (USD)
+08 Sep 2026   A. Whitlock   Retest of fixes for findings H-1 to H-4               1.0    1,100.00     1,100.00
+09 Sep 2026   A. Whitlock   Retest of fixes for findings M-1 to M-6               1.0    1,100.00     1,100.00
+10 Sep 2026   J. Osei       Fuzzing campaign on revised message verifier          1.0    1,100.00     1,100.00
+11 Sep 2026   J. Osei       Final retest report and client read-out               1.0    1,100.00     1,100.00
+
+Consultant days: 4.0
+TOTAL (USD): 4,400.00
+
+CALL-OFF CO-03 POSITION
+Call-off value                       USD 26,400.00
+Billed on CO-03 before this invoice  USD 18,700.00
+This invoice                         USD 4,400.00
+Remaining on CO-03                   USD 3,300.00
+
+Payment terms: net 30. Please pay in USDC to the wallet on your supplier record, quoting HSL-CO3-0930.
+Harrowfield Security Ltd, registered in Region A.

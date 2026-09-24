@@ -1,0 +1,84 @@
+---
+title: Threat model
+description: The 34 rules Urai's code must keep, C1 to C34, one line each.
+---
+
+We wrote the threat model on 23 Sep 2026, at the architecture gate, before any code existed. It names what Urai is in security terms: a relay for a third party's secret key, a spender of our money for anonymous callers, a data store with no accounts where the id is the only lock, and a renderer of text that teams and models control. Section C of it lists the rules the code must keep. C1 to C27 came first. C28 to C32 were added at the backend review on the same day, after asking what the first 27 missed. C33 and C34 were added at the final review on 24 Sep.
+
+This page gives each rule in one line. The full text, with the attacks each rule answers and the test each one needs, is `docs/security/threat-model.md` in the repository.
+
+## Keys and payer
+
+| Rule | In plain words |
+|---|---|
+| C1 | A team key exists only in memory for one case call. Never in the database, a log, an error, a response, a report, or a URL. |
+| C2 | The only address that ever receives a SERV key is SERV's own, `inference-api.openserv.ai`, over TLS, fixed in code. |
+| C3 | Who pays is fixed when the run is created. A call whose key header disagrees with that is refused, and an empty header counts as none. |
+| C4 | No user-supplied text ever travels with the operator key. Demo runs only use operator samples with operator-chosen settings, refused at run creation. |
+| C5 | Credit is spent at most once per run, case and setting. A repeat call returns the stored result with no new SERV request. Amended 24 Sep: on a team run, a call SERV answers with 401, which bills no account, is released instead of stored so the owner can retry with a working key. Every other status, 403 included, is stored as before. Demo calls are never released. Amended at the final review: a team call SERV refuses with 402 for lack of credit is released the same way, so the run resumes after a top-up. |
+| C6 | The daily demo budget cannot be overrun by parallel calls: each call reserves its cost in one atomic write before it is sent, and a budget that cannot be read denies the call. |
+| C7 | The balance probe cannot become a paid call. SERV must refuse it before any model runs, a probe that succeeds is treated as a fault, and probes are rate-limited. Amended 23 Sep: one such fault anywhere stops every later probe and demo call until the operator clears it. |
+
+## Access to stored data
+
+| Rule | In plain words |
+|---|---|
+| C8 | Every public id is drawn server-side from a secure random source with at least 128 bits. Holding one id tells you nothing about any other. |
+| C9 | A report id and a run id are separate secrets. A report link cannot reach the run, its case calls or its share switch, and does not reveal the run or workload id. |
+| C10 | A case id is only valid inside its own run, and a setting index only inside the run's list, checked before any budget or key logic. |
+| C11 | Sharing needs the run's one-time owner token, which a report link holder does not have. Reports are private by default. |
+
+## Parsing and evaluation
+
+| Rule | In plain words |
+|---|---|
+| C12 | Answer schemas are compiled closed: no remote or outside references, no custom keywords, capped size and depth, and the same compiled schema at save and at scoring. |
+| C13 | No user-supplied regular expression, and no server regex over user text, can run for more than a bounded time. |
+| C14 | Every body, upload, case count, text field, schema, answer and upstream response has a size cap, and every upstream call a timeout below the function limit. |
+| C15 | Scoring compares two values produced by the same normaliser, and a value that fails to normalise is a miss, never a match. |
+| C16 | Model answers are data, never instructions or markup. A non-JSON, off-schema or oversized answer is stored as failed, its text kept as a plain string. |
+
+## Upstream responses
+
+| Rule | In plain words |
+|---|---|
+| C17 | Every field taken from a SERV response is validated before it is stored or shown. A response that fails is recorded as an upstream error and not scored. |
+| C18 | A failed model list never invents a finding: the check says "could not verify", not "unknown", and the cached list has a bounded age. |
+| C19 | The balance text from SERV is untrusted. One known shape is accepted, and anything else reads as "balance unavailable", never a guessed number. |
+
+## Output
+
+| Rule | In plain words |
+|---|---|
+| C20 | Everything on the report page and in the run API is escaped as text. A prompt, case or answer holding HTML shows as visible characters. |
+| C21 | Anything copied out of a report is made safe for where it goes, and the one-click rewrite is text to copy, never applied to a stored workload on its own. |
+| C22 | Cross-origin requests are refused. The key stays in page memory only. Amended 23 Sep: the run owner token lives in session storage at most, so it dies with the tab. Amended 24 Sep: the owner can copy it out as a private run link, carried after `#` so no request sends it, stripped from the address bar on arrival, and never with the SERV key. |
+
+## General standards
+
+| Rule | In plain words |
+|---|---|
+| C23 | Protection comes from primitives, not lists: one secure random call for ids, one payer field on the run, the validator's own strict mode, a linear-time regex engine or a hard timeout, the framework's default text escaping. |
+| C24 | Normalise before you compare: expected values and answers, schemas at save and at scoring, model ids in the check and in the request, and the budget date all go through one shared function each. |
+| C25 | Outputs are validated like inputs. A missing token count shows as unknown, never zero, and an unread balance as unavailable. |
+| C26 | Fail closed. Every unknown, unreadable or unexpected state denies or aborts, every limit lives in one config file, reports start private and workloads expire. |
+| C27 | Named non-goals: a hostile copy of the site, a compromised browser, OpenServ keeping content sent with a team's own key, a team publishing its own report, the truth of SERV's answers, a team call lost after sending, attacks on Vercel or OpenServ themselves, and operator misconfiguration. |
+
+## Added at the backend review
+
+| Rule | In plain words |
+|---|---|
+| C28 | The demo budget is checked against real spend: the operator balance is read on the first demo call of each UTC day and every 20 after, and once the real drop passes the cap, demo calls stop for the day. |
+| C29 | Every response body has a size cap. Run status never carries answers, and the report caps each answer by its length. |
+| C30 | The owner can take a shared report back, and the public link answers not found from then on. |
+| C31 | Public report reads are rate-limited per network address, like every write route. Amended at the final review: the landing page and /try serve the unchanging sample reports from a short server cache. |
+| C32 | One model id policy everywhere: trim and lowercase, so one setting can never appear as two. |
+
+## Added at the final review
+
+| Rule | In plain words |
+|---|---|
+| C33 | Urai is not an open relay for bad keys. Every team call SERV refuses with 401 or 402 counts against an hourly budget per network address, and once it is spent the case route answers 429 before anything is sent to SERV. |
+| C34 | The browser only talks to Urai. Every production page sends a Content-Security-Policy that keeps scripts, styles, fonts and images on Urai's own origin and connections to Urai alone, forbids framing, and sends `nosniff`, so a script that got into the page could not post the key to another host. |
+
+How these are tested is on [Security checks](/docs/security/checks).

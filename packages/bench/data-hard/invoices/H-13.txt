@@ -1,0 +1,24 @@
+Marrowby Analytics Ltd
+Suite 3, 61 Canal Street, Northgate, Region A
+RA-TRN 4127736
+finance@marrowby.example
+
+Invoice MRB-LAN-0531
+Invoice date: 8 October 2026
+
+Bill to: Brindlemoor Labs Ltd (Region A tax number RA-4011822)
+Project: Lantern, client PO LAN-PO-0918
+Service period: May 2026
+
+Day log
+Date         Role             Work                                              Days   Day rate (USD)   Amount (USD)
+05/05/2026   Data engineer    Ingestion of ticketing feed into warehouse        1      950.00           950.00
+06/05/2026   Data engineer    Fare table normalisation                          1      950.00           950.00
+19/05/2026   Analyst          Peak-hour load model                              1      950.00           950.00
+20/05/2026   Analyst          Model validation with client planners             1      950.00           950.00
+
+Total: USD 3,800.00
+
+The May day logs were cleared in the client's half-year subcontractor audit on 2 October 2026, so they are billed now.
+
+Payment terms: net 30. USDC to the address you hold for us. Please quote MRB-LAN-0531.

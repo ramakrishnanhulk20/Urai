@@ -1,0 +1,20 @@
+Tallyroom Software Ltd
+90 Printworks Lane, Region A
+RA-TRN 2981145 | billing@tallyroom.example
+
+Invoice TR-A-Q2611
+Issued: 5 Oct 2026
+
+Customer: Brindlemoor Labs Ltd
+Region A tax number: RA-4011822
+Plan: Tallyroom Business
+
+We're moving customers on multi-year contracts to quarterly billing. This invoice covers your next three months of service.
+
+Service period              Seats   Price per seat per month   Months   Amount
+1 Nov 2026 to 31 Jan 2027   42      USD 24.00                  3        USD 3,024.00
+
+Total due: USD 3,024.00
+
+Due on receipt. Please pay in USDC to the address on file and quote TR-A-Q2611.
+Questions? billing@tallyroom.example

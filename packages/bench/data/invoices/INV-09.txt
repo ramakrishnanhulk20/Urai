@@ -1,0 +1,28 @@
+invoice
+MC-2026-08
+
+Mira Castellane   mira@castellane-docs.example
+
+to   Quillmoor Labs Ltd
+     attn Leah Brandt
+
+date: 1 sept 2026          terms: net 30
+
+aug 2026 hours (docs work)
+
+4/8   api ref , payments endpoints              3.5
+5/8   api ref , webhooks                        2
+6/8   intergration guide first payout (draft)  3
+11/8  intergration guide , edits after reveiw  4
+12/8  sdk quickstart v0.9                       2.5
+18/8  error code catalog                        3
+19/8  docs IA reveiw w/ Leah                    2
+25/8  migration guide v0.8 -> v0.9              4
+27/8  changelog + proofing                      4
+
+total hrs   28
+rate        70.00 usd/hr
+TOTAL       1,960.00 USD
+
+pls pay usdc to the adress you have on file for me
+thanks!!  Mira

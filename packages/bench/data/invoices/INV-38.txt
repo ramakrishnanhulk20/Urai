@@ -1,0 +1,20 @@
+ODILE BRANNOCK PHOTOGRAPHY
+odile@brannock-photo.example
+
+Invoice OB-0917
+Date: 17 September 2026
+Terms: 14 days
+
+Billed to:
+Quillmoor Labs Ltd
+Booked by Leah Brandt, Head of Product
+
+Description Amount (USD)
+Team headshots for the Quillmoor website: half day on site, 9 September 2026, 22 people, retouched high and web resolution files delivered 15 September 2026 850.00
+
+Total USD 850.00
+
+Payment in USDC to 0x6b2e90d4c1a7f3e85d02b9c6e4a1f7d3c8b05e29
+
+Thank you, it was lovely meeting the team.
+Odile

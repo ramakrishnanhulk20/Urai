@@ -1,0 +1,29 @@
+ASHCOMBE & RELL LLP
+Solicitors
+2 Vintner's Yard, Third Floor
+accounts@ashcombe-rell.example
+
+Quillmoor Labs Ltd
+For the attention of: Dana Okafor, COO
+
+Our ref: QML/0001/DO
+Invoice no: AR-2026-101
+Date: 22 September 2026
+
+FEE NOTE
+
+Professional services
+
+Monthly retainer, general corporate counsel, for the period 1 October 2026 to 31 October 2026, in accordance with our retainer letter dated 18 December 2025.
+
+Retainer fee 2,400.00
+
+Disbursements 0.00
+
+TOTAL (USD) 2,400.00
+
+Terms: payable on receipt.
+
+Settlement in USDC to the receiving address previously provided to your finance team. Kindly quote invoice number AR-2026-101.
+
+Ashcombe & Rell LLP is a limited liability partnership. A list of members is available at our office.

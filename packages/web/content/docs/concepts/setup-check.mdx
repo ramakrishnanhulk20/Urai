@@ -1,0 +1,61 @@
+---
+title: Setup check
+description: What Urai's setup check looks for, what the one-click fix changes, and what it was worth on our sample.
+---
+
+Before a single call, Urai reads your setup for the mistakes we measured SERV making worse. The check is free, stores nothing and calls no model. On [/new](/new) it runs by itself a couple of seconds after you stop typing, or when you press "Check setup". Its endpoint is `POST /api/lint`, described on [API](/docs/developers/api).
+
+## What it finds
+
+Findings come most serious first. The report shows errors as "Must fix", warnings as "Warning" and info as "Note".
+
+| Finding | Severity | When it fires |
+|---|---|---|
+| Data sits inside the system prompt | error | The system prompt holds a block of data. This is the one the one-click fix repairs. |
+| SERV does not offer this model | error | A model id you picked is not in SERV's live model list, so SERV has nothing to send the call to. |
+| Answers that quote the instructions get cut | warning | An answer field is named for a clause, rule, policy, section, article, reference, citation or quote, or the prompt tells the agent to cite or quote. SERV's default output filter cuts answers like that. |
+| The answer schema is not strict enough for OpenAI models | warning | You picked a `gpt-` model and some object in your schema does not set `additionalProperties` to `false` or leaves a property out of `required`. OpenAI rejects that with a 400. |
+| The system prompt looks like a template | warning | The prompt holds template markers: `{{`, `{%` or `${`. A prompt that changes per request makes SERV rebuild its reasoning graph every time, about 0.60 USD a build in our runs. |
+| The first call pays for SERV's reasoning graph | info | Always shown. The first call with a new prompt builds the graph, and any change builds a new one. A built graph is cached for 30 days. |
+| Full mode is slow and costly | info | You ticked SERV full: about 0.25 USD and 60 seconds per call in our runs. |
+| The system prompt is long | info | The prompt is over 20,000 characters. SERV compresses it into its own graph, so a long prompt has the most detail to lose. |
+| Model ids could not be checked | info | SERV's model list could not be read just now. The check says so rather than calling your model unknown. |
+
+If the check cannot finish, for example on a prompt with more nested brackets than it will parse, it returns one error, "The setup check could not run". Treat that as unchecked, never as clean.
+
+### What counts as data
+
+The data check looks for four kinds of block in the system prompt:
+
+- A JSON object or array of 200 characters or more that starts a line and parses.
+- A markdown table of 3 rows or more.
+- A CSV-like run of 4 lines or more, each with the same number (2 or more) of commas, or of tabs. Bulleted and numbered lines, and lines with cells over 60 characters, are prose, not CSV.
+- A run of 5 lines or more where each line holds two or more of: an email address, a `0x` address, a URL, a number of 3 digits or more, and a date.
+
+The finding's evidence names each block by the heading above it, with its kind and size, such as `SUPPLIER BOOK (json, 7342 characters)`.
+
+## What the one-click fix does
+
+When the data finding fires, the builder offers "Fix layout". It moves every data block out of the system prompt and into shared data (`context`), which Urai sends in the user message.
+
+- Each block moves with its heading line, when the line directly above it is all capitals, a markdown heading, or ends with a colon.
+- One blank line next to each block goes too, so the rules left behind read as they did around it.
+- Each moved block is added to the end of shared data as its heading (or `DATA` when it has none) followed by the block, with a blank line between blocks.
+- Nothing else in your workload changes.
+
+Before you press it, the card shows each block that will move, its size, and the system prompt and shared data sizes before and after. After you press it, "Undo the fix" puts both fields back. Editing either field by hand after the fix withdraws the undo.
+
+The fix is a suggestion shown to you. Urai never applies it to a stored workload on its own (C21). If the rewritten workload would break a limit, for example shared data over 60,000 characters, or a prompt that was nothing but data, no fix is offered.
+
+You can still run with an error in place, for example to measure what the mistake costs. The run section tells you when you are about to.
+
+## What it was worth on our sample
+
+Our payables sample, run on `gpt-6-luna` with SERV plain, 40 invoices each time. The setup check found one block, `SUPPLIER BOOK (json, 7342 characters)`, in a 21,337-character system prompt. The fix moved it to shared data and left a 13,979-character prompt.
+
+| | SERV plain accuracy | Report |
+|---|---|---|
+| Before the fix | 27 of 40, 67.5% | [/r/Hb-KceFRYlnwlohJbOD4OQ](/r/Hb-KceFRYlnwlohJbOD4OQ) |
+| After the one-click fix | 39 of 40, 97.5% | [/r/lQF1cJ-lebtC4wNIyXItpw](/r/lQF1cJ-lebtC4wNIyXItpw) |
+
+Same model, same rules, same invoices. Only the place the supplier data sat changed, and that was worth 30 points.

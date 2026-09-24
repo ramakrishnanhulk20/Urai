@@ -1,0 +1,21 @@
+Marrowby Analytics Ltd
+Suite 3, 61 Canal Street, Northgate, Region A
+RA-TRN 4127736
+finance@marrowby.example
+
+Invoice MRB-LAN-0930
+Invoice date: 5 October 2026
+
+Bill to: Brindlemoor Labs Ltd (Region A tax number RA-4011822)
+Project: Lantern, client PO LAN-PO-0918
+Service period: September 2026
+
+Day log
+Date         Role             Work                                              Days   Day rate (USD)   Amount (USD)
+08/09/2026   Data engineer    Real-time bus position stream                     1      1,050.00         1,050.00
+09/09/2026   Data engineer    Stream quality checks                             1      1,050.00         1,050.00
+22/09/2026   Analyst          Service reliability report                        1      1,050.00         1,050.00
+
+Total: USD 3,150.00
+
+Payment terms: net 30. USDC to the address you hold for us. Please quote MRB-LAN-0930.

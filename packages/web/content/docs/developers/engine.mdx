@@ -1,0 +1,57 @@
+---
+title: The engine package
+description: What @urai/engine exports, what each export does, and how scoring normalises answers.
+---
+
+`@urai/engine` lives in `packages/engine`. It is plain TypeScript with no framework and no database. It parses a workload, checks the setup, builds the SERV request, runs one case, and scores the answer. The web app adds storage, money rules and the pages on top. Because the engine stands alone, every SERV call, score and lint rule is tested on its own: 236 tests.
+
+## Exports
+
+| Export | What it does |
+|---|---|
+| `parseWorkload(input)` | Validates a test set and returns it typed, or every reason it was refused. Checks, in order: array counts, shape, every size cap, unique case ids, scoring fields against the schema's properties, expected values against their rule, then the schema itself. Never returns part of a workload. |
+| `compileAnswerSchema(schema)` | Checks an answer schema against the closed keyword list, the 20,000-byte cap and the 6-level depth cap, then compiles it. The same configuration is used when a workload is saved and when an answer is scored. |
+| `lintWorkload(workload, opts)` | The setup check. Returns one finding per rule that fires, errors first. Checks model ids only when given SERV's model list. Never throws: if it cannot finish, it returns one error saying so. |
+| `findDataBlocks(systemPrompt)` | Finds the data blocks in a system prompt: JSON, markdown tables, CSV-like runs and record-like runs, each with its heading and position. |
+| `applyLayoutFix(workload)` | The one-click fix. Moves every data block from the system prompt into `context`, with its heading. Works on a copy, and checks the result with `parseWorkload` before returning it. |
+| `buildRequest(workload, case, config)` | The exact chat completions body and SERV headers for one case under one setting. Never carries a key. Throws on a blank model id or an unknown mode, before any network call. |
+| `buildUserMessage(workload, case)` | The user message for one case: the shared data and the case input as one JSON string. |
+| `runCase(workload, caseId, config, apiKey)` | Runs one case against SERV and classifies the reply as scored, failed, refused, filtered, upstream error or timeout. Waits up to 120 seconds. Retries only when the connection never opened, so a retry cannot bill twice. The key goes only to SERV and never appears in the result. |
+| `SERV_CHAT_URL` | `https://inference-api.openserv.ai/v1/chat/completions`, the only address a key is ever sent to. Not configurable, on purpose (C2). |
+| `scoreAnswer(workload, case, answer)` | Scores one parsed answer against one case, one field score per scoring rule. Correct only when there is at least one rule and every rule matches. |
+| `normaliseText(value)` | The text normaliser used on both sides of every `exact` and `oneOf` comparison. |
+| `normaliseNumber(value)` | The number normaliser used on both sides of every `number` comparison. |
+| `readBalance(apiKey)` | Reads a key's SERV balance for free, from the 402 SERV sends for a request it refuses before any model runs. Returns "unavailable" for anything but the one known reply shape, and flags it as a fault if SERV ever runs the request. |
+| `listModels(apiKey)` | SERV's live model list, with input and output prices in USD per million tokens. Any failure returns "not ok", which callers must read as "could not verify", never as "unknown model". |
+| `isPlausibleKey(value)` | True when a value could be a SERV key: 20 to 200 printable characters with no spaces. Says nothing about whether SERV accepts it. |
+| `normaliseModelId(id)` | The one model id policy: trim and lowercase. The lint, the prices and the request all use it, so one setting can never appear as two (C32). |
+| `LIMITS` | Every size, count and time cap in the engine, in one object. Nothing else may hardcode one of these numbers. |
+
+Types exported alongside: `Workload`, `WorkloadCase`, `ScoreRule`, `ExpectedValue`, `RunConfig`, `ServMode`, `CaseResult`, `CaseStatus`, `FieldScore`, `BuiltRequest`, `ParseResult`, `CompileResult`, `Balance`, `ModelList`, `LintFinding` and `LintSeverity`.
+
+## How scoring normalises answers
+
+Your expected value and the model's answer always go through the same normaliser, at score time (C15). Neither side is cleaned up in advance.
+
+### Text, for exact and one-of rules
+
+- Strings, finite numbers and booleans are turned into text.
+- The text is Unicode NFKC normalised, so full-width and other look-alike forms read as their plain form.
+- Leading and trailing whitespace is trimmed, and every run of inner whitespace becomes one space.
+- Everything is lowercased.
+
+So `"Pay"`, `" pay "` and `"PAY"` all match `"pay"`, and the number `42` matches the string `"42"`. Null, a missing field, an object, a list, NaN or an infinity cannot be normalised, and scores as a miss.
+
+A one-of rule normalises the answer and every option the same way, and matches when the answer equals any option.
+
+### Numbers, for number rules
+
+- A finite number is read as is.
+- A string is trimmed, then read only if it is a plain number, optionally signed, with an optional decimal part. Thousands commas are allowed only in strict groups of three, so `"1,200.50"` reads as 1200.5 and `"1,2,3"` does not read at all.
+- Exponents, currency signs, units, booleans and empty strings do not read as numbers.
+
+The rule matches when both sides read and their difference is no more than the tolerance, which is 0 when you leave it out.
+
+### The answer is data
+
+The model's answer is parsed as JSON, checked against your schema, and read field by field. It is never run and never rendered as markup (C16). An answer that is not an object scores every field as a miss. Only the answer's own properties are read.

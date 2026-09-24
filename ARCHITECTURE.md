@@ -1,0 +1,200 @@
+# Urai architecture
+
+Urai tests OpenServ's SERV Reasoning on a team's own AI agent. It runs the agent's test cases through
+the same model with SERV switched off and on, scores every answer, and checks the setup for the
+mistakes we measured SERV making worse. This file is the map: three diagrams, the data model, and the
+contract between the browser and the server.
+
+## 1. System overview
+
+```mermaid
+flowchart TB
+  subgraph Browser
+    L["Landing /"]
+    T["Live demo /try"]
+    N["Builder /new"]
+    RV["Live run /run/:id"]
+    RP["Report /r/:reportId"]
+  end
+
+  subgraph Vercel["Next.js on Vercel, region sin1"]
+    API["API routes<br/>workloads, runs, cases,<br/>balance, share, unshare,<br/>reports, lint, models"]
+    CRON["Daily cron<br/>/api/cron/cleanup"]
+    ENG["@urai/engine<br/>parseWorkload, lintWorkload,<br/>applyLayoutFix, buildRequest,<br/>runCase, readBalance, listModels"]
+  end
+
+  DB[("Neon Postgres<br/>ap-southeast-1")]
+  SERV["SERV Reasoning API<br/>inference-api.openserv.ai"]
+
+  T -->|"demo run, no key"| API
+  N -->|"workload, lint, start run"| API
+  RV -->|"one case at a time,<br/>team key in a header"| API
+  RP --> API
+  L --> RP
+  API --> ENG
+  CRON --> DB
+  API <--> DB
+  ENG -->|"SERV off:<br/>x-openserv-disable-braid<br/>SERV on: serv_* tools,<br/>-serv-multipath"| SERV
+```
+
+The browser drives a run: it asks the server to run one case under one setting, a few at a time. The
+server makes exactly one SERV call per case and setting, stores the scored result, and forgets the
+key. The team's key never reaches the database, a log line or a response (threat model C1). Demo runs
+use the operator's key on operator samples only, inside a daily budget checked against SERV's real
+balance (C4, C6, C28).
+
+## 2. One case, end to end
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant B as Browser (/run/:id)
+  participant S as Case route
+  participant P as Postgres
+  participant E as Engine
+  participant V as SERV Reasoning
+
+  B->>S: POST /api/runs/:id/<br/>cases/:caseId?config=i<br/>x-urai-owner, x-serv-key
+  S->>P: run exists,<br/>owner token matches,<br/>case in run (C10)
+  S->>S: payer fixed on the run agrees<br/>with the key header (C3)
+  S->>P: advisory lock, then claim<br/>(run, case, config) once (C5)
+  alt demo run
+    S->>P: reserve one call<br/>on today's budget,<br/>atomically (C6)
+  end
+  S->>E: runCase(workload,<br/>case, config, key)
+  E->>V: POST /v1/chat/completions<br/>system: rules,<br/>user: context + input
+  V-->>E: answer, usage, request id
+  E->>E: validate the response (C17),<br/>score against<br/>the expected answer (C15)
+  E-->>S: CaseResult, key scrubbed (C1)
+  S->>P: store the result under the claim
+  alt demo run
+    S->>P: settle the real cost,<br/>and on every 20th call<br/>read SERV's balance (C28)
+  end
+  S-->>B: 200 CaseResult
+```
+
+A repeated call for the same case and setting gets the stored result back without a second SERV call.
+Calls that arrive while the first is running get 202 and ask again.
+
+## 3. Module dependencies
+
+```mermaid
+flowchart LR
+  subgraph engine["packages/engine"]
+    e_limits["limits"]
+    e_schema["schema"]
+    e_workload["workload"]
+    e_request["request"]
+    e_modelid["model-id"]
+    e_score["score"]
+    e_scrub["scrub"]
+    e_serv["serv (runCase)"]
+    e_balance["balance"]
+    e_lint["lint"]
+    e_layout["layout"]
+  end
+
+  subgraph weblib["packages/web/lib"]
+    w_db["db"]
+    w_config["config"]
+    w_ids["ids"]
+    w_ip["ip"]
+    w_rate["rate"]
+    w_http["http"]
+    w_claim["claim"]
+    w_budget["budget"]
+    w_flags["flags"]
+    w_prices["prices"]
+    w_models["models"]
+    w_operator["operator-balance"]
+    w_report["report"]
+  end
+
+  subgraph routes["packages/web/app/api"]
+    r_work["workloads"]
+    r_runs["runs"]
+    r_case["runs/:id/cases/:caseId"]
+    r_bal["runs/:id/balance"]
+    r_rep["reports and runs/:id/report"]
+    r_lint["lint"]
+    r_cron["cron/cleanup"]
+  end
+
+  e_schema --> e_limits
+  e_workload --> e_schema
+  e_request --> e_modelid
+  e_serv --> e_request
+  e_serv --> e_score
+  e_serv --> e_scrub
+  e_balance --> e_scrub
+  e_lint --> e_modelid
+  e_layout --> e_lint
+  e_layout --> e_workload
+
+  w_rate --> w_db
+  w_rate --> w_ip
+  w_http --> w_ids
+  w_claim --> w_db
+  w_budget --> w_db
+  w_budget --> w_flags
+  w_prices --> w_models
+  w_models --> w_db
+  w_operator --> w_budget
+  w_operator --> e_balance
+  w_report --> w_db
+  w_rate --> w_config
+  w_claim --> w_config
+
+  r_work --> e_workload
+  r_runs --> w_http
+  r_runs --> w_rate
+  r_case --> w_claim
+  r_case --> w_budget
+  r_case --> w_prices
+  r_case --> w_operator
+  r_case --> e_serv
+  r_bal --> e_balance
+  r_bal --> w_flags
+  r_rep --> w_report
+  r_rep --> e_lint
+  r_lint --> e_layout
+  r_lint --> w_models
+  r_cron --> w_db
+```
+
+The engine is a plain TypeScript library with no framework and no database, so every SERV call, every
+score and every lint rule can be tested on its own (236 engine tests). The web package adds storage,
+money rules and the pages.
+
+## Data model
+
+| Table | Holds | Notes |
+|---|---|---|
+| workloads | the team's rules, context, answer schema, scoring and cases | owner token stored as a hash; expires after 30 days; samples never expire |
+| runs | the settings compared, who pays, the case list, share state | run id and report id are independent random secrets (C8, C9) |
+| case_results | one scored result per (run, case, setting) | the primary key is the double-spend guard (C5) |
+| demo_budget | per UTC day: cap, reserved, spent, calls, start balance, stopped | one conditional update per reservation (C6, C28) |
+| rate_limits | per address, per hour, per kind | IPv6 grouped by /64 |
+| model_cache | SERV's live model list and prices | refreshed at most hourly, 60 s back-off on failure |
+| app_flags | global stops, for example probe_ran | cleared only by the operator |
+
+## Browser to server contract
+
+| Call | Who | Sends | Gets |
+|---|---|---|---|
+| POST /api/workloads | anyone | { workload } | { workloadId, ownerToken } |
+| POST /api/lint | anyone | { workload, configs? } | { findings, fix } or 400 with reasons |
+| GET /api/models | anyone | nothing | { models, fetchedAt, verified } |
+| POST /api/runs | anyone | { workloadId, configs, payer } plus the workload owner token for team runs | { runId, reportId, ownerToken, cases, configs } |
+| POST /api/runs/:id/cases/:caseId?config=i | run owner | x-urai-owner, and x-serv-key on team runs | the scored CaseResult, or 202 while it runs |
+| POST /api/runs/:id/balance | run owner, team runs | x-urai-owner, x-serv-key | { usd } or { unavailable } |
+| GET /api/runs/:id | run owner | x-urai-owner | status per case and setting, no answers |
+| GET /api/runs/:id/report | run owner | x-urai-owner | the full report |
+| POST /api/runs/:id/share and /unshare | run owner | x-urai-owner | { reportId } or { shared: false } |
+| GET /api/reports/:reportId | anyone with the link | nothing | the report, only while shared |
+
+Every refusal answers with a code and nothing else. A wrong owner token looks exactly like an unknown
+run (404). The full rules are in docs/security/threat-model.md, invariants C1 to C34. The live suite in
+packages/web/scripts/checks tests C1, C3 to C14, C20 to C22, C26 and C29 to C31 against a running
+server, and confirms the unit tests for C15 to C19 still exist (latest record in docs/security/checks).
+The others are held by the code and its unit tests, with no live check yet.

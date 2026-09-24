@@ -1,0 +1,69 @@
+---
+title: Read a report
+description: Every part of a Urai report page, what each number means, and what each answer status tells you.
+---
+
+A report is one run: every case under every setting, scored. Its public address is `/r/<reportId>`, and the run owner sees the same report at the end of the run. Open a [sample report](/r/EcaTkn78IZ3bLHi0BJcXAg) alongside this page.
+
+## The opening
+
+The top of the page names the workload, with a line of facts under it: the model, the number of cases, and the settings compared, such as "SERV off vs SERV plain".
+
+Under the title is one sentence built only from the report's own numbers. With SERV run both off and on, it compares the first SERV setting with SERV off: its accuracy, SERV off's accuracy, and how many more or fewer input tokens it used. With one setting, it gives that setting's accuracy, right answers and input tokens.
+
+## The verdict: totals per setting
+
+One row per setting, with:
+
+| Figure | What it is |
+|---|---|
+| Accuracy | Right answers divided by calls made, as a percent with at most one decimal. When settings differ, the best one is marked. |
+| Right and wrong | "38 of 40 right", "2 wrong". Wrong answers that were never scored are named separately, such as "of which 1 timed out", so a model that disagreed is never mixed up with a call that failed. |
+| Mean latency | The average time per call, as Urai measured it around the SERV request. |
+| Input tokens, output tokens | Totals across every call under that setting, as SERV reported them. |
+| Estimated cost | Tokens times the model's price. Urai uses the higher of its own price table and SERV's live price for the model. |
+
+A number Urai does not know reads "unknown", never zero. If SERV left out a token count on even one call, that setting's token total is unknown, because a partial sum would look complete.
+
+Below the rows, when the run read your SERV balance, is the measured spend: the balance before, the balance after, and the difference. That is what SERV really charged, including its own charges, such as building the reasoning graph. The per-setting costs are estimates from token prices. Demo runs carry no balance line.
+
+## Where they disagreed
+
+The cases where one setting was right and another was wrong. These are the answers that decide whether SERV helps your agent. Each one shows the case id, the expected answer, the start of the input, and what every setting said, with its status.
+
+If every setting got the same cases right and the same cases wrong, the section says so. A run with one setting has no second answer to disagree with, so this section is left out.
+
+## Setup findings
+
+What the setup check found about the workload's prompt, schema and settings: "Must fix", "Warning" and "Note", most serious first, each with its evidence. A fixable finding links to the builder, where the fix is one click. Below the findings you can open the full system prompt and shared data, with their sizes. See [Setup check](/docs/concepts/setup-check).
+
+## Every case
+
+The full record: one row per case, one column per setting, plus the expected answer. Each cell reads "Right" or a status word. Cases where the settings split carry a "Split" flag. Open any row to read the input, the expected answer, and every answer, within the size limits below.
+
+## Answer statuses
+
+Every answer gets exactly one status. Only a scored answer that matches on every scoring rule counts as right. Everything else counts as wrong in the accuracy.
+
+| Status | Shown as | What happened |
+|---|---|---|
+| `scored` | Right, or Wrong | The model answered with JSON that fits your schema, and Urai scored it. Wrong means at least one scored field did not match. |
+| `failed` | Failed | The model answered, but the answer was empty, not JSON, broke your schema, or was over 20,000 characters. Any text it sent is kept so you can read it. |
+| `refused` | Refused | PromptGuard refused the input before the model ran. The refusal text is kept. |
+| `filtered` | Filtered | SERV's output filter cut the answer. |
+| `upstream_error` | No response | No usable response came back: a network failure, an HTTP error from SERV, such as 402 for an empty balance, or a response that failed Urai's checks. |
+| `timeout` | Timed out | SERV did not answer within 120 seconds. |
+
+## Size limits in the report
+
+To keep every report quick to load, some long text is cut:
+
+- Case inputs and answer text show at most 2,000 characters.
+- An answer object longer than 2,000 characters once written out as JSON is left out, and the report says how long it was.
+- The system prompt and shared data show at most 20,000 characters each, with a note giving the full length.
+
+Scoring always uses the full answer. Only the display is cut.
+
+## Safe to open
+
+Everything in a report is shown as plain text. A prompt, case or answer that contains HTML or a script shows up as visible characters and never runs (C20). A report holds no run id, workload id or owner token, so a report link cannot be used to drive or change the run (C9).

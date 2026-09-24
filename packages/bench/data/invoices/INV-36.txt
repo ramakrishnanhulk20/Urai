@@ -1,0 +1,31 @@
+ASHCOMBE & RELL LLP
+Solicitors
+2 Vintner's Yard, Third Floor
+accounts@ashcombe-rell.example
+
+Quillmoor Labs Ltd
+For the attention of: Dana Okafor, COO
+
+Our ref: QML/0002/DO
+Invoice no: AR-2026-096
+Date: 11 September 2026
+
+DISBURSEMENTS INVOICE
+
+Matter: Series A financing, under engagement letter EL-2026-03
+Disbursements incurred on your behalf and recharged at cost. Copies of all receipts are enclosed.
+
+Date Description Receipt ref Amount (USD)
+03/09/2026 Notary fees, Series A signature pages, 2 signatories NT-5521 180.00
+04/09/2026 International courier of signed originals to lead investor's counsel CR-88213 209.00
+
+Professional fees 0.00
+Disbursements 389.00
+
+TOTAL (USD) 389.00
+
+Terms: payable on receipt.
+
+Payment details (unchanged): USDC to 0x5a1e00000000000000000000000000001e9a0002. Kindly quote invoice number AR-2026-096.
+
+Ashcombe & Rell LLP is a limited liability partnership. A list of members is available at our office.

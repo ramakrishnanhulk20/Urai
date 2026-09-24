@@ -1,0 +1,24 @@
+Loomdesk Inc.
+billing@loomdesk.example
+
+INVOICE
+
+Invoice number LD-455901
+Invoice date Sep 20, 2026
+Due date Sep 20, 2026
+Customer Quillmoor Labs Ltd
+Workspace quillmoor
+Plan Team (monthly)
+
+Your Team plan renews on Oct 1, 2026 for a new 12-month term. This invoice covers the first month of the renewed term.
+
+Description Qty Unit price Amount
+Team plan seats, Oct 1, 2026 to Oct 31, 2026 28 $18.00 $504.00
+
+Subtotal $504.00
+Tax $0.00
+Total due $504.00
+
+Pay in USDC to the Loomdesk address on your account. Include LD-455901 as the reference.
+
+Loomdesk Inc. | Questions? billing@loomdesk.example

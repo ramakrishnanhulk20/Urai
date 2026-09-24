@@ -1,0 +1,42 @@
+---
+title: Your SERV key
+description: Where to get a SERV key, exactly what Urai does with it, what a run costs, and what not to send.
+---
+
+A run on your own agent spends your own SERV credit, so it needs your SERV key. The live demo on [/try](/try) does not: it runs on our key, on our samples only.
+
+## Getting a key
+
+SERV keys come from OpenServ's platform. Sign in at [console.openserv.ai](https://console.openserv.ai) and create one under Settings, Keys. A key is 20 to 200 characters with no spaces. Urai checks that shape before sending anything. Whether SERV accepts the key is only known on the first call.
+
+## What Urai does with it
+
+You paste the key into "SERV API key" on [/new](/new). From there:
+
+- It lives in the page's memory only. Not in `localStorage`, not in `sessionStorage`, not in a cookie. Reload the page and it is gone, and the run page asks for it again.
+- The browser sends it in the `x-serv-key` request header on each case call. Never in a web address: a key in a query string is ignored.
+- The server forwards it to SERV for that one call, as the `Authorization` header to `inference-api.openserv.ai` over TLS. That host is fixed in code. No setting, header or stored value can send your key anywhere else (C2).
+- The server never writes it to the database, a log line, an error message or a response, and never puts it in a report (C1). If a result from SERV ever held the key in any form, the server throws the whole result away rather than store or return it.
+
+The same header is used to read your SERV balance at the start and end of a run, so the report can show what you really spent. That reading is a request SERV refuses before any model runs, and its refusal states your balance, so it costs nothing. Each run gets at most two readings.
+
+We check these promises against a running server. The latest record is on [Security checks](/docs/security/checks).
+
+## What a run costs
+
+Each case under each setting is one SERV call, billed to your key at SERV's prices. 40 cases under two settings is 80 calls. The builder shows the count and a rough estimate from SERV's listed prices before you press Start.
+
+SERV's own charges come on top of token prices, and the setup check warns you about them:
+
+- The first call with a new system prompt makes SERV build its reasoning graph, about 0.60 USD in our runs. Any change to the prompt, even one character, builds a new one. A built graph is cached for 30 days.
+- The full setting (Multipath, PromptGuard and Shadow Agent) cost about 0.25 USD and took about 60 seconds per call in our runs, against about 0.003 USD for plain SERV.
+
+For scale: our 40-case good-layout sample, SERV off and SERV plain on `gpt-6-luna`, dropped the key's balance by 0.05 USD. The report shows your measured drop the same way.
+
+A call SERV refuses with 401, meaning it did not accept the key, bills no account. Urai does not record it, and you can run that case again once you paste a working key.
+
+## What not to send
+
+> Warning: send synthetic or non-sensitive cases. Depending on your SERV account's data collection setting, OpenServ may keep the content of requests made with your key. That is between you and OpenServ, and Urai cannot change it.
+
+The report stores your prompt, cases, expected answers and the model's answers for 30 days. It stays private until you share it, and a shared report shows all of that to anyone with the link. See [Share a report](/docs/guides/share-a-report).

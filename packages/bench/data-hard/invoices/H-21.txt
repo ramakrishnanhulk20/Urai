@@ -1,0 +1,25 @@
+OAKHOLLOW PRATT LLP
+Chartered Accountants and Registered Auditors
+Pratt House, 18 Cloister Walk, Region A
+RA-TRN 1984402 | fees@oakhollowpratt.example
+
+Client: Brindlemoor Networks Ltd
+Region B tax number: RB-88-2041137
+Client code: BRN02
+
+INVOICE OPA-26-B125
+Date of invoice: 29 September 2026
+
+Interim review of Brindlemoor Networks Ltd at 30 June 2026, per our engagement letter dated 2 June 2026. The review report was delivered on 18 September 2026.
+Month of supply: September 2026.
+
+Fixed fee, interim review    BD 3,625.00
+Travel                       BD 0.00
+Total                        BD 3,625.00
+
+For information: USD equivalent at 0.80 USD per BD, USD 2,900.00.
+
+Our Portmere office invoices Region B work in BD. Payment terms: net 30.
+Remittance: USDC to the address held on our client record. Please quote OPA-26-B125.
+
+Oakhollow Pratt LLP. Registered auditors.

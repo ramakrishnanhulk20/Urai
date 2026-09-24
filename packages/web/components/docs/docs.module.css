@@ -1,0 +1,36 @@
+/*
+ * The docs are reading space, so the Touchstone look is carried by type and the one gold mark,
+ * not by motion. Fumadocs renders these elements itself, so they are reached through its ids.
+ */
+
+.docs :global(#nd-page) > h1 {
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-size: clamp(2.25rem, 3.4vw, 3.25rem);
+  font-weight: 900;
+  font-stretch: 72%;
+  line-height: 0.95;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+}
+
+/* Gold belongs to the active sidebar item and link underlines. Everywhere else Fumadocs reaches for it, plain text instead. */
+.docs :global(#nd-toc),
+.docs :global(#nd-page) > div:first-child {
+  --color-fd-primary: var(--text);
+}
+
+.diagram {
+  margin: 2rem 0;
+  padding: 24px;
+  overflow-x: auto;
+  border: 1px solid rgb(226 176 74 / 0.22);
+  border-radius: 8px;
+  background: #0f0f11;
+}
+
+/* On a phone, fitting a wide diagram to the column makes its labels unreadable. Past 60 percent it scrolls sideways in its own box instead. */
+@media (max-width: 767.98px) {
+  .diagram svg {
+    min-width: calc(var(--natural-w) * 0.6);
+  }
+}

@@ -1,0 +1,27 @@
+CONTRACTOR STATEMENT VEN-09
+
+Dario Venn
+Flat 4, 19 Salt Market, Portmere, Region B
+Personal tax number: PTN40718826
+dario.venn@devmail.example
+
+To: Brindlemoor Networks Ltd, Region B tax number RB-88-2041137
+Date: 2 October 2026
+Month of supply: September 2026
+
+Hours, September 2026
+01 Sep   Checkout flow: amount entry and validation      4.0
+03 Sep   Checkout flow: wallet connect states            5.0
+08 Sep   Receipts screen                                 4.5
+10 Sep   Accessibility fixes from audit                  3.5
+15 Sep   Merchant dashboard: payouts table               5.0
+17 Sep   Merchant dashboard: filters and export          4.0
+22 Sep   Localisation for Region B formats               4.0
+24 Sep   Bug fixes from QA round 2                       4.0
+29 Sep   Release candidate checks                        4.0
+
+Total hours: 38.0
+Rate: USD 75.00 per hour
+Amount: USD 2,850.00
+
+Payable net 15 to my USDC address on your records.

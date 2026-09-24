@@ -1,0 +1,27 @@
+PELLOW HART ASSURANCE LLP
+Chartered Accountants and Registered Auditors
+Pellow Hart House, 9 Bridgewater Row
+fees@pellowhart.example
+
+Client: Quillmoor Labs Ltd
+Client code: QUIL01
+Engagement: Statutory audit, year ending 31 December 2026
+
+INVOICE PHA-26-0931
+Date of invoice: 15 September 2026
+
+To our professional fees in connection with the statutory audit of Quillmoor Labs Ltd for the year ending 31 December 2026, per our engagement letter dated 24 June 2026:
+
+Second instalment of the fixed audit fee, due on start of fieldwork. Fieldwork commenced on site on 14 September 2026.
+
+Fee USD 6,000.00
+Expenses USD 0.00
+Total USD 6,000.00
+
+Payment terms: 2/10 net 30.
+If paid on or before 25 September 2026: USD 5,880.00.
+If paid after 25 September 2026 and on or before 15 October 2026: USD 6,000.00.
+
+Remittance: USDC to 0x5a1e0000000000000000000000000000a0d10070. Please quote PHA-26-0931.
+
+Pellow Hart Assurance LLP. Registered auditors. Queries about this invoice should be raised with your engagement partner within 14 days.

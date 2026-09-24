@@ -1,0 +1,35 @@
+Northgate Cloud Services Ltd
+14 Farrow Street, Unit 3
+Registered no. 11820457
+billing@northgate-cloud.example
+
+INVOICE
+
+Invoice number: NG-4471-2608
+Invoice date: 03 Sep 2026
+Due date: 03 Oct 2026
+Billing account: NG-PROD-4471 (production)
+Billing period: 01 Aug 2026 - 31 Aug 2026
+Order form: NG-OF-2025-118
+
+Bill to:
+Quillmoor Labs Ltd
+Attn: Accounts Payable
+ap@quillmoor.example
+
+Description Quantity Unit Rate Amount (USD)
+Compute (vCPU-hours) 25,320 vCPU-h 0.042 1,063.44
+Managed Postgres 2 instance-months 310.00 620.00
+Block storage 1,800 GB-month 0.10 180.00
+Object storage 12,400 GB-month 0.021 260.40
+Egress bandwidth 3,900 GB 0.05 195.00
+
+Subtotal 2,318.84
+Tax 0.00
+Total due (USD) 2,318.84
+
+Payment terms: net 30
+Payment in USDC to the address held on your supplier record. Please quote NG-4471-2608 with your payment.
+
+Questions about this invoice: billing@northgate-cloud.example
+Page 1 of 1

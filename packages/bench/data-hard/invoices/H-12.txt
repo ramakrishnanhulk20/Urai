@@ -1,0 +1,26 @@
+QUENBY INTEGRATION LTD
+22 Ferris Lane, Portmere, Region B
+RB-BRN 6604289
+accounts@quenby-int.example
+
+Invoice No.: QIL-2608
+Invoice date: 2 October 2026
+Clearance code: RBC-5530871249
+
+Customer: Brindlemoor Networks Ltd
+Customer tax number: RB-88-2041137
+Project: Halcyon, client purchase order HAL-PO-2231
+Month of supply: August 2026
+Day logs countersigned by client project manager T. Aranda on 30 September 2026
+
+Date            Consultant   Item                                                              Qty      Rate (USD)   Amount (USD)
+11/08/2026      K. Mbeki     Integration engineer                                              1 day    900.00       900.00
+12/08/2026      K. Mbeki     Integration engineer                                              1 day    900.00       900.00
+13/08/2026      K. Mbeki     Integration engineer                                              1 day    900.00       900.00
+11/08/2026      K. Mbeki     Rail fare, Portmere to Ashvale data centre, return (receipt TR-88120)   1   212.00       212.00
+11-13/08/2026   K. Mbeki     Hotel, 2 nights near Ashvale data centre (receipt HT-40981)       1        274.00       274.00
+
+Total (USD)                                                                                                         3,186.00
+
+Travel and accommodation recharged at cost with receipts, no markup.
+Terms: net 30. Payment in USDC to the address on file. Please quote QIL-2608.

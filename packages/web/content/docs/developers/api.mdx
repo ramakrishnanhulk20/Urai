@@ -1,0 +1,165 @@
+---
+title: API reference
+description: Every Urai route, who may call it, what to send, what comes back, and every error code.
+---
+
+The pages on this site use the same routes you can call yourself. All of them live under `/api`, take and return JSON, and send `Cache-Control: no-store`.
+
+## Rules for every route
+
+- Request bodies must have `Content-Type: application/json` and be at most 300 KB. Unknown keys in a body are refused.
+- Errors come back as `{ "error": "code" }` and nothing else: no message, no stack, no piece of your input. The one exception is `POST /api/lint`, which lists the reasons it could not read a workload.
+- Cross-origin requests are refused. The key and owner headers are custom headers, so a browser on another site cannot send them without a preflight Urai does not allow (C22).
+- A wrong owner token gets the same `404 not_found` as a run that does not exist, so a stranger learns nothing.
+- Every id Urai generates is random, at least 128 bits (C8). The run id and the report id are separate secrets (C9).
+
+Errors every route can return:
+
+| Status | Code | When |
+|---|---|---|
+| 413 | `body_too_large` | The body is over 300 KB. |
+| 415 | `unsupported_media_type` | The body is not sent as `application/json`. |
+| 400 | `invalid_json` | The body does not parse as JSON. |
+| 400 | `invalid_body` | The body has the wrong shape or an unknown key. |
+| 429 | `rate_limited` | Too many calls of this kind from your network this hour. |
+| 503 | `unavailable` | The database could not be read or written. Nothing went ahead. |
+| 500 | `internal` | Something failed on the server. |
+
+Per-network limits, per hour: 20 workloads, 40 runs, 60 setup checks and 120 public report reads.
+
+## Headers
+
+| Header | Holds | Sent on |
+|---|---|---|
+| `x-urai-owner` | An owner token. The workload's when creating a team run, the run's on every run route. | Owner routes |
+| `x-serv-key` | Your SERV key. Used for that one call and never stored (C1). | Case and balance calls on team runs only |
+
+## POST /api/workloads
+
+Stores a test set. Anyone may call it.
+
+- Body: `{ "workload": Workload }`, in the shape on [Workload format](/docs/getting-started/workload-format).
+- Success: `201 { "workloadId", "ownerToken" }`. The token is shown once and only its hash is kept. Keep it: you need it to start a team run.
+- Errors: `400 invalid_workload` when the engine refuses the workload. The reasons are not returned here. Send the same workload to `POST /api/lint` to see them.
+
+The workload, and everything run on it, is deleted 30 days after it is saved.
+
+## POST /api/lint
+
+The setup check. Stores nothing and spends nothing. Anyone may call it.
+
+- Body: `{ "workload": Workload, "configs"?: RunConfig[] }`, at most 6 settings. Model ids are checked against SERV's list only when you send settings.
+- Success: `200 { "findings", "fix" }`. Each finding is `{ id, severity, title, detail, evidence, fixable, spans }`, errors first. `fix` is the one-click rewrite, `{ workload, moved }`, where each moved block is `{ heading, kind, chars }`. It is `null` when no finding is fixable or the rewrite would not be a valid workload. The fix is data to show and copy: nothing is applied (C21).
+- Errors: `400 invalid_configs`. `400 { "error": "invalid_workload", "reasons": [...] }` with at most 20 reasons of at most 200 characters each.
+
+## GET /api/models
+
+SERV's live model list, for the model picker. Anyone may call it.
+
+- Success: `200 { "models": [{ "id", "inputUsdPerM", "outputUsdPerM" }], "fetchedAt", "verified" }`. Prices are USD per million tokens. `verified` is `false` when SERV could not be read and this is the last saved list, or an empty one (C18).
+- Errors: `503 unavailable` when the cache cannot be read or written.
+
+## POST /api/runs
+
+Creates a run. Anyone may call it.
+
+- Headers: `x-urai-owner` with the workload's owner token, for a team run. A demo run needs none.
+- Body: `{ "workloadId", "configs": RunConfig[], "payer": "team" | "demo" }`. Each setting is `{ "model", "mode", "keepContentFilter"? }`, where `mode` is `raw`, `plain`, `guard`, `multipath` or `full`. 1 to 6 settings, no duplicates. Model ids are trimmed and lowercased, so `GPT-6-LUNA` and `gpt-6-luna` are the same setting.
+- Success: `201 { "runId", "reportId", "ownerToken", "cases", "configs" }`. The run's owner token is shown once. `cases` is the list this run may call: every case for a team run, the first 12 for a demo run.
+- Errors: `400 invalid_configs` for a bad or repeated setting. `404 not_found` for an unknown or expired workload, or a wrong owner token, which look the same. `403 demo_not_allowed` for a demo run on a workload that is not an operator sample (C4). `403 config_not_allowed` for a demo run with a setting outside that sample's allowed list.
+
+Who pays is fixed here and never changes (C3).
+
+## POST /api/runs/:id/cases/:caseId?config=i
+
+Runs one case under one setting, at most once (C5). Only the run's owner may call it. No body.
+
+- Query: `config`, the setting's index in the run's list, written as a plain integer. `01`, `1.0` and `+1` are refused.
+- Headers: `x-urai-owner` with the run's owner token. `x-serv-key` on team runs, and never on demo runs.
+- Checks, in order, before any money is involved (C10): the run exists and the token matches; the case is in the run; the setting index is valid. Then the key header must agree with who pays (C3).
+- Success: `200` with the case result, or the stored result on a repeat call. `202 { "status": "in_progress" }` while another request holds the claim: ask again shortly.
+
+The case result has this shape:
+
+```ts
+{
+  caseId: string;
+  config: { model: string; mode: "raw" | "plain" | "guard" | "multipath" | "full"; keepContentFilter?: boolean };
+  status: "scored" | "failed" | "refused" | "filtered" | "upstream_error" | "timeout";
+  answer: object | null;       // the parsed answer, only when it fits the schema
+  answerText: string | null;   // what the model sent, at most 20,000 characters
+  fieldScores: { field: string; expected: unknown; got: unknown; match: boolean }[];
+  correct: boolean;
+  usage: { inputTokens: number | null; outputTokens: number | null; cachedTokens: number | null };
+  latencyMs: number;
+  finishReason: string | null;
+  servRequestId: string | null;
+  httpStatus: number | null;
+  error: string | null;        // at most 200 characters, never the key
+}
+```
+
+`status` is one of `scored`, `failed`, `refused`, `filtered`, `upstream_error` or `timeout`, explained on [Read a report](/docs/guides/read-a-report). A token count SERV did not report is `null`, never 0. On a team run, SERV's 402 for an empty balance is not stored: the route answers `402 serv_insufficient_credits` instead, listed below.
+
+Errors:
+
+| Status | Code | When |
+|---|---|---|
+| 404 | `not_found` | Unknown run, wrong owner token, a case not in this run, or a workload past its retention date. |
+| 400 | `invalid_config` | The setting index is missing, not a plain integer, or outside the run's list. |
+| 400 | `payer_mismatch` | A team run without a usable key header, or a demo run with one. An empty header counts as missing. |
+| 403 | `demo_not_allowed` | A demo run whose workload is no longer a sample. |
+| 401 | `serv_rejected_key` | SERV refused the team key with 401. The claim is released and nothing is stored, so the case can run again with a working key. |
+| 402 | `serv_insufficient_credits` | Team runs only: SERV said the key's balance cannot cover the call, which it decides before any model runs. The claim is released and nothing is stored, so the case runs again after a top-up. |
+| 429 | `rate_limited` | Team runs only: keys sent from your network have been refused by SERV 30 times this hour (C33). Nothing was sent to SERV and nothing is stored. Wait, then try again. |
+| 429 | `run_busy` | The run already has four calls in flight. |
+| 429 | `budget_exhausted` | Demo runs only: today's demo budget cannot cover one more call, the real-spend check stopped the day (C28), or the global probe stop is set (C7). |
+| 503 | `unavailable` | The demo budget could not be read or written. The call was not sent. |
+| 500 | `internal` | The engine failed before sending, or a result held the key and was thrown away (C1). |
+
+## POST /api/runs/:id/balance
+
+Reads your SERV balance and records it on the run: the first reading as the balance before, the latest as the balance after. It sends SERV a request SERV refuses before any model runs, and reads the balance from the refusal, so it costs nothing (C7). Team runs only. No body.
+
+- Headers: `x-urai-owner` and `x-serv-key`.
+- Success: `200 { "usd" }`, or `200 { "unavailable": true }` when SERV's answer could not be read as a balance (C19).
+- Errors: `404 not_found`. `400 payer_mismatch` on a demo run, or with a missing or implausible key. `429 probe_limit` after 2 readings on one run. `409 run_flagged` when the run was flagged. `503 probe_disabled` while the global probe stop is set. `502 probe_ran` if SERV ever runs the probe as a paid call: the run is flagged and every later probe and demo call stops until the operator looks.
+
+## GET /api/runs/:id
+
+The run's status. Only the run's owner may call it.
+
+- Headers: `x-urai-owner`.
+- Success: `200 { "payer", "configs", "totalCalls", "totals", "results" }`. `totals` counts results by status. Each result is `{ caseId, configIdx, status, finishedAt }`. Status only: answers are never returned here (C29).
+- Errors: `404 not_found`. `500 response_too_large` if the status would be over 4,000,000 bytes.
+
+## GET /api/runs/:id/report
+
+The full report for the run's owner, shared or not.
+
+- Headers: `x-urai-owner`.
+- Success: `200` with the report: `{ name, systemPrompt, context, answerSchema, configs, totals, balance, cases, disagreements, lint }`. It holds no run id, workload id, report id or token (C9). Long text is cut as described on [Read a report](/docs/guides/read-a-report).
+- Errors: `404 not_found` for an unknown run, a wrong token, or a workload past its retention date.
+
+## POST /api/runs/:id/share
+
+Makes the report public at its report id (C11). Only the run's owner token can do this. No body. Sharing twice is harmless.
+
+- Headers: `x-urai-owner`.
+- Success: `200 { "reportId" }`.
+- Errors: `404 not_found`.
+
+## POST /api/runs/:id/unshare
+
+Makes a shared report private again (C30). From then on the public route answers `404 not_found`. Sharing again brings the same report id back. No body.
+
+- Headers: `x-urai-owner`.
+- Success: `200 { "shared": false }`.
+- Errors: `404 not_found`.
+
+## GET /api/reports/:reportId
+
+A shared report, by report id alone (C9). Anyone with the link may call it. No headers.
+
+- Success: `200` with the same report shape the owner sees. Nothing in it leads back to the run.
+- Errors: `404 not_found` for a report never shared, taken back, expired, unknown, or a run id used in its place. `429 rate_limited` past 120 reads an hour from one network, counted before the lookup, so guessing ids counts too (C31). `500 response_too_large` if the report would be over 4,000,000 bytes (C29).

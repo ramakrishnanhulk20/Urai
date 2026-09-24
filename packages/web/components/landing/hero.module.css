@@ -1,0 +1,534 @@
+/* The palette, fonts, stone and motif come from app/globals.css and components/brand. */
+
+/* Hero. */
+
+.hero {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100svh;
+  padding: clamp(18px, 2.6vw, 36px) var(--pad-x) clamp(24px, 4vw, 56px);
+  box-sizing: border-box;
+}
+
+/* The streak drifts down and fades as the hero scrolls away. */
+.heroStreak {
+  transform: translate3d(0, calc(var(--hs, 0) * 24vh), 0);
+  opacity: calc(1 - var(--hs, 0) * 0.6);
+  will-change: transform;
+}
+
+.scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(to top, rgb(6 6 7 / 0.82) 0%, rgb(6 6 7 / 0.4) 34%, transparent 58%);
+}
+
+.heroBody {
+  position: relative;
+  z-index: 2;
+  margin-top: auto;
+  padding-top: 12svh;
+  transform: translate3d(0, calc(var(--hs, 0) * -9vh), 0);
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 0;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.78rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.metaItem {
+  display: inline-flex;
+  align-items: center;
+}
+
+.metaSlash {
+  height: 1.1em;
+  margin: 0 0.95em;
+}
+
+.headline {
+  margin: 0.14em 0 0;
+  font-size: clamp(3rem, 10vw, 9rem);
+  font-weight: 900;
+  font-stretch: 70%;
+  line-height: 0.9;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+
+.line {
+  display: block;
+  overflow: hidden;
+  padding: 0.04em 0 0.05em;
+  margin: -0.04em 0 -0.05em;
+}
+
+.rise {
+  display: inline-block;
+  animation: rise 1s var(--ease-out) both;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(0.55em);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.goldWord {
+  font-style: normal;
+  color: var(--gold);
+  background: var(--gold-rub);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.heroFoot {
+  display: grid;
+  grid-template-columns: minmax(0, 36rem) minmax(0, 1fr);
+  align-items: end;
+  gap: 2rem 3rem;
+  margin-top: clamp(1.5rem, 3.2vw, 2.75rem);
+}
+
+.enter {
+  animation: enter 0.9s var(--ease-out) both;
+}
+
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.sentence {
+  margin: 0;
+  max-width: 34rem;
+  font-size: clamp(1rem, 1.2vw, 1.175rem);
+  line-height: 1.55;
+  color: var(--dim);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.6rem;
+}
+
+.primary,
+.secondary {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6em;
+  padding: 0.95rem 1.35rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 700;
+  font-stretch: 108%;
+  text-decoration: none;
+  transition:
+    transform 0.3s var(--ease-out),
+    box-shadow 0.3s ease,
+    border-color 0.25s ease,
+    color 0.25s ease,
+    background-color 0.25s ease;
+}
+
+.primary {
+  overflow: hidden;
+  background: var(--gold);
+  color: var(--stone);
+  box-shadow: inset 0 1px 0 rgb(255 244 214 / 0.6);
+}
+
+/* A glint that sweeps across on hover, like light moving over polished metal. */
+.primary::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 30%, rgb(255 250 232 / 0.7) 50%, transparent 70%);
+  transform: translateX(-130%);
+  transition: transform 0.7s var(--ease-out);
+}
+
+.primary > span {
+  position: relative;
+}
+
+.primary:hover {
+  transform: translateY(-2px);
+  background: var(--gold-hi);
+  box-shadow:
+    inset 0 1px 0 rgb(255 244 214 / 0.6),
+    0 14px 36px -12px rgb(226 176 74 / 0.6);
+}
+
+.primary:hover::before {
+  transform: translateX(130%);
+}
+
+.arrow {
+  transition: transform 0.3s var(--ease-out);
+}
+
+.primary:hover .arrow {
+  transform: translateX(5px);
+}
+
+.secondary {
+  border: 1px solid rgb(239 233 223 / 0.26);
+  background: rgb(11 11 12 / 0.4);
+  color: var(--text);
+  backdrop-filter: blur(6px);
+}
+
+.secondarySlash {
+  height: 1.05em;
+  transition: transform 0.3s var(--ease-out);
+}
+
+.secondary:hover {
+  transform: translateY(-2px);
+  border-color: var(--gold);
+  color: var(--gold-hi);
+}
+
+.secondary:hover .secondarySlash {
+  transform: scaleY(1.3) rotate(-8deg);
+}
+
+.primary:focus-visible,
+.secondary:focus-visible {
+  outline: 2px solid var(--gold-hi);
+  outline-offset: 3px;
+}
+
+.proof {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 0.7em;
+  margin: 0;
+  font-size: clamp(1rem, 1.55vw, 1.45rem);
+  white-space: nowrap;
+  font-weight: 500;
+  font-stretch: 112%;
+  line-height: 1.25;
+  text-align: right;
+  color: var(--dim);
+}
+
+.proof strong {
+  font-weight: 900;
+  color: var(--text);
+}
+
+.proof .proofAfter {
+  color: var(--gold-hi);
+}
+
+.proofSlash {
+  height: 1.6em;
+  width: 1em;
+}
+
+/* The assay beat. */
+
+.beatWrap {
+  position: relative;
+  z-index: 1;
+}
+
+/* Picks up where the hero's scrim ends, so there is no hard seam between the two sections. */
+.beatWrap::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: -1;
+  height: 45vh;
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgb(6 6 7 / 0.82), transparent);
+}
+
+.beat {
+  --beat: 1;
+  --a: clamp(0, calc(var(--beat) / 0.26), 1);
+  --converge: clamp(64px, 10.5vh, 104px);
+  --rub-mask: none;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 3rem;
+  min-height: 100svh;
+  padding: clamp(28px, 6vh, 72px) var(--pad-x) clamp(36px, 9vh, 96px);
+  box-sizing: border-box;
+}
+
+.marker {
+  display: flex;
+  align-items: center;
+  gap: 0.75em;
+  margin: 0;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.78rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--gold-hi);
+}
+
+.markerSlash {
+  height: 1.5em;
+  width: 0.9em;
+}
+
+.beatTitle {
+  margin: 0.4em 0 0;
+  max-width: 16ch;
+  font-size: clamp(2.25rem, 5.4vw, 5.25rem);
+  font-weight: 900;
+  font-stretch: 72%;
+  line-height: 0.92;
+  letter-spacing: -0.015em;
+  text-transform: uppercase;
+}
+
+.bars {
+  display: grid;
+  gap: clamp(1.75rem, 5vh, 3.5rem);
+}
+
+.row {
+  --b: clamp(0, calc((var(--beat) - var(--start)) / var(--span)), 1);
+
+  display: grid;
+  gap: 0.7rem;
+}
+
+.rowLabel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem 1.1rem;
+}
+
+.rowName {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.82rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.rowDetail {
+  font-size: 0.98rem;
+  color: var(--faint);
+}
+
+.rowBar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: clamp(1rem, 2.6vw, 2.75rem);
+}
+
+.track {
+  position: relative;
+  height: clamp(34px, 5.4vh, 58px);
+  border-radius: 3px;
+  background: rgb(226 176 74 / calc(0.05 * var(--a)));
+  box-shadow: inset 0 0 0 1px rgb(226 176 74 / calc(0.42 * var(--a)));
+}
+
+/* The streak before it flattens: both rows' pieces meet in the middle and read as one rub. */
+.piece {
+  position: absolute;
+  inset: 0;
+  border-radius: 3px;
+  background: var(--gold-rub);
+  transform-origin: 50% 50%;
+  transform:
+    translateY(calc((1 - var(--a)) * var(--dir) * var(--converge)))
+    rotate(calc((1 - var(--a)) * -9deg))
+    scaleY(calc(1 + (1 - var(--a)) * 0.5));
+  opacity: calc(1 - var(--a));
+  -webkit-mask-image: var(--rub-mask), linear-gradient(90deg, transparent, #000 7%, #000 88%, transparent);
+  mask-image: var(--rub-mask), linear-gradient(90deg, transparent, #000 7%, #000 88%, transparent);
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+  -webkit-mask-size: 360px 100%, 100% 100%;
+  mask-size: 360px 100%, 100% 100%;
+}
+
+.fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: calc(var(--acc) * 100%);
+  border-radius: 3px;
+  background: var(--gold-rub);
+  box-shadow:
+    inset 0 1px 0 rgb(255 246 220 / 0.75),
+    inset 0 -1px 0 rgb(80 52 12 / 0.7),
+    0 0 26px -6px rgb(226 176 74 / 0.45);
+  transform: scaleX(var(--b));
+  transform-origin: 0 50%;
+  -webkit-mask-image: var(--rub-mask);
+  mask-image: var(--rub-mask);
+  -webkit-mask-size: 360px 100%;
+  mask-size: 360px 100%;
+}
+
+.rowNumber {
+  margin: 0;
+  font-size: clamp(2.5rem, 7.2vw, 7.25rem);
+  font-weight: 900;
+  font-stretch: 125%;
+  line-height: 0.85;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* Reserved width, so the count changing digits never resizes the bar beside it. */
+.rowNumber > span:first-child {
+  display: inline-block;
+  min-width: 3.6ch;
+}
+
+.pctSign {
+  margin-left: 0.04em;
+  font-size: 0.42em;
+  vertical-align: 0.95em;
+  color: var(--gold);
+}
+
+.rowStatus {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.4rem;
+  margin: 0;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.74rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  opacity: clamp(0, calc((var(--b) - 0.8) * 5), 1);
+}
+
+.right {
+  color: var(--right);
+}
+
+.wrong {
+  color: var(--wrong);
+}
+
+@media (min-width: 768px) {
+  .beat {
+    height: 100svh;
+  }
+}
+
+@media (max-width: 767px) {
+  .heroBody {
+    padding-top: 16svh;
+  }
+
+  .meta {
+    font-size: 0.68rem;
+    letter-spacing: 0.14em;
+  }
+
+  .metaSlash {
+    margin: 0 0.6em;
+  }
+
+  .heroFoot {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.75rem;
+  }
+
+  /* On a phone the proof line moves up under the headline, so it stays on the first screen. */
+  .proof {
+    order: -1;
+    justify-self: start;
+    text-align: left;
+    white-space: normal;
+  }
+
+  .actions > a {
+    flex: 1 1 auto;
+  }
+
+  /* On phones the beat is a plain stacked pair: no flattening streak, just the bars drawing. */
+  .beat {
+    --a: 1;
+    min-height: 0;
+    padding-top: 4.5rem;
+    padding-bottom: 5.5rem;
+  }
+
+  .rowBar {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.6rem;
+  }
+
+  .track {
+    height: 30px;
+  }
+
+  .rowNumber {
+    order: -1;
+    font-size: clamp(3rem, 17vw, 4.5rem);
+    text-align: left;
+  }
+
+  .rowNumber > span:first-child {
+    min-width: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise,
+  .enter {
+    animation: none;
+  }
+
+  .heroStreak,
+  .heroBody {
+    transform: none;
+    opacity: 1;
+  }
+
+  .primary::before {
+    display: none;
+  }
+}

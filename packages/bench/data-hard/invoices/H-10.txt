@@ -1,0 +1,25 @@
+OAKHOLLOW PRATT LLP
+Chartered Accountants and Registered Auditors
+Pratt House, 18 Cloister Walk, Region A
+RA-TRN 1984402 | fees@oakhollowpratt.example
+
+Client: Brindlemoor Networks Ltd
+Region B tax number: RB-88-2041137
+Client code: BRN02
+
+INVOICE OPA-26-B131
+Date of invoice: 7 October 2026
+
+To our professional fees for the statutory audit of Brindlemoor Networks Ltd for the year ending 31 December 2026, per our engagement letter dated 2 June 2026:
+
+Second instalment of the fixed audit fee, due on start of fieldwork. Fieldwork began at your Portmere office on 5 October 2026.
+Month of supply: October 2026.
+
+Fee      USD 4,100.00
+Travel   USD 0.00
+Total    USD 4,100.00
+
+Payment terms: net 30.
+Remittance: USDC to the address held on our client record. Please quote OPA-26-B131.
+
+Oakhollow Pratt LLP. Registered auditors. Queries about this invoice should be raised with your engagement partner within 14 days.

@@ -1,0 +1,28 @@
+---
+title: Security promises
+description: The promises Urai makes about your key, your money and your data, and where each one is written down and tested.
+---
+
+Urai handles two things you care about: a SERV key that can spend your credit, and a test set that is often your private evaluation data. It also spends our own money on the public demo. We wrote down the rules that protect all three before writing any code, as a threat model, then built a suite that attacks a running server to check them. Each review added rules, and the model now holds 34 invariants, C1 to C34.
+
+## The promises
+
+Your key is never stored. It lives in the page's memory, travels in a request header on each call, is forwarded to SERV for that one call, and is gone. It never reaches the database, a log line, an error message, a response or a report, and a key sent in a web address is ignored (C1). The only place a key is ever sent is SERV's own address, fixed in code (C2).
+
+The payer is fixed per run. When a run is created it is either yours, on your key, or a demo run, on ours. That cannot change halfway. A call on your run without your key, or a call on a demo run with a key, is refused (C3). A demo run can only use our sample workloads, with the settings we allow, so your text never travels on our key (C4).
+
+Each call is spent at most once. Every case under every setting is claimed once in the database. Repeat the call, even ten at once, and you get the stored result without a second SERV call (C5). If SERV refuses your key with 401, which bills no account, or turns a call down with 402 because your balance is empty, the claim is released so you can run that case again with a working key or after a top-up.
+
+Urai is not a free key checker. Each network gets a budget of 30 calls SERV refuses per hour, and once it is spent Urai stops sending that network's calls to SERV at all (C33).
+
+Your key stays between this site and SERV. Every page tells the browser to talk to Urai and nothing else, so even a script that somehow got into the page could not send your key anywhere (C34).
+
+The demo has a daily budget checked against real spend. Each demo call reserves its cost from the day's budget in one atomic step before it is sent, so parallel calls cannot overrun it (C6). And because estimates can miss SERV's own charges, the operator key's real balance is read on the first demo call of each day and every 20 calls after. Once the day's real drop passes the cap, the demo stops until the next day (C28).
+
+Reports are private until shared. Only the run's owner token can make a report public (C11), and only that token can take it back, after which the link answers not found (C30). Holding a report link lets you read that report and nothing else: it reveals no run id and cannot drive the run (C9). Every id Urai generates is random and at least 128 bits, so no one can guess their way to yours (C8).
+
+## Read more
+
+- [Threat model](/docs/security/threat-model): all 34 invariants, one line each.
+- [Security checks](/docs/security/checks): how the suite attacks a running server, and the latest result.
+- [Your SERV key](/docs/getting-started/serv-key): what happens to your key, and what data not to send.

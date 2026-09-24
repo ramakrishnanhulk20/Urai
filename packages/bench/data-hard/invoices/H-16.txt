@@ -1,0 +1,31 @@
+WEXCOMBE FARRANT LLP
+Solicitors
+11 Chandler Quay, Harbour District, Region A
+RA-TRN 2270451
+accounts@wexcombe-farrant.example
+
+Client: Brindlemoor Labs Ltd
+Region A tax number: RA-4011822
+
+Invoice no: WF-26-1008
+Date: 8 October 2026
+Matter: EL-03, Series B financing of the Brindlemoor group
+Period: September 2026
+
+DISBURSEMENTS INVOICE
+
+Disbursements incurred on your behalf and recharged at cost. Copies of all receipts are enclosed.
+
+Date         Description                                                                                  Receipt ref   Amount (USD)
+14/09/2026   Notarisation of Brindlemoor Networks Ltd board resolutions approving the share allotment    NT-22817      420.00
+16/09/2026   Region B companies registry filing fee for the Brindlemoor Networks Ltd share allotment,
+             paid by us in USD                                                                            RBR-903114    1,180.00
+18/09/2026   Courier of signed originals to Portmere                                                      CR-55102      240.00
+
+Professional fees   0.00
+Disbursements       1,840.00
+TOTAL (USD)         1,840.00
+
+Terms: payable on receipt. Settlement in USDC to the receiving address held on your supplier record. Kindly quote WF-26-1008.
+
+Wexcombe Farrant LLP is a limited liability partnership registered in Region A.

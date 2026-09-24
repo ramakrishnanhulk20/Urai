@@ -1,0 +1,262 @@
+{
+  "company": {
+    "name": "Brindlemoor Group (Brindlemoor Labs Ltd, Region A, and Brindlemoor Networks Ltd, Region B)",
+    "today": "2026-10-14",
+    "treasuryCurrency": "USDC",
+    "autoPayLimitUsd": 5000,
+    "dailyLimitUsd": 40000
+  },
+  "suppliers": [
+    {
+      "id": "sup_01",
+      "legalName": "Stratoline Cloud Ltd",
+      "aliases": ["Stratoline Cloud", "Stratoline"],
+      "payoutAddress": "0x4e7a91c2d05b3f68a1e0c47d92b5f3a06e8d1c27",
+      "contract": {
+        "scope": "Usage-based supplier. Resident company in Region A, RA-TRN 3308815. Cloud compute, block and object storage, managed Postgres and bandwidth under order form STR-OF-2025-07. Two billing accounts, each invoiced separately: STR-A-7710 for Region A workloads, billed to Brindlemoor Labs Ltd, and STR-B-7720 for Region B workloads, billed to Brindlemoor Networks Ltd. Support is included in the rates. Migrations, consulting and professional services are not covered. Tax status: resident company in Region A; no certificates recorded.",
+        "pricing": "Metered usage billed monthly in arrears per billing account: compute USD 0.040 per vCPU-hour, block storage USD 0.09 per GB-month, object storage USD 0.02 per GB-month, egress USD 0.05 per GB, managed Postgres USD 290 per instance-month. No other charges.",
+        "startDate": "2025-07-01",
+        "endDate": "2027-06-30",
+        "monthlyCapUsd": 9000,
+        "paymentTerms": "net 30"
+      },
+      "approver": "Oren Vasquez, Head of Infrastructure"
+    },
+    {
+      "id": "sup_02",
+      "legalName": "Keelhaven Payroll Services Ltd",
+      "aliases": ["Keelhaven Payroll", "Keelhaven"],
+      "payoutAddress": "0x9b2d6f14e8a3c0572fd19be4a6c3087e5d21f9a4",
+      "contract": {
+        "scope": "Managed service. Resident company in Region B, RB-BRN 5520917, contracted by Brindlemoor Networks Ltd and billed to Brindlemoor Networks Ltd. Payroll processing for Brindlemoor Networks Ltd staff in Region B, including monthly and off-cycle runs, payslips, statutory payroll filings and the annual year-end filing package. Payroll funding (the salaries themselves) is not billed under this contract. HR advisory, recruitment and benefits administration are not covered. Tax status: resident company in Region B, registered business.",
+        "pricing": "Priced in BD. Payroll processing BD 22 per payslip per run, billed in arrears: monthly runs at the end of each month, off-cycle runs on a separate invoice after each run. Year-end filing package BD 1,400 per year, billed after the year-end filing is made. No other charges.",
+        "startDate": "2026-02-01",
+        "endDate": "2027-01-31",
+        "monthlyCapUsd": 4000,
+        "paymentTerms": "due in 10 days"
+      },
+      "approver": "Sunniva Lark, Region B Managing Director"
+    },
+    {
+      "id": "sup_03",
+      "legalName": "Wexcombe Farrant LLP",
+      "aliases": ["Wexcombe Farrant", "WF Legal"],
+      "payoutAddress": "0x1f8c3e7a52d9b046e3a7c51f08d2b69e4c7a3d10",
+      "contract": {
+        "scope": "Professional firm. Resident partnership in Region A, RA-TRN 2270451. Legal work only under the engagement letters below, each billed to the entity named in it. EL-01 (signed 2026-01-05, billed to Brindlemoor Labs Ltd): general corporate counsel for Brindlemoor Labs Ltd, board matters, commercial contracts and employment templates. EL-02 (signed 2026-04-14, billed to Brindlemoor Networks Ltd): the Region B payment services licence application for Brindlemoor Networks Ltd, including correspondence and meetings with the Region B regulator. EL-03 (signed 2026-06-30, billed to Brindlemoor Labs Ltd): the Series B financing of the group. Litigation, disputes and tax advice are excluded under every letter. Tax status: resident partnership in Region A; Region A residence certificate RA-RC-2026-00417 recorded, valid 2026-01-01 to 2026-12-31.",
+        "pricing": "EL-01: retainer USD 3,200 per calendar month, billed monthly in advance. EL-02: USD 480 per hour with dated time entries, billed monthly in arrears; EL-02 fees capped at USD 24,000 for the engagement. EL-03: fixed fee USD 30,000 in three stages of USD 10,000, due on signing of the term sheet, signing of the definitive documents, and completion. Disbursements under any letter (filing and registry fees, notary, courier) passed through at cost with a receipt reference for each item, no markup. No other hourly work.",
+        "startDate": "2026-01-01",
+        "endDate": "2026-12-31",
+        "monthlyCapUsd": 16000,
+        "paymentTerms": "due on receipt"
+      },
+      "approver": "Idris Kaye, CFO"
+    },
+    {
+      "id": "sup_04",
+      "legalName": "Oakhollow Pratt LLP",
+      "aliases": ["Oakhollow Pratt", "OP Audit"],
+      "payoutAddress": "0x6a0d4b92e7f15c38a2d9e0b4c17f6a83d5e29b61",
+      "contract": {
+        "scope": "Professional firm. Resident partnership in Region A, RA-TRN 1984402. Statutory audit of Brindlemoor Labs Ltd (billed to Brindlemoor Labs Ltd) and statutory audit of Brindlemoor Networks Ltd (billed to Brindlemoor Networks Ltd), both for the year ending 31 December 2026, and an interim review of Brindlemoor Networks Ltd at 30 June 2026 (billed to Brindlemoor Networks Ltd). Tax advice, SOC 2 and other advisory work are not covered. Tax status: resident partnership in Region A; no residence certificate recorded.",
+        "pricing": "Audit of Brindlemoor Labs Ltd: USD 21,000 in three instalments of USD 7,000, due on engagement start, start of fieldwork and delivery of the audit report. Audit of Brindlemoor Networks Ltd: USD 12,300 in three instalments of USD 4,100, due on the same three events for that audit. Interim review of Brindlemoor Networks Ltd: USD 2,900 fixed, due on delivery of the review report. Travel and accommodation passed through at cost with a receipt reference for each item, no markup, capped at USD 2,500 in total across both audits and the interim review, whichever entity is billed.",
+        "startDate": "2026-06-01",
+        "endDate": "2027-04-30",
+        "monthlyCapUsd": 12000,
+        "paymentTerms": "net 30"
+      },
+      "approver": "Idris Kaye, CFO"
+    },
+    {
+      "id": "sup_05",
+      "legalName": "Tidewell Market Data Ltd",
+      "aliases": ["Tidewell Market Data", "Tidewell Data"],
+      "payoutAddress": "0xc3e59a07b41d8f26e9c0a35b7d14f82e6a09c5d8",
+      "contract": {
+        "scope": "Data licence. Resident company in Region B, RB-BRN 7730142, contracted by Brindlemoor Labs Ltd and billed to Brindlemoor Labs Ltd. Licence to use Tidewell's real-time and historical digital asset market data through its API for Brindlemoor Labs Ltd's trading analytics. Consulting, custom datasets and redistribution rights are not covered. Tax status: resident company in Region B; Region B residence certificate RB-RC-2025-18820 recorded, valid 2025-07-01 to 2026-06-30.",
+        "pricing": "Billed monthly in arrears. Platform fee USD 600 per month, plus API calls priced in graduated tiers each month: the first 20 million calls at USD 0.08 per 1,000, calls above 20 million up to 50 million at USD 0.05 per 1,000, and calls above 50 million at USD 0.03 per 1,000.",
+        "startDate": "2025-07-01",
+        "endDate": "2027-06-30",
+        "monthlyCapUsd": 5000,
+        "paymentTerms": "net 30"
+      },
+      "approver": "Priya Anand, Head of Trading Analytics"
+    },
+    {
+      "id": "sup_06",
+      "legalName": "Harrowfield Security Ltd",
+      "aliases": ["Harrowfield Security", "Harrowfield"],
+      "payoutAddress": "0x2d7b10e6c9a45f83d1b27e0a9c64f5d38b1e7a02",
+      "contract": {
+        "scope": "Framework supplier. Resident company in Region A, RA-TRN 3651190. Framework agreement FA-2026-02 with Brindlemoor Labs Ltd for security reviews of Brindlemoor smart contracts and infrastructure, performed only under call-off orders, each billed to Brindlemoor Labs Ltd. Call-offs issued: CO-01 (issued 2026-03-02, payments-core contract audit, value USD 22,000), CO-02 (issued 2026-05-11, infrastructure penetration test, value USD 16,000), CO-03 (issued 2026-07-20, bridge contract audit and retest, value USD 26,400). Remediation engineering, bug bounty management and incident response are not covered. Tax status: resident company in Region A.",
+        "pricing": "USD 1,100 per consultant day, billed monthly in arrears per call-off with dated day logs. Each call-off is capped at its own value. Framework ceiling USD 50,000 in total across all call-offs. No expenses.",
+        "startDate": "2026-03-01",
+        "endDate": "2027-02-28",
+        "monthlyCapUsd": 25000,
+        "paymentTerms": "net 30"
+      },
+      "approver": "Oren Vasquez, Head of Infrastructure"
+    },
+    {
+      "id": "sup_07",
+      "legalName": "Tomas Rendell",
+      "aliases": ["T. Rendell", "Rendell Engineering"],
+      "payoutAddress": "0x7f1e4c8a2b06d93e5a7c1f40b8d2e69a3c5f0b14",
+      "contract": {
+        "scope": "Hourly contractor. Individual resident in Region A, contracted by Brindlemoor Labs Ltd. Solidity development and testing for the Brindlemoor bridge and payments contracts. Tax status: individual resident in Region A; not registered for Region A business tax; no withholding exemption certificate recorded.",
+        "pricing": "USD 100 per hour, billed monthly in arrears with a dated timesheet. Maximum 45 hours per calendar month. No expenses.",
+        "startDate": "2026-03-01",
+        "endDate": "2026-12-31",
+        "monthlyCapUsd": 4500,
+        "paymentTerms": "net 15"
+      },
+      "approver": "Oren Vasquez, Head of Infrastructure"
+    },
+    {
+      "id": "sup_08",
+      "legalName": "Lena Marsh",
+      "aliases": ["L. Marsh", "Marsh Docs"],
+      "payoutAddress": "0xa4c2e8f06d1b37a95e2c4d80f1b63a7e9d05c2f6",
+      "contract": {
+        "scope": "Hourly contractor. Individual resident in Region A, contracted by Brindlemoor Labs Ltd. Technical writing: developer documentation, API reference and integration guides. Tax status: individual resident in Region A; withholding exemption certificate WEC-A-2025-3391 recorded, valid 2025-10-01 to 2026-09-30.",
+        "pricing": "USD 80 per hour, billed monthly in arrears with a dated timesheet. Maximum 40 hours per calendar month. No expenses.",
+        "startDate": "2026-01-15",
+        "endDate": "2026-12-31",
+        "monthlyCapUsd": 3200,
+        "paymentTerms": "net 30"
+      },
+      "approver": "Hana Ribeiro, Head of Product"
+    },
+    {
+      "id": "sup_09",
+      "legalName": "Dario Venn",
+      "aliases": ["D. Venn"],
+      "payoutAddress": "0x5c9a3e1d7b2f40a86e3d9c1b5f07a24e8d6b3c90",
+      "contract": {
+        "scope": "Hourly contractor. Individual resident in Region B, contracted by Brindlemoor Networks Ltd. Frontend development for the Brindlemoor Region B payments app. Tax status: individual resident in Region B; not a registered business; personal tax number PTN40718826.",
+        "pricing": "USD 75 per hour, billed monthly in arrears with a dated timesheet. Maximum 40 hours per calendar month. No expenses.",
+        "startDate": "2026-04-01",
+        "endDate": "2027-03-31",
+        "monthlyCapUsd": 3000,
+        "paymentTerms": "net 15"
+      },
+      "approver": "Sunniva Lark, Region B Managing Director"
+    },
+    {
+      "id": "sup_10",
+      "legalName": "Yusuf Harlan",
+      "aliases": ["Y. Harlan"],
+      "payoutAddress": "0xe81b5d3a9c06f27e4b1a8d5c30f96e2a7b4d1c83",
+      "contract": {
+        "scope": "Hourly contractor. Individual resident in Region B, contracted by Brindlemoor Labs Ltd. Protocol research and economic modelling for Brindlemoor's settlement network. Tax status: individual resident in Region B; not a registered business; personal tax number PTN33190452; Region B residence certificate RB-RC-2026-04471 recorded, valid 2026-01-01 to 2026-12-31.",
+        "pricing": "USD 70 per hour, billed monthly in arrears with a dated timesheet. Maximum 30 hours per calendar month. No expenses.",
+        "startDate": "2026-02-01",
+        "endDate": "2027-01-31",
+        "monthlyCapUsd": 2600,
+        "paymentTerms": "net 15"
+      },
+      "approver": "Idris Kaye, CFO"
+    },
+    {
+      "id": "sup_11",
+      "legalName": "Quenby Integration Ltd",
+      "aliases": ["Quenby Integration", "Quenby"],
+      "payoutAddress": "0x3a6f0c9e2d85b17a4f6e0d3c92b58a1e7f4c6d25",
+      "contract": {
+        "scope": "Day-rate subcontractor. Resident company in Region B, RB-BRN 6604289, contracted by Brindlemoor Networks Ltd. Integration engineering, testing and on-site support on Brindlemoor Networks Ltd client projects, with travel and accommodation recharged at cost. Hardware and software licences are not covered. Tax status: resident company in Region B, registered business.",
+        "pricing": "Integration engineer USD 900 per day, test lead USD 820 per day, on-site support USD 900 per day, billed monthly in arrears per project with dated day logs. Travel and accommodation at cost with a receipt reference for each item, no markup.",
+        "startDate": "2026-03-01",
+        "endDate": "2027-02-28",
+        "monthlyCapUsd": 9000,
+        "paymentTerms": "net 30"
+      },
+      "approver": "Sunniva Lark, Region B Managing Director"
+    },
+    {
+      "id": "sup_12",
+      "legalName": "Marrowby Analytics Ltd",
+      "aliases": ["Marrowby Analytics", "Marrowby"],
+      "payoutAddress": "0xb07e3d6a1c94f28e5d0b7a3c61f49e8d2a5c7b3e",
+      "contract": {
+        "scope": "Day-rate subcontractor. Resident company in Region A, RA-TRN 4127736, contracted by Brindlemoor Labs Ltd. Data engineering, analytics and dashboard design on Brindlemoor Labs Ltd client projects and internal analytics. Training and software licences are not covered. Tax status: resident company in Region A.",
+        "pricing": "USD 1,050 per consultant day, billed monthly in arrears per project with dated day logs. No expenses.",
+        "startDate": "2026-01-01",
+        "endDate": "2026-12-31",
+        "monthlyCapUsd": 10000,
+        "paymentTerms": "net 30"
+      },
+      "approver": "Hana Ribeiro, Head of Product"
+    },
+    {
+      "id": "sup_13",
+      "legalName": "Tallyroom Software Ltd",
+      "aliases": ["Tallyroom", "Tallyroom Software"],
+      "payoutAddress": "0x8d4a1f7c3e0b62d95a8f1c4e07b36d2a9e5f8c41",
+      "contract": {
+        "scope": "Subscription. Resident company in Region A, RA-TRN 2981145. Tallyroom Business plan, a shared finance and operations workspace. Seats are held per entity and each entity is invoiced separately for its own seats: up to 45 seats for Brindlemoor Labs Ltd and up to 15 seats for Brindlemoor Networks Ltd. Add-ons and implementation services are not covered. Tax status: resident company in Region A.",
+        "pricing": "USD 24 per seat per month, billed monthly in advance for the coming calendar month, separately to each entity. Seats may be added within each entity's maximum, prorated by day.",
+        "startDate": "2026-01-01",
+        "endDate": "2027-12-31",
+        "monthlyCapUsd": 1800,
+        "paymentTerms": "due on receipt"
+      },
+      "approver": "Idris Kaye, CFO"
+    },
+    {
+      "id": "sup_14",
+      "legalName": "Noor Aldane",
+      "aliases": ["N. Aldane", "Aldane Design"],
+      "payoutAddress": "0xf2c6a9d0e3b17f45a8c2e6d91b04f7a3e6c9d258",
+      "contract": {
+        "scope": "Hourly contractor. Individual resident in Region B, registered as a sole trader, RB-BRN 8812065, contracted by Brindlemoor Networks Ltd. Product and interface design for the Brindlemoor Region B payments app. Tax status: individual resident in Region B; registered sole trader.",
+        "pricing": "USD 65 per hour, billed monthly in arrears with a dated timesheet. Maximum 45 hours per calendar month. No expenses.",
+        "startDate": "2026-05-01",
+        "endDate": "2027-04-30",
+        "monthlyCapUsd": 3000,
+        "paymentTerms": "net 15"
+      },
+      "approver": "Sunniva Lark, Region B Managing Director"
+    }
+  ],
+  "paymentHistory": [
+    { "supplierId": "sup_12", "invoiceNumber": "MRB-LAN-0331", "amountUsd": 4750.00, "paidOn": "2026-04-29" },
+    { "supplierId": "sup_07", "invoiceNumber": "RND-2604", "amountUsd": 3240.00, "paidOn": "2026-05-14" },
+    { "supplierId": "sup_06", "invoiceNumber": "HSL-CO1-0430", "amountUsd": 15400.00, "paidOn": "2026-05-27" },
+    { "supplierId": "sup_12", "invoiceNumber": "MRB-LAN-0430", "amountUsd": 5700.00, "paidOn": "2026-05-28" },
+    { "supplierId": "sup_03", "invoiceNumber": "WF-26-0605", "amountUsd": 4560.00, "paidOn": "2026-06-12" },
+    { "supplierId": "sup_06", "invoiceNumber": "HSL-CO1-0531", "amountUsd": 6600.00, "paidOn": "2026-06-26" },
+    { "supplierId": "sup_11", "invoiceNumber": "QIL-2605", "amountUsd": 3600.00, "paidOn": "2026-06-29" },
+    { "supplierId": "sup_04", "invoiceNumber": "OPA-26-A101", "amountUsd": 7000.00, "paidOn": "2026-06-30" },
+    { "supplierId": "sup_04", "invoiceNumber": "OPA-26-B102", "amountUsd": 3485.00, "paidOn": "2026-07-03" },
+    { "supplierId": "sup_03", "invoiceNumber": "WF-26-0703", "amountUsd": 5472.00, "paidOn": "2026-07-10" },
+    { "supplierId": "sup_09", "invoiceNumber": "VEN-06", "amountUsd": 2511.00, "paidOn": "2026-07-10" },
+    { "supplierId": "sup_07", "invoiceNumber": "RND-2606", "amountUsd": 3690.00, "paidOn": "2026-07-14" },
+    { "supplierId": "sup_03", "invoiceNumber": "WF-26-0715", "amountUsd": 10000.00, "paidOn": "2026-07-20" },
+    { "supplierId": "sup_05", "invoiceNumber": "TMD-2606", "amountUsd": 2565.00, "paidOn": "2026-07-28" },
+    { "supplierId": "sup_06", "invoiceNumber": "HSL-CO2-0731", "amountUsd": 15400.00, "paidOn": "2026-08-06" },
+    { "supplierId": "sup_02", "invoiceNumber": "KH-2026-0805", "amountUsd": 686.40, "paidOn": "2026-08-10" },
+    { "supplierId": "sup_03", "invoiceNumber": "WF-26-0804", "amountUsd": 5928.00, "paidOn": "2026-08-12" },
+    { "supplierId": "sup_09", "invoiceNumber": "VEN-07", "amountUsd": 2790.00, "paidOn": "2026-08-12" },
+    { "supplierId": "sup_14", "invoiceNumber": "ALD-2607", "amountUsd": 2730.00, "paidOn": "2026-08-12" },
+    { "supplierId": "sup_07", "invoiceNumber": "RND-2607", "amountUsd": 3600.00, "paidOn": "2026-08-14" },
+    { "supplierId": "sup_10", "invoiceNumber": "HAR-2026-07", "amountUsd": 2030.00, "paidOn": "2026-08-14" },
+    { "supplierId": "sup_08", "invoiceNumber": "MSH-0726", "amountUsd": 3040.00, "paidOn": "2026-08-20" },
+    { "supplierId": "sup_05", "invoiceNumber": "TMD-2607", "amountUsd": 2655.00, "paidOn": "2026-08-27" },
+    { "supplierId": "sup_06", "invoiceNumber": "HSL-CO3-0731", "amountUsd": 6600.00, "paidOn": "2026-08-27" },
+    { "supplierId": "sup_01", "invoiceNumber": "STR-A-7710-2607", "amountUsd": 4012.60, "paidOn": "2026-08-28" },
+    { "supplierId": "sup_01", "invoiceNumber": "STR-B-7720-2607", "amountUsd": 2884.10, "paidOn": "2026-08-28" },
+    { "supplierId": "sup_11", "invoiceNumber": "QIL-2607", "amountUsd": 3520.00, "paidOn": "2026-08-28" },
+    { "supplierId": "sup_03", "invoiceNumber": "WF-26-0903", "amountUsd": 4104.00, "paidOn": "2026-09-10" },
+    { "supplierId": "sup_02", "invoiceNumber": "KH-2026-0904", "amountUsd": 704.00, "paidOn": "2026-09-11" },
+    { "supplierId": "sup_10", "invoiceNumber": "HAR-2026-08", "amountUsd": 2450.00, "paidOn": "2026-09-14" },
+    { "supplierId": "sup_07", "invoiceNumber": "RND-2608", "amountUsd": 3240.00, "paidOn": "2026-09-15" },
+    { "supplierId": "sup_08", "invoiceNumber": "MSH-0826", "amountUsd": 2880.00, "paidOn": "2026-09-18" },
+    { "supplierId": "sup_01", "invoiceNumber": "STR-A-7710-2608", "amountUsd": 4105.30, "paidOn": "2026-09-29" },
+    { "supplierId": "sup_04", "invoiceNumber": "OPA-26-B114", "amountUsd": 1560.00, "paidOn": "2026-09-29" },
+    { "supplierId": "sup_06", "invoiceNumber": "HSL-CO3-0831", "amountUsd": 12100.00, "paidOn": "2026-09-29" },
+    { "supplierId": "sup_13", "invoiceNumber": "TR-A-2610", "amountUsd": 1008.00, "paidOn": "2026-09-29" },
+    { "supplierId": "sup_13", "invoiceNumber": "TR-B-2610", "amountUsd": 288.00, "paidOn": "2026-09-29" },
+    { "supplierId": "sup_03", "invoiceNumber": "WF-26-0929", "amountUsd": 3200.00, "paidOn": "2026-10-01" },
+    { "supplierId": "sup_01", "invoiceNumber": "STR-B-7720-2608", "amountUsd": 4980.40, "paidOn": "2026-10-02" }
+  ]
+}

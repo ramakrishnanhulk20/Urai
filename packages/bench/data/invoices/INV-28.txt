@@ -1,0 +1,34 @@
+ASHCOMBE & RELL LLP
+Solicitors
+2 Vintner's Yard, Third Floor
+accounts@ashcombe-rell.example
+
+Quillmoor Labs Ltd
+For the attention of: Dana Okafor, COO
+
+Our ref: QML/0004/DO
+Invoice no: AR-2026-097
+Date: 14 September 2026
+
+DISBURSEMENTS INVOICE
+
+Matter: Statutory and registry filings, September 2026
+Disbursements incurred on your behalf and recharged at cost. Copies of all receipts are enclosed.
+
+Date Description Receipt ref Amount (GBP)
+02/09/2026 Registry search and certified copies of register entries RG-20931 120.00
+04/09/2026 Confirmation statement filing fee CH-55310 34.00
+09/09/2026 Notarisation of director's certificate NT-4471 82.00
+
+Professional fees 0.00
+Disbursements 236.00
+
+TOTAL (GBP) 236.00
+
+These costs were paid by us in pounds sterling and are recharged in the same currency, without markup.
+
+Terms: payable on receipt.
+
+Kindly quote invoice number AR-2026-097 with your payment.
+
+Ashcombe & Rell LLP is a limited liability partnership. A list of members is available at our office.
