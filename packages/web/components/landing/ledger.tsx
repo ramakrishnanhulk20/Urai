@@ -34,10 +34,11 @@ function Stat({ label, pct, accuracy, on, className }: { label: string; pct: str
   );
 }
 
+// Total tokens, input plus output, the same basis as the report's headline sentence.
 function tokenText(change: number | null): string | null {
   if (change === null) return null;
-  if (change === 0) return "The same";
-  return `${Math.abs(change)}% ${change < 0 ? "fewer" : "more"}`;
+  if (change === 0) return "The same tokens";
+  return `${Math.abs(change)}% ${change < 0 ? "fewer" : "more"} tokens`;
 }
 
 function Row({ row, index }: { row: LedgerRow; index: number }) {

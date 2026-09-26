@@ -19,8 +19,65 @@
   --color-fd-primary: var(--text);
 }
 
-.diagram {
+/* Diagrams and tables scroll sideways in their own box, reachable by keyboard; the hint sits under the box. */
+.scrollWrap {
+  margin: 1.5rem 0;
+}
+
+.scrollWrap:has(> .diagram) {
   margin: 2rem 0;
+}
+
+.scroller {
+  position: relative;
+  overflow-x: auto;
+}
+
+.scroller:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+.scroller > table {
+  margin: 0;
+}
+
+.scrollHint {
+  margin: 0.5rem 0 0;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: right;
+  color: var(--dim);
+}
+
+.scrollArrow {
+  display: inline-block;
+  color: var(--gold);
+  animation: nudge 1.8s var(--ease-out) infinite;
+}
+
+@keyframes nudge {
+  0%,
+  60%,
+  100% {
+    transform: translateX(0);
+  }
+  30% {
+    transform: translateX(4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scrollArrow {
+    animation: none;
+  }
+}
+
+.diagram {
+  margin: 0;
   padding: 24px;
   overflow-x: auto;
   border: 1px solid rgb(226 176 74 / 0.22);

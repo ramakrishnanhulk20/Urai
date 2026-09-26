@@ -25,9 +25,32 @@ export const CONFIG = {
   lintPerIpPerWindow: 60,
   // A public report read compiles the schema and lints the stored workload (C31).
   reportPerIpPerWindow: 120,
-  // Team calls SERV refused with 401 or 402, per address (C33). One mistyped key costs at most 4
+  // Team calls SERV refused with a 4xx other than 429, per address (C33). One mistyped key costs at most 4
   // refusals, because a run has at most 4 calls in flight, so a real team never comes near 30.
   keyRefusalsPerIpPerWindow: 30,
+  // Demo case calls per address: three demo runs of 24 calls an hour, so one visitor cannot drain the day's budget.
+  demoCallsPerIpPerWindow: 72,
+  // Calls from one address that never reached SERV or got SERV's 429. They cost no one money, so they
+  // leave the key and demo budgets alone, but each still holds a function open, so they are bounded too.
+  servUnavailablePerIpPerWindow: 60,
+  // The model picker is cheap for us but each cache refresh calls SERV on the operator key.
+  modelsPerIpPerWindow: 120,
+  // All stored team workloads together; Neon's free plan holds 512 MB and a full database fails every write.
+  workloadStoreMaxBytes: 150 * 1024 * 1024,
+  // Neon's free plan stops every write at 512 MB, which would fail every rate-limited route closed.
+  // New claims and saves stop here instead, leaving room for the rate counts and the calls in flight.
+  dbSizeStopBytes: 400 * 1024 * 1024,
+  // The database size is read at most this often per server instance; it moves slowly.
+  dbSizeCacheSeconds: 60,
+  // A workload that never got a run is someone's draft or someone filling the database; it goes early.
+  unrunWorkloadRetentionHours: 48,
+  // Caps a demo call's output so its worst case stays under demoCallEstimateUsd at gpt-6-luna prices.
+  demoMaxCompletionTokens: 8_192,
+  // SERV keeps a system prompt's reasoning graph for 30 days; the samples were warmed on 23 Sep 2026.
+  // After this, a plain demo call could pay the unseen one-off graph build, so demo plain calls stop (C28).
+  samplePromptsWarmUntilMs: Date.UTC(2026, 9, 23),
+  // A hung Neon must not hold a route open until its time limit; a stalled claim could be taken over.
+  dbQueryTimeoutMs: 15_000,
   // Sample reports and workloads never change once seeded, so each server instance keeps them this long (C31).
   sampleCacheSeconds: 60,
   // A lint 400 lists the engine's reasons, capped in count and length (C14).
@@ -38,6 +61,8 @@ export const CONFIG = {
   // After a failed refresh, SERV is not asked again for this long, so an outage does not add a
   // slow upstream call to every picker load and lint.
   modelFailureBackoffSeconds: 60,
+  // Only one instance refreshes the model list at a time; the lease lapses if that refresh dies.
+  modelRefreshLeaseSeconds: 30,
   // Rate-limit windows are one hour, so anything two days old can never be counted again.
   rateLimitRetentionDays: 2,
   demoBudgetRetentionDays: 30,
@@ -54,9 +79,10 @@ export const CONFIG = {
   demoCallEstimateUsd: 0.01,
   // demo_budget stores numeric(10,4); real costs are rounded up to this many places, never down.
   budgetUsdPlaces: 4,
-  // Upstream timeout (120 s) plus the connect retries (7 s) plus margin. A claim older than this
-  // belongs to a call that died.
-  claimStaleSeconds: 150,
+  // Past the case route's maxDuration of 300 s, because only a request older than that is surely
+  // dead: SERV may take 120 s and each of several database queries up to 15 s, so a shorter window
+  // could hand a live, possibly billed claim to a second request.
+  claimStaleSeconds: 310,
   // Report caps (C29). Each text cap holds as characters and as UTF-8 bytes once JSON-escaped, so
   // a report of 100 cases x 6 settings at every cap measures 2.7 MB, plus at most bodyMaxBytes of
   // uncut workload fields (expected values, schema), under reportResponseMaxBytes.

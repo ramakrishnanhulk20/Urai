@@ -1,5 +1,19 @@
 import type { ConfigTotals, Report } from "../../lib/report";
-import { configLabels, count, measuredDrop, percentNumber, seconds, tokenCost, usd } from "./format";
+import {
+  configLabels,
+  costGapText,
+  costPerCorrect,
+  count,
+  hasManyModels,
+  measuredDrop,
+  modeNote,
+  PER_CORRECT_NOTE,
+  perCorrectText,
+  percentNumber,
+  seconds,
+  tokenCost,
+  usd,
+} from "./format";
 import { CountUp, Reveal, RevealItem, RubBar } from "./motion";
 import { SectionHead } from "./parts";
 import s from "./report.module.css";
@@ -19,39 +33,40 @@ function unscored(totals: ConfigTotals): string[] {
     .map(([status, n]) => `${n} ${OTHER_STATUS_WORDS[status] ?? status}`);
 }
 
-/*
- * The run's cost from SERV's token counts, and, for a run that stored two real readings before SERV
- * stopped offering a free balance read on 25 Sep, the measured drop beside it.
- */
-function costLine(report: Report): string {
+/* The run's cost from SERV's token counts, and the measured drop beside it for a run that stored two real readings. */
+function costLine(report: Report, labels: string[]): string {
   const total = tokenCost(report.totals);
   const cost =
     total === null
-      ? "Estimated cost from SERV's token counts: unknown, because SERV did not send token counts for every call."
-      : `Estimated cost from SERV's token counts: ${usd(total)} for the whole run, each setting priced at the higher of Urai's own price and SERV's live price for the model. SERV's cache discounts can make the real charge lower.`;
+      ? `Estimated cost from SERV's token counts: unknown for the whole run. ${costGapText(report.configs, report.totals, labels) ?? ""}`.trimEnd()
+      : `Estimated cost from SERV's token counts: ${usd(total)} for the whole run, each setting priced at the higher of Urai's own price and SERV's live price for the model. SERV's cache discounts can make the real charge lower. It leaves out SERV's one-off charge for building the reasoning graph of a system prompt it has not seen, about 0.60 USD.`;
   const drop = measuredDrop(report.balance);
   if (drop === null || report.balance === null) return cost;
   const { before, after } = report.balance;
-  return `${cost} Measured drop in the key's SERV balance: ${usd(before)} before the run, ${usd(after)} after, ${usd(drop)} in total, read before SERV stopped offering a free balance read on 25 Sep.`;
+  return `${cost} Measured drop in the key's SERV balance: ${usd(before)} before the run, ${usd(after)} after, ${usd(drop)} in total.`;
 }
 
 /**
  * Accuracy per setting as a hallmark number stamped beside a gold bar, with right and wrong
- * counts, speed, tokens and cost from SERV's token counts. Every figure comes from report.totals; a total that
+ * counts, speed, tokens, cost from SERV's token counts and cost per right answer. Every figure comes from report.totals; a total that
  * is not known reads "unknown", never zero.
  */
 export function Verdict({ report }: { report: Report }) {
   const labels = configLabels(report.configs);
+  // When the labels already lead with the model, the model line under each one would only repeat it.
+  const many = hasManyModels(report.configs);
+  const note = modeNote(report.configs);
   const known = report.totals.map((t) => t.accuracy).filter((a): a is number => a !== null);
   // Only a real lead earns the gold: with one setting, or a tie across all of them, nothing is marked.
   const best = known.length > 1 && new Set(known).size > 1 ? Math.max(...known) : null;
 
   return (
     <section className={s.section} aria-labelledby="verdict-title">
-      <SectionHead index="The verdict" title="What SERV changed" id="verdict-title">
+      {/* With two models, the model changed as well as SERV, so the heading does not credit SERV alone. */}
+      <SectionHead index="The verdict" title={many ? "What changed" : "What SERV changed"} id="verdict-title">
         <p>
           Accuracy is the share of cases answered right. An answer that failed, was refused, filtered or never came
-          back counts as wrong.
+          back counts as wrong.{note !== null && ` ${note}`}
         </p>
       </SectionHead>
 
@@ -64,7 +79,7 @@ export function Verdict({ report }: { report: Report }) {
             <RevealItem as="article" key={i} className={s.vRow}>
               <header className={s.vLabel}>
                 <h3 className={s.vName}>{labels[i]}</h3>
-                <span className={s.vModel}>{config.model}</span>
+                {!many && <span className={s.vModel}>{config.model}</span>}
               </header>
 
               <div className={s.vBar}>
@@ -114,13 +129,21 @@ export function Verdict({ report }: { report: Report }) {
                   <dt>Estimated cost</dt>
                   <dd>{usd(t?.estCostUsd ?? null)}</dd>
                 </div>
+                <div>
+                  <dt>Cost per correct answer</dt>
+                  <dd data-quiet={costPerCorrect(t).kind !== "usd"}>{perCorrectText(costPerCorrect(t))}</dd>
+                </div>
               </dl>
             </RevealItem>
           );
         })}
       </Reveal>
 
-      {report.totals.length > 0 && <p className={s.costLine}>{costLine(report)}</p>}
+      {report.totals.length > 0 && (
+        <p className={s.costLine}>
+          {costLine(report, labels)} {PER_CORRECT_NOTE}
+        </p>
+      )}
     </section>
   );
 }

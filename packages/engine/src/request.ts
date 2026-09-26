@@ -54,12 +54,17 @@ export function buildUserMessage(w: Workload, c: WorkloadCase): string {
  * The exact Chat Completions body and the SERV headers for one case under one configuration.
  * The system message is the workload's systemPrompt byte for byte, so every case shares SERV's
  * cached reasoning graph. Never carries an API key: the caller adds Authorization.
- * Throws on a blank model id or an unknown mode, so a bad config never reaches the network.
+ * opts.maxCompletionTokens, when given, is sent as max_completion_tokens; when absent the field
+ * is left out, because SERV's docs warn that a cap can cut a valid answer short.
+ * Throws on a blank model id, an unknown mode, or a maxCompletionTokens that is not a positive
+ * integer, so a bad config never reaches the network.
  */
-export function buildRequest(w: Workload, c: WorkloadCase, cfg: RunConfig): BuiltRequest {
+export function buildRequest(w: Workload, c: WorkloadCase, cfg: RunConfig, opts: { maxCompletionTokens?: number } = {}): BuiltRequest {
   // The one place a model id is trimmed (C24), so the id checked and the id sent never differ.
   const model = normaliseModelId(cfg.model);
   if (model === "") throw new Error("Model id is blank.");
+  const cap = opts.maxCompletionTokens;
+  if (cap !== undefined && !(Number.isSafeInteger(cap) && cap > 0)) throw new Error("maxCompletionTokens must be a positive integer.");
 
   const tools = cfg.mode === "raw" ? [] : [...servTools(cfg.mode, w.shadowHint), ...(cfg.keepContentFilter ? [] : [NO_CONTENT_FILTER])];
   const body: Record<string, unknown> = {
@@ -70,6 +75,7 @@ export function buildRequest(w: Workload, c: WorkloadCase, cfg: RunConfig): Buil
     ],
     response_format: { type: "json_schema", json_schema: { name: "answer", strict: true, schema: w.answerSchema } },
     ...(tools.length > 0 ? { tools } : {}),
+    ...(cap !== undefined ? { max_completion_tokens: cap } : {}),
   };
   const headers: Record<string, string> = cfg.mode === "raw" ? { "x-openserv-disable-braid": "true" } : {};
   return { body, headers };

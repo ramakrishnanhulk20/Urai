@@ -7,7 +7,7 @@ import l from "./landing.module.css";
 import { Reveal, rise, SectionMarker } from "./reveal";
 
 const PROMISES = [
-  "Your SERV key is used for one request, then dropped. It is never stored and never logged.",
+  "Your SERV key rides in a header on each call of your run and lives only in your tab's memory for that run. It is never stored, logged or returned.",
   "Who pays is locked the moment a run starts, and cannot be switched halfway.",
   "The live demo spends a capped daily budget of ours, so it needs no key from you.",
 ] as const;

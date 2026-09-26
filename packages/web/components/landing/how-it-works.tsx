@@ -144,7 +144,7 @@ function RequestCard({ req, other }: { req: RequestSnippet; other: RequestSnippe
       const header = req.headers[i];
       if (header === undefined) {
         return (
-          <Line key={`h${i}`} className={l.note}>
+          <Line key={`h${i}`} className={`${l.note} ${l.wrap}`}>
             {i === 0 ? "// no extra header: SERV is on" : null}
           </Line>
         );
@@ -180,7 +180,7 @@ function RequestCard({ req, other }: { req: RequestSnippet; other: RequestSnippe
     ...(anyTools
       ? [
           req.tools.length > 0 ? (
-            <Line key="t" ind={1}>
+            <Line key="t" ind={1} className={l.wrap}>
               <span className={l.plus} aria-hidden="true">
                 +
               </span>

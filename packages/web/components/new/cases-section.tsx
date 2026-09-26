@@ -91,7 +91,11 @@ export function CasesSection({ draft, parsed, scoring, limits, flash, onChange }
             ref={casesRef}
             className={`${s.textarea} ${s.medium}`}
             value={draft.casesText}
-            onChange={(e) => onChange({ casesText: e.target.value })}
+            onChange={(e) => {
+              // A hand edit means the cases are no longer just what the file held.
+              setFileNote(null);
+              onChange({ casesText: e.target.value });
+            }}
             placeholder={`${csvExample(scoring)}\nINV-01,"Northgate Cloud Services Ltd, invoice NG-4471...",pay`}
             aria-invalid={parsed.problems.length > 0}
             aria-describedby="cases-feedback"
@@ -127,7 +131,9 @@ export function CasesSection({ draft, parsed, scoring, limits, flash, onChange }
 
           {parsed.cases.length > 0 && (
             <table className={s.preview}>
-              <caption className={s.srOnly}>The first {Math.min(PREVIEW_ROWS, parsed.cases.length)} cases</caption>
+              <caption className={s.srOnly}>
+                {parsed.cases.length === 1 ? "The one case" : `The first ${Math.min(PREVIEW_ROWS, parsed.cases.length)} cases`}
+              </caption>
               <thead>
                 <tr>
                   <th className={s.colId} scope="col">

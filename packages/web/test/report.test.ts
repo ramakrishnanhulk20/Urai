@@ -1,13 +1,14 @@
 /*
  * The report builder as a pure function, then the share and report routes against the real Neon
  * database with finished case rows inserted directly, so the engine is never called and nothing
- * is spent. Not covered here: how the report page renders this JSON (C20 is the frontend's), any
- * export of it (C21), and workloads past their retention date.
+ * is spent. Then the sample cache in lib/samples.ts, with a stand-in clock. Not covered here: how
+ * the report page renders this JSON (C20 is the frontend's), any export of it (C21), workloads past
+ * their retention date, and the sample cache under concurrent callers in one instance.
  */
 import { randomBytes } from "node:crypto";
 import { isIP } from "node:net";
 import type { RunConfig, Workload } from "@urai/engine";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 import { GET as getPublicReport } from "../app/api/reports/[reportId]/route";
 import { GET as getOwnerReport } from "../app/api/runs/[id]/report/route";
 import { POST as postShare } from "../app/api/runs/[id]/share/route";
@@ -15,9 +16,11 @@ import { POST as postRun } from "../app/api/runs/route";
 import { POST as postWorkload } from "../app/api/workloads/route";
 import { CONFIG, OWNER_HEADER } from "../lib/config";
 import { db } from "../lib/db";
-import { hashToken, newId } from "../lib/ids";
+import { HttpError } from "../lib/http";
+import { hashToken, newId, newOwnerToken } from "../lib/ids";
 import { ipHash } from "../lib/ip";
 import { buildReport, type ReportRow, type StoredResult } from "../lib/report";
+import { cachedSample } from "../lib/samples";
 
 const BASE = "http://localhost:3000";
 const LUNA_RAW: RunConfig = { model: "gpt-6-luna", mode: "raw", keepContentFilter: false };
@@ -156,6 +159,20 @@ describe("buildReport", () => {
     expect(report.configs).toEqual([LUNA_RAW, LUNA_PLAIN]);
   });
 
+  it("caps an answer by the indented form the page renders, so a small deeply nested answer is dropped (C29)", () => {
+    let nested: unknown = [];
+    for (let i = 1; i < 990; i++) nested = [nested];
+    const answer = { a: nested };
+    const compact = JSON.stringify(answer).length;
+    const rendered = JSON.stringify(answer, null, 2).length;
+    // Under the cap in the compact form, so only the rendered measure can catch it.
+    expect(compact).toBeLessThanOrEqual(CONFIG.reportAnswerMaxChars);
+    expect(rendered).toBeGreaterThan(1_000_000);
+
+    const report = buildReport({ ...base, rows: [row("c0", 0, stored({ answer }))] });
+    expect(report.cases[0]!.results[0]).toMatchObject({ answer: null, answerTruncatedChars: rendered });
+  });
+
   it("refuses a row that names a case or configuration outside the run", () => {
     expect(() => buildReport({ ...base, rows: [row("c9", 0, stored())] })).toThrow();
     expect(() => buildReport({ ...base, rows: [row("c0", 2, stored())] })).toThrow();
@@ -170,8 +187,9 @@ async function json(p: Promise<Response>): Promise<{ status: number; text: strin
   return { status: res.status, text, body: JSON.parse(text) as Record<string, unknown> };
 }
 
-function ownerReport(runId: string, owner?: string) {
-  const headers: Record<string, string> = owner === undefined ? {} : { [OWNER_HEADER]: owner };
+// Its own address per read, for the same reason as publicReport: the owner's route counts in the "report" bucket too.
+function ownerReport(runId: string, owner?: string, ip = freshIp()) {
+  const headers: Record<string, string> = owner === undefined ? { "x-real-ip": ip } : { [OWNER_HEADER]: owner, "x-real-ip": ip };
   return json(getOwnerReport(new Request(`${BASE}/api/runs/${runId}/report`, { headers }), { params: Promise.resolve({ id: runId }) }));
 }
 
@@ -257,5 +275,45 @@ describe("share and report routes (C9, C11)", () => {
   it("answers 404 to a report id that was never issued", async () => {
     expect((await publicReport(newId())).status).toBe(404);
     expect((await publicReport("not-an-id")).status).toBe(404);
+  });
+
+  it("charges the owner's report reads to the per-address report bucket before any lookup (C31)", async () => {
+    const ip = freshIp();
+    const bucket = `report:${ipHash(new Request(BASE, { headers: { "x-real-ip": ip } }))}`;
+    expect((await ownerReport(newId(), newOwnerToken(), ip)).status).toBe(404);
+    expect((await db()`SELECT count FROM rate_limits WHERE bucket = ${bucket}`).map((r) => r.count)).toEqual([1]);
+
+    await db()`UPDATE rate_limits SET count = ${CONFIG.reportPerIpPerWindow} WHERE bucket = ${bucket}`;
+    expect(await ownerReport(newId(), newOwnerToken(), ip)).toMatchObject({ status: 429, body: { error: "rate_limited" } });
+  });
+});
+
+describe("sample cache", () => {
+  it("serves the last good copy when a refresh fails, and surfaces only a first-ever failure or a 404", async () => {
+    const name = `test:${randomBytes(6).toString("hex")}`;
+    let now = Date.UTC(2026, 8, 26, 12);
+    const clock = vi.spyOn(Date, "now").mockImplementation(() => now);
+    const later = () => {
+      now += CONFIG.sampleCacheSeconds * 1000 + 1;
+    };
+    try {
+      await expect(cachedSample(name, () => Promise.reject(new Error("db down")))).rejects.toThrow("db down");
+      expect(await cachedSample(name, () => Promise.resolve("v1"))).toBe("v1");
+
+      later();
+      const failing = vi.fn(() => Promise.reject(new Error("db down")));
+      expect(await cachedSample(name, failing)).toBe("v1");
+      expect(await cachedSample(name, failing)).toBe("v1");
+      expect(failing).toHaveBeenCalledTimes(1);
+
+      later();
+      expect(await cachedSample(name, () => Promise.resolve("v2"))).toBe("v2");
+      later();
+      await expect(cachedSample(name, () => Promise.reject(new HttpError(404, "not_found")))).rejects.toThrow("not_found");
+      later();
+      await expect(cachedSample(name, () => Promise.reject(new Error("db down")))).rejects.toThrow("db down");
+    } finally {
+      clock.mockRestore();
+    }
   });
 });

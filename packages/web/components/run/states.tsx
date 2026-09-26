@@ -136,7 +136,97 @@ export function NoToken() {
   );
 }
 
-export type KeyNotice = "refused" | "bad_key" | "forgotten" | "refusal_budget" | null;
+export interface LinkConfirmProps {
+  name: string;
+  /** model is null when the label already names it, as on a run over several models. */
+  settings: { label: string; model: string | null }[];
+  callsLeft: number;
+  /** The start of the system prompt as the report holds it, cut here to PROMPT_PREVIEW characters. */
+  prompt: string;
+  onConfirm: () => void;
+  onLeave: () => void;
+}
+
+const PROMPT_PREVIEW = 200;
+
+/*
+ * A private link opens the run for anyone who holds it, so before any key field appears the
+ * visitor sees what a key would pay for and says, with a press, that the run is theirs. The
+ * prompt is React text, never HTML (C20).
+ */
+export function LinkConfirm({ name, settings, callsLeft, prompt, onConfirm, onLeave }: LinkConfirmProps) {
+  const cut = prompt.length > PROMPT_PREVIEW;
+  const preview = cut ? `${prompt.slice(0, PROMPT_PREVIEW).trimEnd()}...` : prompt;
+
+  return (
+    <Panel
+      label="Confirm this run is yours"
+      size="medium"
+      marker={
+        <>
+          <Slash className={s.markerSlash} />
+          <span>Opened from a private link</span>
+        </>
+      }
+      title={
+        <>
+          <Line delay={0.1}>Is this</Line>
+          <Line delay={0.2}>
+            <em className={s.goldWord}>your run?</em>
+          </Line>
+        </>
+      }
+    >
+      <p className={`${s.notice} ${s.enter}`} role="note" style={{ animationDelay: "0.35s" }}>
+        <span>
+          <strong>Your key pays for these calls.</strong> If you paste a SERV key on the next screen, the{" "}
+          {callsLeft} {callsLeft === 1 ? "call" : "calls"} below are sent to SERV and billed to that key. Anyone holding
+          this link can open this run and read its answers. Only go on if you set this run up yourself.
+        </span>
+      </p>
+      <dl className={`${s.confirmList} ${s.enter}`} style={{ animationDelay: "0.45s" }}>
+        <div className={s.confirmRow}>
+          <dt>Run</dt>
+          <dd>{name}</dd>
+        </div>
+        <div className={s.confirmRow}>
+          <dt>{settings.length === 1 ? "Setting" : "Settings"}</dt>
+          <dd>
+            <ul className={s.confirmSettings}>
+              {settings.map((c, i) => (
+                <li key={i}>
+                  <span>{c.label}</span>
+                  {c.model !== null && <span className={s.confirmModel}>{c.model}</span>}
+                </li>
+              ))}
+            </ul>
+          </dd>
+        </div>
+        <div className={s.confirmRow}>
+          <dt>Calls still to run</dt>
+          <dd className={s.confirmCount}>{callsLeft}</dd>
+        </div>
+        <div className={s.confirmRow}>
+          <dt>{cut ? `System prompt, first ${PROMPT_PREVIEW} characters` : "System prompt"}</dt>
+          <dd>
+            <blockquote className={s.confirmPrompt}>{preview === "" ? "(empty)" : preview}</blockquote>
+          </dd>
+        </div>
+      </dl>
+      <div className={`${s.actions} ${s.enter}`} style={{ animationDelay: "0.6s" }}>
+        <button type="button" className={s.primary} onClick={onConfirm}>
+          <span>This is my run</span>
+          <Arrow />
+        </button>
+        <button type="button" className={s.quiet} onClick={onLeave}>
+          This is not my run
+        </button>
+      </div>
+    </Panel>
+  );
+}
+
+export type KeyNotice = "refused" | "bad_key" | "forgotten" | null;
 
 function noticeText(notice: KeyNotice, refusedCalls: number): ReactNode {
   if (notice === "refused") {
@@ -157,15 +247,6 @@ function noticeText(notice: KeyNotice, refusedCalls: number): ReactNode {
       </>
     );
   }
-  if (notice === "refusal_budget") {
-    return (
-      <>
-        <strong>Too many refused keys from your network.</strong> SERV has refused too many keys sent from this network in
-        the last hour, so Urai stopped before this call reached SERV. Nothing was charged or recorded, and the key is
-        cleared from this tab. Wait up to an hour, then paste a working key and the run picks up where it stopped.
-      </>
-    );
-  }
   if (notice === "forgotten") {
     return <>Your key is forgotten. Paste it again to carry on with this run.</>;
   }
@@ -173,7 +254,10 @@ function noticeText(notice: KeyNotice, refusedCalls: number): ReactNode {
 }
 
 export interface KeyFormProps {
+  runId: string;
   title: string;
+  /** "ready" when a run opened from a private link waits for a Continue press after the key, instead of starting. */
+  next: "run" | "ready";
   notice: KeyNotice;
   refusedCalls: number;
   done: number;
@@ -189,7 +273,7 @@ export interface KeyFormProps {
  * browser only puts named fields into a native form submission, so even a submit before the page
  * hydrates sends nothing, and the key can never land in a URL (C1). It is read through the ref.
  */
-export function KeyForm({ title, notice, refusedCalls, done, total, privateLink, onKey }: KeyFormProps) {
+export function KeyForm({ runId, title, next, notice, refusedCalls, done, total, privateLink, onKey }: KeyFormProps) {
   const inputId = useId();
   const keyRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
@@ -208,7 +292,7 @@ export function KeyForm({ title, notice, refusedCalls, done, total, privateLink,
       return;
     }
     setError(null);
-    setTeamKey(key);
+    setTeamKey(runId, key);
     onKey();
   };
 
@@ -258,7 +342,7 @@ export function KeyForm({ title, notice, refusedCalls, done, total, privateLink,
             aria-describedby={`${inputId}-note`}
           />
           <button type="submit" className={s.primary}>
-            <span>Continue the run</span>
+            <span>{next === "ready" ? "Use this key" : "Continue the run"}</span>
             <Arrow />
           </button>
         </div>
@@ -271,7 +355,8 @@ export function KeyForm({ title, notice, refusedCalls, done, total, privateLink,
           <Slash className={s.noteSlash} />
           <span>
             The key is used for each call, sent in a request header to SERV through Urai, and never stored: not in the
-            database, not in this browser. It lives in this tab&apos;s memory, so a reload asks for it again.
+            database, not in this browser. It lives in this tab&apos;s memory, for this run only, so a reload asks for it again.
+            {next === "ready" && " Nothing is sent to SERV until you press Continue the run on the next screen."}
           </span>
         </p>
       </form>
@@ -296,7 +381,12 @@ export function Loading() {
   );
 }
 
-export type LoadProblem = { kind: "gone" } | { kind: "demo" } | { kind: "unreachable"; detail: string };
+export type LoadProblem =
+  | { kind: "gone" }
+  | { kind: "demo" }
+  | { kind: "unreachable"; detail: string }
+  /** The report read at the end of a run failed, after calls may already have gone to SERV. */
+  | { kind: "report_unreachable"; detail: string };
 
 /* Every way the run can fail to open, with what happened and what to do next. */
 export function LoadFailed({ problem, onRetry }: { problem: LoadProblem; onRetry: () => void }) {
@@ -313,11 +403,17 @@ export function LoadFailed({ problem, onRetry }: { problem: LoadProblem; onRetry
             title: "This is a demo run.",
             text: "Demo runs are paid by Urai and driven from the live demo page, not from here. Open the live demo to start one, or build a run on your own key.",
           }
-        : {
-            marker: "Could not reach Urai",
-            title: "The run did not load.",
-            text: `Urai did not answer (${problem.detail}). Nothing was sent to SERV. Check your connection and try again.`,
-          };
+        : problem.kind === "report_unreachable"
+          ? {
+              marker: "Report did not load",
+              title: "The answers are in. The report is not.",
+              text: `Every call in this run has come back and is stored on Urai, but the report did not load (${problem.detail}). Trying again only reads it: a finished call is never sent to SERV or charged twice. Check your connection and try again.`,
+            }
+          : {
+              marker: "Could not reach Urai",
+              title: "The run did not load.",
+              text: `Urai did not answer (${problem.detail}), so this page sent nothing to SERV. Check your connection and try again.`,
+            };
 
   return (
     <Panel
@@ -335,7 +431,7 @@ export function LoadFailed({ problem, onRetry }: { problem: LoadProblem; onRetry
         {copy.text}
       </p>
       <div className={`${s.actions} ${s.enter}`} style={{ animationDelay: "0.5s" }}>
-        {problem.kind === "unreachable" ? (
+        {problem.kind === "unreachable" || problem.kind === "report_unreachable" ? (
           <button type="button" className={s.primary} onClick={onRetry}>
             <span>Try again</span>
             <Arrow />

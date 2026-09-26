@@ -146,6 +146,7 @@ export async function access(ctx: Ctx): Promise<void> {
   await responseCaps(ctx, runA);
   await unshare(ctx, runA, runB);
   await reportRateLimit(ctx);
+  await ownerReportRateLimit(ctx);
 }
 
 // A stored result in the shape the report reads; written straight to the database so nothing is spent.
@@ -159,6 +160,8 @@ async function responseCaps(ctx: Ctx, run: RunMade): Promise<void> {
   const api = ctx.client("access");
   const marker = `answer-${randomBytes(8).toString("hex")}`;
   const wide = { verdict: "x".repeat(CONFIG.reportAnswerMaxChars + 500) };
+  // The report measures the indented form its page renders, not the compact one.
+  const rendered = JSON.stringify(wide, null, 2).length;
   await sql`
     INSERT INTO case_results (run_id, case_id, config_idx, status, result, finished_at) VALUES
       (${run.runId}, ${run.cases[0]!}, 0, 'scored', ${storedResult({ verdict: marker }, marker)}::jsonb, now()),
@@ -186,9 +189,9 @@ async function responseCaps(ctx: Ctx, run: RunMade): Promise<void> {
   rec.add(
     "C29",
     "report drops an oversized answer and says how long it was",
-    `GET /api/runs/:id/report with an answer of ${JSON.stringify(wide).length} characters serialised, cap ${CONFIG.reportAnswerMaxChars}`,
+    `GET /api/runs/:id/report with an answer of ${rendered} characters as rendered, cap ${CONFIG.reportAnswerMaxChars}`,
     `${brief(report)}; answer ${JSON.stringify(answer)?.slice(0, 40) ?? "missing"}, answerTruncatedChars ${String(cutChars)}; body ${report.text.length} characters`,
-    report.status === 200 && answer === null && cutChars === JSON.stringify(wide).length && !report.text.includes(wide.verdict),
+    report.status === 200 && answer === null && cutChars === rendered && !report.text.includes(wide.verdict),
   );
 }
 
@@ -221,8 +224,9 @@ async function unshare(ctx: Ctx, runA: RunMade, runB: RunMade): Promise<void> {
   );
 }
 
-// Its own documentation-range address, so the count starts from nothing and no other check shares it.
+// Their own documentation-range addresses, so each count starts from nothing and no other check shares it.
 const RATE_IP = "203.0.113.31";
+const OWNER_RATE_IP = "203.0.113.32";
 
 /** C31: the public report route refuses the read past the per-address limit. */
 async function reportRateLimit(ctx: Ctx): Promise<void> {
@@ -249,5 +253,35 @@ async function reportRateLimit(ctx: Ctx): Promise<void> {
   } finally {
     // The suite's shared clean-up only knows the write buckets, so the report buckets it made are removed here.
     await sql`DELETE FROM rate_limits WHERE bucket = ANY(${buckets})`;
+  }
+}
+
+/*
+ * C31: the owner's report route does the same work per read as the public one and is charged to the
+ * same "report" bucket before any lookup, so made-up run ids with a made-up token count too.
+ */
+async function ownerReportRateLimit(ctx: Ctx): Promise<void> {
+  const { rec, sql } = ctx;
+  const api = new Client(ctx.base, OWNER_RATE_IP, ctx.created);
+  const bucket = `report:${ipHash(new Request("http://localhost/", { headers: { "x-real-ip": OWNER_RATE_IP } }))}`;
+  const owner = ownerHeaders(randomBytes(32).toString("base64url"));
+  try {
+    await sql`DELETE FROM rate_limits WHERE bucket = ${bucket}`;
+    const replies: Reply[] = [];
+    for (let batch = 0; batch < CONFIG.reportPerIpPerWindow; batch += 20) {
+      const size = Math.min(20, CONFIG.reportPerIpPerWindow - batch);
+      replies.push(...(await Promise.all(Array.from({ length: size }, () => api.send("GET", `/api/runs/${randomId()}/report`, { headers: owner })))));
+    }
+    const last = await api.send("GET", `/api/runs/${randomId()}/report`, { headers: owner });
+    const within = replies.filter((r) => r.status === 404).length;
+    rec.add(
+      "C31",
+      `owner report read number ${CONFIG.reportPerIpPerWindow + 1} from one address within the hour`,
+      `${CONFIG.reportPerIpPerWindow + 1} GET /api/runs/:id/report with made-up run ids and a made-up owner token from one address`,
+      `${within} of ${CONFIG.reportPerIpPerWindow} answered 404, then ${brief(last)}`,
+      within === CONFIG.reportPerIpPerWindow && last.status === 429 && last.code === "rate_limited",
+    );
+  } finally {
+    await sql`DELETE FROM rate_limits WHERE bucket = ${bucket}`;
   }
 }

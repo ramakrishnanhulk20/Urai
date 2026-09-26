@@ -6,8 +6,8 @@ const KEY_HEADER = "x-serv-key";
 
 // The server answers 202 or run_busy while another request holds the call, so the page waits this long and asks again.
 const RETRY_AFTER_MS = 2_000;
-// A claim goes stale on the server after 150 s; asking a little past that ends a stuck call as failed, not as a hang.
-const MAX_WAITS = 90;
+// A claim goes stale on the server after 310 s. 160 waits of 2 s ask a little past that, so a stuck call ends as failed, not as a hang.
+const MAX_WAITS = 160;
 const NETWORK_RETRIES = 2;
 
 const STATUSES = ["scored", "failed", "refused", "filtered", "upstream_error", "timeout"] as const;
@@ -28,6 +28,8 @@ export type Loaded<T> = { ok: true; value: T } | { ok: false; fail: Fail };
 export interface RunStatus {
   payer: "team" | "demo";
   totalCalls: number;
+  /** Whether the report is public right now. Null when the server did not say, so the page never guesses private. */
+  shared: boolean | null;
 }
 
 export type CaseOutcome =
@@ -38,8 +40,12 @@ export type CaseOutcome =
   | { kind: "key_refused" }
   /** 402 serv_insufficient_credits: SERV said the key is out of credit for the call. Nothing was stored, so it runs again after a top-up. */
   | { kind: "no_credit" }
-  /** 429 rate_limited: this network has spent its hourly budget of refused keys (C33). Nothing was sent to SERV or stored. */
+  /** 429 rate_limited: SERV refused keys from this network, or too many of its calls are in flight, against the hourly budget (C33). Nothing was sent to SERV or stored. */
   | { kind: "refusal_budget" }
+  /** 503 serv_unavailable: the call never reached SERV, or SERV said it was rate limited. Nothing was stored or charged. */
+  | { kind: "unavailable" }
+  /** 503 storage_full: Urai's database is at its size cap, so the call was never claimed, sent or charged. */
+  | { kind: "storage_full" }
   /** 404: the run is gone or this tab's token no longer matches. Nothing else in the run will work. */
   | { kind: "gone" }
   | { kind: "failed"; code: string }
@@ -61,7 +67,7 @@ function errorCode(body: unknown): string {
   return isRecord(body) && typeof body.error === "string" ? body.error.slice(0, 40) : "unknown";
 }
 
-function wait(ms: number, signal: AbortSignal): Promise<void> {
+export function wait(ms: number, signal: AbortSignal): Promise<void> {
   return new Promise((done) => {
     if (signal.aborted) return done();
     const timer = window.setTimeout(done, ms);
@@ -115,7 +121,7 @@ function runPath(runId: string, rest = ""): string {
   return `/api/runs/${encodeURIComponent(runId)}${rest}`;
 }
 
-/** GET /api/runs/:id. Only the payer and the call count are kept; the report carries everything else. */
+/** GET /api/runs/:id. Only the payer, the call count and the sharing state are kept; the report carries everything else. */
 export async function getStatus(runId: string, token: string): Promise<Loaded<RunStatus>> {
   const r = await call("GET", runPath(runId), { [OWNER_HEADER]: token });
   if (r === null) return { ok: false, fail: { kind: "network" } };
@@ -124,7 +130,7 @@ export async function getStatus(runId: string, token: string): Promise<Loaded<Ru
   if (!isRecord(b) || (b.payer !== "team" && b.payer !== "demo") || typeof b.totalCalls !== "number") {
     return { ok: false, fail: { kind: "bad_response" } };
   }
-  return { ok: true, value: { payer: b.payer, totalCalls: b.totalCalls } };
+  return { ok: true, value: { payer: b.payer, totalCalls: b.totalCalls, shared: typeof b.shared === "boolean" ? b.shared : null } };
 }
 
 /** GET /api/runs/:id/report. Works before any call has finished: unfinished answers are null. */
@@ -183,6 +189,8 @@ export async function runCase(
     if (res.status === 401 && code === "serv_rejected_key") return { kind: "key_refused" };
     if (res.status === 402 && code === "serv_insufficient_credits") return { kind: "no_credit" };
     if (res.status === 429 && code === "rate_limited") return { kind: "refusal_budget" };
+    if (res.status === 503 && code === "serv_unavailable") return { kind: "unavailable" };
+    if (res.status === 503 && code === "storage_full") return { kind: "storage_full" };
     if (res.status === 404) return { kind: "gone" };
     return { kind: "failed", code };
   }

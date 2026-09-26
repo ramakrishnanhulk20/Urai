@@ -1,7 +1,7 @@
 // Not covered here: real SERV behaviour and real undici error shapes (scripts/reproduce.ts runs live), the web server's
 // payer and budget rules, and log output of callers. Fixtures below are hand-built from shapes seen in bench results.
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { isPlausibleKey, LIMITS, parseWorkload, runCase, SERV_CHAT_URL, type RunConfig, type Workload } from "../src/index.js";
+import { CONNECT_FAILED, isPlausibleKey, LIMITS, parseWorkload, runCase, SERV_CHAT_URL, servUnavailable, type RunConfig, type Workload } from "../src/index.js";
 
 const KEY = "sk-canary-CANARY0123456789abcdef";
 
@@ -136,6 +136,25 @@ describe("runCase classification", () => {
     const r = await runCase(w, "c1", cfg, KEY, { fetchImpl: fixture(() => json(200, completion({ content: big }))).fetchImpl });
     expect(r).toMatchObject({ status: "failed", answer: null, error: "answer_too_large" });
     expect(r.answerText).toHaveLength(LIMITS.answerMaxChars);
+  });
+
+  it("never ends the capped answer text on half an emoji", async () => {
+    for (const pad of [0, 1]) {
+      const big = `${"x".repeat(pad)}${"\u{1F600}".repeat(LIMITS.answerMaxChars)}`;
+      const r = await runCase(w, "c1", cfg, KEY, { fetchImpl: fixture(() => json(200, completion({ content: big }))).fetchImpl });
+      expect(r).toMatchObject({ status: "failed", error: "answer_too_large" });
+      expect(r.answerText!.length).toBe(pad === 0 ? LIMITS.answerMaxChars : LIMITS.answerMaxChars - 1);
+      expect(/[\ud800-\udbff]$/.test(r.answerText!)).toBe(false);
+    }
+  });
+
+  it("sends max_completion_tokens only when the caller asks for it", async () => {
+    const f = fixture(() => json(200, answer("pay")));
+    await runCase(w, "c1", cfg, KEY, { fetchImpl: f.fetchImpl });
+    await runCase(w, "c1", cfg, KEY, { fetchImpl: f.fetchImpl, maxCompletionTokens: 8192 });
+    const bodies = f.calls.map((call) => JSON.parse(String(call.init.body)) as Record<string, unknown>);
+    expect(bodies[0]).not.toHaveProperty("max_completion_tokens");
+    expect(bodies[1]).toMatchObject({ max_completion_tokens: 8192 });
   });
 
   it("reports a 402 billing error as insufficient_credits and other statuses with a short message", async () => {
@@ -300,9 +319,33 @@ describe("runCase connect-only retry (C5)", () => {
     const pending = runCase(w, "c1", cfg, KEY, { fetchImpl: f.fetchImpl });
     await vi.advanceTimersByTimeAsync(10_000);
     const r = await pending;
-    expect(r).toMatchObject({ status: "upstream_error", error: "network_error: UND_ERR_CONNECT_TIMEOUT" });
+    expect(r).toMatchObject({ status: "upstream_error", httpStatus: null, error: CONNECT_FAILED });
+    expect(servUnavailable(r)).toBe(true);
     expect(f.calls).toHaveLength(1 + LIMITS.connectRetriesMax);
     expect(JSON.stringify(r)).not.toContain(KEY);
+  });
+
+  it("marks only a call that never connected, or a 429, as unavailable", async () => {
+    const r429 = await runCase(w, "c1", cfg, KEY, { fetchImpl: fixture(() => json(429, { error: { message: "slow down" } })).fetchImpl });
+    expect(r429).toMatchObject({ status: "upstream_error", httpStatus: 429 });
+    expect(servUnavailable(r429)).toBe(true);
+    const sentThenFailed: [string, Handler][] = [
+      ["a reset after sending", () => Promise.reject(connectError("ECONNRESET"))],
+      ["a 500", () => json(500, { error: { message: "boom" } })],
+      ["a 503", () => json(503, "busy")],
+      ["a 403", () => json(403, { error: { message: "no" } })],
+      ["a plain error", () => Promise.reject(new Error("weird"))],
+    ];
+    for (const [label, handler] of sentThenFailed) {
+      const r = await runCase(w, "c1", cfg, KEY, { fetchImpl: fixture(handler).fetchImpl });
+      expect([label, r.status, servUnavailable(r)]).toEqual([label, "upstream_error", false]);
+    }
+    fastTimeout();
+    const timedOut = await runCase(w, "c1", cfg, KEY, { fetchImpl: fixture(hang).fetchImpl });
+    expect(timedOut.status).toBe("timeout");
+    expect(servUnavailable(timedOut)).toBe(false);
+    const scored = await runCase(w, "c1", cfg, KEY, { fetchImpl: fixture(() => json(200, answer("pay"))).fetchImpl });
+    expect(servUnavailable(scored)).toBe(false);
   });
 
   it("retries ECONNREFUSED found inside an AggregateError", async () => {

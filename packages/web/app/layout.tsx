@@ -4,7 +4,7 @@ import { displayFont, monoFont } from "../components/brand/fonts";
 import "./globals.css";
 
 const DESCRIPTION =
-  "Test SERV Reasoning on your own AI agent before you switch: SERV on and off, side by side, and one-click fixes for the setup mistakes that quietly cost accuracy.";
+  "Test SERV Reasoning on your own AI agent before you switch: SERV on and off, side by side, and a one-click fix for the setup mistake that quietly costs SERV the most accuracy.";
 
 // Share cards need absolute URLs. The live address comes from the deploy; local dev falls back.
 const siteUrl = process.env.URAI_PUBLIC_URL ?? "http://localhost:3001";

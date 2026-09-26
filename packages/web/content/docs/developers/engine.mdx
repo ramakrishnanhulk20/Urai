@@ -3,7 +3,7 @@ title: The engine package
 description: What @urai/engine exports, what each export does, and how scoring normalises answers.
 ---
 
-`@urai/engine` lives in `packages/engine`. It is plain TypeScript with no framework and no database. It parses a workload, checks the setup, builds the SERV request, runs one case, and scores the answer. The web app adds storage, money rules and the pages on top. Because the engine stands alone, every SERV call, score and lint rule is tested on its own: 213 tests.
+`@urai/engine` lives in `packages/engine`. It is plain TypeScript with no framework and no database. It parses a workload, checks the setup, builds the SERV request, runs one case, and scores the answer. The web app adds storage, money rules and the pages on top. Because the engine stands alone, every SERV call, score and lint rule is tested on its own: 225 tests.
 
 ## Exports
 
@@ -14,9 +14,10 @@ description: What @urai/engine exports, what each export does, and how scoring n
 | `lintWorkload(workload, opts)` | The setup check. Returns one finding per rule that fires, errors first. Checks model ids only when given SERV's model list. Never throws: if it cannot finish, it returns one error saying so. |
 | `findDataBlocks(systemPrompt)` | Finds the data blocks in a system prompt: JSON, markdown tables, CSV-like runs and record-like runs, each with its heading and position. |
 | `applyLayoutFix(workload)` | The one-click fix. Moves every data block from the system prompt into `context`, with its heading. Works on a copy, and checks the result with `parseWorkload` before returning it. |
-| `buildRequest(workload, case, config)` | The exact chat completions body and SERV headers for one case under one setting. Never carries a key. Throws on a blank model id or an unknown mode, before any network call. |
+| `buildRequest(workload, case, config, opts)` | The exact chat completions body and SERV headers for one case under one setting. Never carries a key. `opts.maxCompletionTokens`, when given, is sent as `max_completion_tokens` to cap an answer's cost; left out, no cap is sent, because SERV's docs warn a cap can cut a valid answer short. Throws on a blank model id, an unknown mode or a cap that is not a positive whole number, before any network call. |
 | `buildUserMessage(workload, case)` | The user message for one case: the shared data and the case input as one JSON string. |
-| `runCase(workload, caseId, config, apiKey)` | Runs one case against SERV and classifies the reply as scored, failed, refused, filtered, upstream error or timeout. Waits up to 120 seconds. Retries only when the connection never opened, so a retry cannot bill twice. The key goes only to SERV and never appears in the result. |
+| `runCase(workload, caseId, config, apiKey, opts)` | Runs one case against SERV and classifies the reply as scored, failed, refused, filtered, upstream error or timeout. Waits up to 120 seconds. Retries only when the connection never opened, so a retry cannot bill twice. Takes the same `opts.maxCompletionTokens`, plus an abort signal. The key goes only to SERV and never appears in the result. |
+| `servUnavailable(result)` | True when a call never reached SERV, or SERV turned it away with 429 before running it, so nothing was billed and the caller may release the call instead of storing it. A reset or timeout after sending does not count, because SERV may already have billed it (C5). |
 | `SERV_CHAT_URL` | `https://inference-api.openserv.ai/v1/chat/completions`, the only address a key is ever sent to. Not configurable, on purpose (C2). |
 | `scoreAnswer(workload, case, answer)` | Scores one parsed answer against one case, one field score per scoring rule. Correct only when there is at least one rule and every rule matches. |
 | `normaliseText(value)` | The text normaliser used on both sides of every `exact` and `oneOf` comparison. |

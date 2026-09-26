@@ -25,6 +25,8 @@ const SAMPLE_EXPIRES_AT = "2100-01-01T00:00:00Z";
  * An unchanged sample is left alone, so a second run writes nothing. Each file goes through
  * parseWorkload exactly like a team's upload. The owner hash is of a token that is thrown
  * away at once: nobody can start a team run on a sample or claim to own it.
+ * data is json, which has no equality operator, so it is compared as stored text; that also
+ * catches a change in key order alone, which is the point of storing json.
  */
 async function main(): Promise<void> {
   loadRootEnv();
@@ -40,11 +42,12 @@ async function main(): Promise<void> {
     if (data === null) throw new Error(`${s.file} is not storable`);
 
     const rows = await sql`
-      INSERT INTO workloads (id, owner_hash, is_sample, sample_configs, data, expires_at)
-      VALUES (${s.id}, ${hashToken(newOwnerToken())}, true, ${configs}::jsonb, ${data}::jsonb, ${SAMPLE_EXPIRES_AT})
-      ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, sample_configs = EXCLUDED.sample_configs
+      INSERT INTO workloads (id, owner_hash, is_sample, sample_configs, data, expires_at, size_bytes)
+      VALUES (${s.id}, ${hashToken(newOwnerToken())}, true, ${configs}::jsonb, ${data}::json, ${SAMPLE_EXPIRES_AT},
+              octet_length(${data}::json::text))
+      ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, sample_configs = EXCLUDED.sample_configs, size_bytes = EXCLUDED.size_bytes
         WHERE workloads.is_sample
-          AND (workloads.data IS DISTINCT FROM EXCLUDED.data OR workloads.sample_configs IS DISTINCT FROM EXCLUDED.sample_configs)
+          AND (workloads.data::text IS DISTINCT FROM EXCLUDED.data::text OR workloads.sample_configs IS DISTINCT FROM EXCLUDED.sample_configs)
       RETURNING (xmax = 0) AS inserted`;
     const row = rows[0];
     console.log(`${s.id}: ${row === undefined ? "unchanged" : row.inserted ? "inserted" : "updated"} (${parsed.workload.cases.length} cases)`);

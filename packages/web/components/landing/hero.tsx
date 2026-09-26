@@ -90,7 +90,7 @@ export function Hero({ cases, model, servLabel, beforePct, afterPct, reportHref,
           <div className={s.pitch}>
             <p className={`${s.sentence} ${s.enter}`} style={{ animationDelay: "0.42s" }}>
               Urai runs your agent&apos;s own test cases with SERV Reasoning on and off, side by side, shows what it
-              changes, and fixes the setup mistakes that quietly cost accuracy.
+              changes, and fixes the setup mistake that quietly costs the most accuracy.
             </p>
             <div className={`${s.actions} ${s.enter}`} style={{ animationDelay: "0.55s" }}>
               <Link href={reportHref} className={s.primary}>
@@ -110,8 +110,7 @@ export function Hero({ cases, model, servLabel, beforePct, afterPct, reportHref,
           <p className={`${s.proof} ${s.enter}`} style={{ animationDelay: "0.7s" }}>
             <Slash className={s.proofSlash} />
             <span>
-              One layout fix: <strong>{beforePct}%</strong> to <strong className={s.proofAfter}>{afterPct}%</strong>{" "}
-              with SERV
+              SERV on: one layout fix, <strong>{beforePct}%</strong> to <strong className={s.proofAfter}>{afterPct}%</strong>
             </span>
           </p>
         </div>

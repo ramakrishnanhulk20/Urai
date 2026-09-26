@@ -28,18 +28,26 @@ function roundUp(usd: number): number {
 }
 
 /**
- * Reserves CONFIG.demoCallEstimateUsd from today's demo budget before a demo call (C6).
- * Creates the day's row with the cap from DEMO_DAILY_BUDGET_USD if it is missing (an existing
- * row keeps its cap), then reserves with one conditional UPDATE, so concurrent callers can never
- * together pass the cap on settled spend (C28). Returns null when the budget cannot cover one more
- * estimate, when the operator stopped the day (demo_budget.stopped), or when the operator's global
- * demo_off flag is set; the flag is read before anything is written, and the stop and the flag are
- * also in the UPDATE's own WHERE, so one set mid-request still holds.
- * Throws 503 unavailable on any database error: the call must not go ahead (C26).
+ * Reserves estimateUsd (lib/prices.ts demoReservationUsd), rounded up to the column's places,
+ * from today's demo budget before a demo call (C6).
+ * Creates the day's row with the cap from DEMO_DAILY_BUDGET_USD if it is missing. An existing row
+ * whose cap is above the configured one is lowered to it at once, so an operator who cuts the
+ * budget mid-day is obeyed on the next call; a raised budget waits for the next day's row. Then it
+ * reserves with one conditional UPDATE, so concurrent callers can never together pass the cap on
+ * settled spend (C28). Returns null when the budget cannot cover the reservation, when the
+ * operator stopped the day (demo_budget.stopped), or when the operator's global demo_off flag is
+ * set; the flag is read before anything is written, and the stop and the flag are also in the
+ * UPDATE's own WHERE, so one set mid-request still holds.
+ * Throws 503 unavailable on any database error or an estimate that is not a positive finite
+ * number: the call must not go ahead (C26).
  */
-export async function reserveDemoCall(): Promise<Reservation | null> {
+export async function reserveDemoCall(estimateUsd: number): Promise<Reservation | null> {
   const day = budgetDay();
-  const est = CONFIG.demoCallEstimateUsd;
+  if (!Number.isFinite(estimateUsd) || estimateUsd <= 0) {
+    console.error(`[urai] demo budget reserve refused on ${day}: the estimate is not a positive number`);
+    throw new HttpError(503, "unavailable");
+  }
+  const est = roundUp(estimateUsd);
   if (await isSet("demo_off")) {
     console.warn(`[urai] demo call refused on ${day}: the demo_off stop is set`);
     return null;
@@ -49,7 +57,8 @@ export async function reserveDemoCall(): Promise<Reservation | null> {
     const sql = db();
     await sql`
       INSERT INTO demo_budget (day, cap_usd) VALUES (${day}::date, ${serverEnv().demoDailyBudgetUsd}::numeric)
-      ON CONFLICT (day) DO NOTHING`;
+      ON CONFLICT (day) DO UPDATE SET cap_usd = LEAST(demo_budget.cap_usd, EXCLUDED.cap_usd)
+        WHERE demo_budget.cap_usd > EXCLUDED.cap_usd`;
     rows = await sql`
       UPDATE demo_budget SET reserved_usd = reserved_usd + ${est}::numeric
       WHERE day = ${day}::date AND stopped = false AND spent_usd + reserved_usd + ${est}::numeric <= cap_usd
@@ -97,4 +106,28 @@ export async function settleDemoCall(r: Reservation, costUsd: number | null): Pr
   if (!Number.isInteger(calls) || calls < 1) throw new HttpError(503, "unavailable");
   console.info(`[urai] demo budget: spent ${spent} USD on ${r.day}, call ${calls} of the day`);
   return calls;
+}
+
+/**
+ * Hands a reservation back unspent, for a demo call that never reached SERV (C6): one UPDATE
+ * takes the estimate out of reserved and adds nothing to spent or to the day's call count.
+ * Throws 503 unavailable on a database error or a missing row; the reservation then stays
+ * counted, which can only make the budget stricter.
+ */
+export async function releaseDemoCall(r: Reservation): Promise<void> {
+  let rows: Record<string, unknown>[];
+  try {
+    rows = await db()`
+      UPDATE demo_budget SET reserved_usd = reserved_usd - ${r.estimateUsd}::numeric
+      WHERE day = ${r.day}::date
+      RETURNING day`;
+  } catch {
+    console.error(`[urai] demo budget release failed on ${r.day}, estimate stays reserved`);
+    throw new HttpError(503, "unavailable");
+  }
+  if (rows[0] === undefined) {
+    console.error(`[urai] demo budget row for ${r.day} missing at release`);
+    throw new HttpError(503, "unavailable");
+  }
+  console.info(`[urai] demo budget: released ${r.estimateUsd} USD on ${r.day}, the call never reached SERV`);
 }

@@ -5,9 +5,10 @@ import { Stone } from "../../components/brand/stone";
 import { Footer } from "../../components/site/footer";
 import { Header } from "../../components/site/header";
 import { SmoothScroll } from "../../components/smooth-scroll";
+import { PickJump } from "../../components/try/pick-jump";
 import { TryDemo } from "../../components/try/try-demo";
 import s from "../../components/try/try.module.css";
-import { configLabel, type DemoConfig, type SampleChoice, type SavedResult } from "../../components/try/types";
+import { configLabels, modeNote, type DemoConfig, type SampleChoice, type SavedResult } from "../../components/try/types";
 import { CONFIG } from "../../lib/config";
 import { db } from "../../lib/db";
 import { loadWorkload } from "../../lib/report";
@@ -80,11 +81,12 @@ async function expectedFor(workloadId: string): Promise<Record<string, string>> 
 async function savedFor(slug: string): Promise<SavedResult | null> {
   const sample = await getSample(slug);
   if (sample === null) return null;
-  const columns = sample.report.configs.flatMap((config, k) => {
+  const labels = configLabels(sample.report.configs);
+  const columns = sample.report.configs.flatMap((_, k) => {
     const t = sample.report.totals[k];
     return t === undefined || t.accuracy === null
       ? []
-      : [{ label: configLabel(config), accuracy: t.accuracy, correct: t.correct, calls: t.calls }];
+      : [{ label: labels[k]!, accuracy: t.accuracy, correct: t.correct, calls: t.calls }];
   });
   if (columns.length === 0) return null;
   return { reportId: sample.reportId, title: sample.title, cases: sample.report.cases.length, columns };
@@ -118,7 +120,8 @@ export default async function TryPage() {
   const samples = await Promise.all(SAMPLES.map(loadChoice));
 
   const all = samples.flatMap((x) => x.configs);
-  const labels = [...new Set(all.map(configLabel))];
+  const labels = [...new Set(configLabels(all))];
+  const note = modeNote(all);
   const models = [...new Set(all.map((c) => c.model))];
   const meta = [`${CONFIG.demoCasesMax} real cases`, labels.join(" and "), ...models].filter((m) => m !== "");
 
@@ -156,8 +159,10 @@ export default async function TryPage() {
           <div className={s.ledeRow}>
             <p className={`${s.lede} ${s.enter}`} style={{ animationDelay: "0.42s" }}>
               Pick a sample agent. Urai runs {CONFIG.demoCasesMax} of its real cases with{" "}
-              <strong>SERV off and SERV on</strong>, and you watch every answer come back as the model gives it.
+              <strong>{labels.join(" and ")}</strong>, and you watch every answer come back as the model gives it.
+              {note !== null && ` ${note}`}
             </p>
+            <PickJump style={{ animationDelay: "0.55s" }} />
           </div>
         </section>
 

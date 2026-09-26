@@ -9,7 +9,7 @@ export interface CaseLimits {
 }
 
 export interface CaseProblem {
-  /** "Row 4" for CSV, "Case 4" for JSON, or null when the problem is with the whole paste. */
+  /** The case by its id where it has one ("Case INV-04"), the header row for CSV, or null for the whole paste. */
   where: string | null;
   message: string;
 }
@@ -30,32 +30,45 @@ function isRecord(v: unknown): v is Record<string, unknown> {
 }
 
 function checkId(id: string, seen: Set<string>, limits: CaseLimits): string | null {
-  if (id === "") return "id is empty";
+  if (id === "") return "add an id, a short name such as INV-01";
   if (id.length > limits.caseIdMaxChars || !CASE_ID.test(id)) {
-    return `id "${id.slice(0, 40)}" must be 1 to ${limits.caseIdMaxChars} characters of A-Z, a-z, 0-9, _ or -`;
+    return `change the id "${id.slice(0, 40)}" to 1 to ${limits.caseIdMaxChars} characters of A-Z, a-z, 0-9, _ or - only`;
   }
-  if (seen.has(id)) return `id "${id}" is used by an earlier case`;
+  if (seen.has(id)) return "give it a new id: an earlier case already uses this one";
   return null;
+}
+
+/*
+ * Problems name the case by its id, which is what the team searches for in its own file. A case
+ * with no usable id falls back to where it sits, said the way a person counts.
+ */
+function caseName(id: string, position: string): string {
+  return id !== "" && CASE_ID.test(id) ? `Case ${id.slice(0, 40)}` : `Case with no usable id, ${position}`;
+}
+
+function expectedExample(scoring: ScoreRule[]): string {
+  const fields = scoring.length > 0 ? scoring.map((r) => r.field) : ["verdict"];
+  return `{ ${fields.map((f) => `"${f}": the right answer`).join(", ")} }`;
 }
 
 /** One CSV cell as the value its scoring rule expects, or a sentence saying what is wrong. */
 function cellValue(raw: string, rule: ScoreRule): { value: ExpectedValue } | { problem: string } {
   const cell = raw.trim();
-  if (cell === "") return { problem: `expected.${rule.field} is empty` };
+  if (cell === "") return { problem: `fill in expected.${rule.field} with the right answer for this case` };
   if (rule.rule === "number") {
-    if (!NUMERIC.test(cell)) return { problem: `expected.${rule.field} must be a number, got "${cell.slice(0, 30)}"` };
+    if (!NUMERIC.test(cell)) return { problem: `write expected.${rule.field} as a number, not "${cell.slice(0, 30)}"` };
     return { value: Number(cell.replace(/,/g, "")) };
   }
   if (rule.rule === "oneOf") {
     const options = cell.split("|").map((o) => o.trim()).filter((o) => o !== "");
-    return options.length === 0 ? { problem: `expected.${rule.field} needs at least one option` } : { value: options };
+    return options.length === 0 ? { problem: `add at least one answer to expected.${rule.field}, separated with |` } : { value: options };
   }
   return { value: cell };
 }
 
 function fromCsv(text: string, scoring: ScoreRule[], limits: CaseLimits): CasesParse {
   const { records, problems: csvProblems } = parseCsv(text);
-  const problems: CaseProblem[] = csvProblems.map((p) => ({ where: `Row ${p.row}`, message: p.message }));
+  const problems: CaseProblem[] = csvProblems.map((p) => ({ where: `Line ${p.row} of the CSV`, message: p.message }));
   const header = records[0];
   if (header === undefined) return { format: "csv", cases: [], problems };
 
@@ -63,7 +76,7 @@ function fromCsv(text: string, scoring: ScoreRule[], limits: CaseLimits): CasesP
   const idCol = names.indexOf("id");
   const inputCol = names.indexOf("input");
   if (idCol === -1 || inputCol === -1) {
-    problems.unshift({ where: `Row ${header.row}`, message: 'the header needs an "id" and an "input" column' });
+    problems.unshift({ where: "Header row", message: 'add an "id" column and an "input" column' });
   }
   if (scoring.length === 0) {
     problems.unshift({ where: null, message: "Add a scoring rule under Answer shape first, so the expected columns can be read." });
@@ -73,20 +86,20 @@ function fromCsv(text: string, scoring: ScoreRule[], limits: CaseLimits): CasesP
   names.forEach((name, col) => {
     if (col === idCol || col === inputCol) return;
     if (!name.startsWith(EXPECTED_PREFIX)) {
-      problems.push({ where: `Row ${header.row}`, message: `column "${name.slice(0, 40)}" is not id, input or expected.<field>` });
+      problems.push({ where: "Header row", message: `rename or remove the column "${name.slice(0, 40)}": the columns are id, input and expected.<field>` });
       return;
     }
     const field = name.slice(EXPECTED_PREFIX.length);
     const rule = scoring.find((r) => r.field === field);
     if (rule === undefined) {
-      problems.push({ where: `Row ${header.row}`, message: `column "${name.slice(0, 40)}" has no scoring rule; add one under Answer shape or remove the column` });
+      problems.push({ where: "Header row", message: `add a scoring rule for ${field.slice(0, 40)} under Answer shape, or remove the column "${name.slice(0, 40)}"` });
     } else {
       ruleCols.push({ col, rule });
     }
   });
   for (const r of scoring) {
     if (!names.includes(EXPECTED_PREFIX + r.field)) {
-      problems.push({ where: `Row ${header.row}`, message: `add a column "expected.${r.field}" for the scored field ${r.field}` });
+      problems.push({ where: "Header row", message: `add a column "expected.${r.field}" holding the right ${r.field} for each case` });
     }
   }
   if (idCol === -1 || inputCol === -1) return { format: "csv", cases: [], problems };
@@ -94,18 +107,21 @@ function fromCsv(text: string, scoring: ScoreRule[], limits: CaseLimits): CasesP
   const cases: WorkloadCase[] = [];
   const seen = new Set<string>();
   for (const rec of records.slice(1)) {
-    const where = `Row ${rec.row}`;
+    const id = (rec.cells[idCol] ?? "").trim();
+    const where = caseName(id, `line ${rec.row} of the CSV`);
     if (rec.cells.length !== names.length) {
-      problems.push({ where, message: `has ${rec.cells.length} cells, the header has ${names.length}` });
+      problems.push({
+        where,
+        message: `has ${rec.cells.length} cells where the header has ${names.length}: put the input in double quotes if it contains a comma`,
+      });
       continue;
     }
     const rowProblems: string[] = [];
-    const id = rec.cells[idCol]!.trim();
     const idProblem = checkId(id, seen, limits);
     if (idProblem !== null) rowProblems.push(idProblem);
     const input = rec.cells[inputCol]!;
-    if (input.trim() === "") rowProblems.push("input is empty");
-    if (input.length > limits.caseInputMaxChars) rowProblems.push(`input is ${input.length} characters, the limit is ${limits.caseInputMaxChars}`);
+    if (input.trim() === "") rowProblems.push("add the input text your agent receives");
+    if (input.length > limits.caseInputMaxChars) rowProblems.push(`shorten the input to ${limits.caseInputMaxChars} characters (it has ${input.length})`);
 
     const expected: Record<string, ExpectedValue> = {};
     for (const { col, rule } of ruleCols) {
@@ -151,33 +167,37 @@ function fromJson(text: string, scoring: ScoreRule[], limits: CaseLimits): Cases
   const seen = new Set<string>();
   const scored = new Set(scoring.map((r) => r.field));
   data.forEach((item: unknown, i) => {
-    const where = `Case ${i + 1}`;
+    const position = `number ${i + 1} in the list`;
     if (!isRecord(item)) {
-      problems.push({ where, message: "must be an object with id, input and expected" });
+      problems.push({
+        where: caseName("", position),
+        message: `write it as { "id": "INV-01", "input": "the text your agent receives", "expected": ${expectedExample(scoring)} }`,
+      });
       return;
     }
+    const id = typeof item.id === "string" ? item.id : "";
+    const where = caseName(id, position);
     const rowProblems: string[] = [];
     const extra = Object.keys(item).filter((k) => k !== "id" && k !== "input" && k !== "expected");
-    if (extra.length > 0) rowProblems.push(`only id, input and expected are allowed, found ${extra.slice(0, 3).join(", ")}`);
-    const id = typeof item.id === "string" ? item.id : "";
-    if (typeof item.id !== "string") rowProblems.push("id must be a string");
+    if (extra.length > 0) rowProblems.push(`remove ${extra.slice(0, 3).join(", ")}: a case has only id, input and expected`);
+    if (typeof item.id !== "string") rowProblems.push('add "id": a short name such as "INV-01"');
     else {
       const idProblem = checkId(id, seen, limits);
       if (idProblem !== null) rowProblems.push(idProblem);
     }
-    if (typeof item.input !== "string") rowProblems.push("input must be a string");
-    else if (item.input.length > limits.caseInputMaxChars) rowProblems.push(`input is ${item.input.length} characters, the limit is ${limits.caseInputMaxChars}`);
+    if (typeof item.input !== "string") rowProblems.push('add "input": the text your agent receives, in quotes');
+    else if (item.input.length > limits.caseInputMaxChars) rowProblems.push(`shorten the input to ${limits.caseInputMaxChars} characters (it has ${item.input.length})`);
 
     const expected: Record<string, ExpectedValue> = {};
-    if (!isRecord(item.expected)) rowProblems.push("expected must be an object of field: value");
+    if (!isRecord(item.expected)) rowProblems.push(`add "expected": ${expectedExample(scoring)}`);
     else {
       for (const [field, v] of Object.entries(item.expected)) {
-        if (!scored.has(field)) rowProblems.push(`expected.${field} has no scoring rule`);
-        else if (!EXPECTED_TYPES(v)) rowProblems.push(`expected.${field} must be a string, number, true, false, null or a list of strings`);
+        if (!scored.has(field)) rowProblems.push(`remove expected.${field}, or add a scoring rule for ${field} under Answer shape`);
+        else if (!EXPECTED_TYPES(v)) rowProblems.push(`set expected.${field} to text, a number, true, false, null or a list of texts`);
         else expected[field] = v;
       }
       for (const field of scored) {
-        if (!Object.hasOwn(item.expected, field)) rowProblems.push(`expected.${field} is missing`);
+        if (!Object.hasOwn(item.expected, field)) rowProblems.push(`add "${field}" to expected, with the right answer for this case`);
       }
     }
     if (rowProblems.length > 0) {

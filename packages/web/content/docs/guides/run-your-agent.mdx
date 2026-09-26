@@ -24,11 +24,21 @@ You can still start a run with an error in place, for example to measure what a 
 
 ### Pick the settings and paste the key
 
-6. "Settings to compare". Pick the Model from SERV's live list, which shows its price per million tokens. Then tick the settings: SERV off, SERV plain, SERV with PromptGuard, SERV Multipath, SERV full. Every case runs once under each one you tick. SERV off and SERV plain side by side is the fair first test. What each one sends is on [SERV settings](/docs/concepts/serv-modes).
+6. "Settings to compare". Pick the Model from SERV's live list, which shows its price per million tokens. Then tick the settings: SERV off, SERV plain, SERV with PromptGuard, SERV Multipath, SERV full. Every case runs once under each one you tick. SERV off and SERV plain side by side is the fair first test. What each one sends is on [SERV settings](/docs/concepts/serv-modes). Under the settings, "Compare with another model" is optional: it adds one more setting on a second model. See [Compare two models](#compare-two-models) below.
 7. "Your SERV key". Paste it into "SERV API key". It stays in the page's memory only.
-8. "Run it". The page shows cases times settings as a number of calls, a rough cost estimate from SERV's listed prices, and the size of your test set against the 300 KB limit. Anything still missing is listed. When the list is empty, press "Start the run".
+8. "Run it". The page shows cases times settings as a number of calls, a rough cost estimate from SERV's listed prices, each setting priced at its own model, and the size of your test set against the 300 KB limit. Multipath and full settings are left out of the estimate, with a line saying they cost more than their tokens show. When any setting has SERV on, the estimate adds up to about 0.60 USD once, for the reasoning graph SERV builds when it has not seen your system prompt in the last 30 days. Next to Start, the page says what is kept: Urai keeps the test set and its results for 30 days, and OpenServ may keep what is sent to SERV, depending on your account's data collection setting. Anything still missing is listed. When the list is empty, press "Start the run".
 
-The button reads "Saving your test set", then "Starting the run", then "Opening the run", and the page moves to `/run/<id>`. If saving or starting fails, the message says what happened, and nothing was spent.
+The button reads "Saving your test set", then "Starting the run", then "Opening the run", and the page moves to `/run/<id>`. If saving or starting fails, the message says what happened, and nothing was spent. One such code is `storage_full`, which has two causes. Urai caps how much all teams' test sets can take up together, and when that is full a new one is refused until older ones expire. Separately, once Urai's whole database passes 400 MB, new test sets, runs and calls are refused until the daily clean-up has deleted old rows and the operator has run `npm run vacuum`.
+
+### Compare two models
+
+OpenServ's own [Day One guide](https://docs.openserv.ai/serv-reasoning/day-one) says to start with the smallest, least expensive model that fits the task, and to benchmark SERV against the setup your team already runs, on the same inputs. One run can test exactly that: your current model with SERV off against a smaller model with SERV on.
+
+1. Under "Settings to compare", pick the smaller model and tick SERV plain. Untick SERV off if you only want the one SERV setting on it.
+2. Under "Compare with another model", pick your current model as the Second model and leave Its setting on SERV off. Any setting is allowed there.
+3. The run now has one more setting, on the second model. The estimate prices each setting at its own model, and still adds the one-off reasoning graph build when any setting has SERV on.
+
+Two limits apply, and the page explains either one before Start. The second setting is refused only when it would repeat one already in the run: the same model with the same setting. A different model with the same setting is fine, and so is the same model with a different one. A run takes at most 6 settings in all. Every label in the run and the report then leads with its model, such as "gpt-6-luna, SERV on", so the two changes are never mixed up. Cost per correct answer in the report shows which setting got its right answers cheapest. See [Read a report](/docs/guides/read-a-report).
 
 ## Part 2: the live run page
 
@@ -42,7 +52,9 @@ The run page starts sending cases three at a time. Rows fill from the top. A cel
 - Press "Resume the run" to carry on from where it stopped. A finished call is never run twice.
 - While paused, "Forget my key" clears the key from the page. The page asks for it again when you resume.
 
-If you reload, the run is still yours in this tab, but the key is gone from memory. The page shows "Paste your key to continue." Paste it and press "Continue the run". If you close the tab, the run stops where it is. To come back to it later, or from another browser, press "Copy private link" on the run page first and keep the link somewhere private. Opening it reopens the run and asks for your key again. The link never includes your key, but anyone who has it can see and share the results. See [How a run works](/docs/concepts/how-it-works).
+If you reload, the run is still yours in this tab, but the key is gone from memory. The page shows "Paste your key to continue." Paste it and press "Continue the run". A key is held for the one run you typed it for: another run opened in the same tab asks for its own.
+
+If you close the tab, the run stops where it is. To come back to it later, or from another browser, press "Copy private link" on the run page first and keep the link somewhere private. The link never includes your key, but anyone who has it can see and share the results. So opening it does not ask for a key straight away. It first shows "Is this your run?" with the run's name, its settings, how many calls are still to run and the start of its system prompt, and warns that a key pasted next pays for those calls. Only "This is my run" brings up the key field. See [How a run works](/docs/concepts/how-it-works).
 
 ### If SERV refuses the key
 
@@ -56,11 +68,17 @@ A refusal with any other code, such as 403, is not documented by SERV as unbille
 
 If the key does not even look like a SERV key, Urai refuses it before anything is sent: "That does not look like a SERV key."
 
-Each network gets a budget of 30 calls SERV refuses per hour, so Urai cannot be used to test stolen keys against SERV. Once it is spent, Urai stops calls from that network before they reach SERV, charges nothing, clears the key and says "Too many refused keys from your network." Wait up to an hour, then paste a working key (C33).
+Each network gets a budget of 30 refused keys per hour, so Urai cannot be used to test stolen keys against SERV. Every call counts against it before the key leaves, and the count goes back as soon as SERV accepts the key, so calls sent together cannot slip past it. When a call finds it spent, Urai stops that call before it reaches SERV and the run pauses. The page keeps your key and says "SERV refused keys sent from this network, or too many calls from it are in flight." Nothing was charged for refused calls. The budget counts per clock hour, so press "Resume the run" after the hour turns (C33). While this notice shows, the bar above the grid drops its usual "Resume whenever you like" line.
 
 ### If your credit runs out
 
 If SERV answers 402, your key is out of credit for the next call. SERV decides that before any model runs, so nothing is charged. The run pauses and the page says "Your SERV balance ran out." Nothing more is sent, and the call SERV turned down goes back to "Waiting" with the rest, so nothing is lost. Top up your balance on your SERV account, then press "Resume the run" to send everything still waiting.
+
+### If SERV is not answering
+
+A call that never reached SERV, because the connection failed, or that SERV turned away with 429 because it was busy, costs nothing. Urai does not store it, and the cell goes back to "Waiting". The call moves to the back of the queue and is sent again later.
+
+If three calls in a row either never reach SERV or come back with no answer, the run pauses instead of filling up with failures. The page says "SERV is not answering right now." Press "Resume the run" in a few minutes.
 
 ### If some calls do not come back
 

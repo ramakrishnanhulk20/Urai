@@ -57,6 +57,8 @@ Urai compiles your schema with a closed list of keywords, so no one can slip a s
 
 Anything else is refused, including `pattern`, `patternProperties`, `format` and `$ref`. `enum` and `const` must hold plain values. The same compiled schema checks the workload when you save it and every answer when it is scored.
 
+Urai stores your workload as the text you sent, so SERV receives the answer schema with its fields in the order you wrote them. Field order can change what a model writes first, so what you test is the agent as you wrote it.
+
 > Note: Urai asks SERV for a strict JSON Schema answer. OpenAI models reject a strict schema unless every object sets `additionalProperties` to `false` and lists every property in `required`. The setup check warns you when your schema falls short of that.
 
 ## Limits
@@ -76,7 +78,11 @@ Anything else is refused, including `pattern`, `patternProperties`, `format` and
 | Answer schema | 20,000 bytes, nested at most 6 levels deep |
 | Whole request body | 300 KB |
 
-The body cap is tighter than the field caps added together, on purpose. Our 40-case invoice samples come to 68 KB to 111 KB.
+The body cap is tighter than the field caps added together, on purpose. Our 40-case invoice samples come to 64 KB to 107 KB, the size the builder on [/new](/new) shows when you load one.
+
+All teams' stored test sets also share one storage cap of 150 MB. When it is full, saving answers `503 storage_full` and nothing is kept. That stop clears on its own as older test sets expire. A test set that gets a run is kept for 30 days. One you save and never run is deleted by the daily clean-up once it is 48 hours old.
+
+The same code has a second cause. Once Urai's whole database passes 400 MB, new test sets, runs and case calls are all refused with `503 storage_full`, and nothing is saved or charged. That stop does not clear by waiting alone: the daily clean-up has to delete old rows, and then the operator runs `npm run vacuum` to hand the freed space back.
 
 ## Why shared data goes in context
 

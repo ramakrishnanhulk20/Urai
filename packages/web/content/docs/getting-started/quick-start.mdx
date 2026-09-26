@@ -21,6 +21,10 @@ The demo runs one of our sample agents, a payables agent that decides whether to
 
 If the day's demo budget runs out mid-run, the page says "The demo budget is used up for now.", keeps the answers that already came back, and points you to the saved full reports instead.
 
+Each network also gets 72 demo calls an hour, three demo runs' worth, so one visitor cannot use up the day. Past that, the run stops where it is, keeps its answers, and points you to the saved reports.
+
+SERV keeps a system prompt's reasoning graph for 30 days, and our sample prompts were built at SERV on 23 Sep. From 23 Oct 2026 the demo stops sending calls with SERV on until we build them again, so the demo never pays for a graph build. While it is stopped, the page shows the same notice as a spent budget.
+
 > Note: the demo only runs our samples, with the settings we allow for them. Your own text never travels on our key. That rule is C4 in the [threat model](/docs/security/threat-model).
 
 ## 2. Run your own agent
@@ -35,6 +39,6 @@ You need three things: your agent's system prompt, the JSON Schema of its answer
 6. "Setup check": it runs by itself a couple of seconds after you stop typing, or press "Check setup". If it offers "Fix layout", press it. You can press "Undo the fix".
 7. "Settings to compare": pick the Model, then tick the settings. SERV off and SERV plain side by side is the fair first test.
 8. "Your SERV key": paste it into "SERV API key".
-9. "Run it": check the calls count and the estimate, then press "Start the run".
+9. "Run it": check the calls count and the estimate. With SERV on, the estimate adds up to about 0.60 USD once, for SERV's reasoning graph build on a prompt it has not seen. Read the line beside Start on what Urai keeps, then press "Start the run".
 
 Urai saves your test set, opens the run at `/run/<id>`, and starts sending cases. The full walk-through, including pause, resume and what happens if SERV refuses your key, is on [Run your agent](/docs/guides/run-your-agent).

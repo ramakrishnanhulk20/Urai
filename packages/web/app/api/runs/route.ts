@@ -2,10 +2,11 @@ import type { RunConfig } from "@urai/engine";
 import { z } from "zod";
 import { CONFIG, OWNER_HEADER } from "../../../lib/config";
 import { db, toJsonb } from "../../../lib/db";
-import { HttpError, handle, json, readJson } from "../../../lib/http";
+import { HttpError, handle, json, readJson, requireJsonRequest } from "../../../lib/http";
 import { hashToken, isWorkloadId, newId, newOwnerToken, tokenMatches } from "../../../lib/ids";
 import { ipHash } from "../../../lib/ip";
 import { enforceRateLimit } from "../../../lib/rate";
+import { assertStorageRoom } from "../../../lib/storage";
 import { canonicalConfigs, configKey, runConfigSchema } from "../../../lib/run-config";
 
 const bodySchema = z.strictObject({
@@ -44,7 +45,9 @@ function checkDemo(isSample: boolean, sampleConfigs: unknown, requested: RunConf
  */
 export async function POST(req: Request): Promise<Response> {
   return handle("POST /api/runs", async () => {
+    requireJsonRequest(req);
     await enforceRateLimit("runs", ipHash(req));
+    await assertStorageRoom();
     const body = await readJson(req, bodySchema);
 
     const configs = canonicalConfigs(body.configs);
@@ -54,7 +57,7 @@ export async function POST(req: Request): Promise<Response> {
 
     const sql = db();
     const rows = await sql`
-      SELECT owner_hash, is_sample, sample_configs, jsonb_path_query_array(data, '$.cases[*].id') AS case_ids
+      SELECT owner_hash, is_sample, sample_configs, jsonb_path_query_array(data::jsonb, '$.cases[*].id') AS case_ids
       FROM workloads
       WHERE id = ${body.workloadId} AND expires_at > now()`;
     const workload = rows[0];

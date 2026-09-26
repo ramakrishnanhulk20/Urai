@@ -1,52 +1,8 @@
 [
   {
     "slug": "fix-before",
-    "title": "Before the fix: supplier book inside the system prompt, SERV plain",
-    "reportId": "Hb-KceFRYlnwlohJbOD4OQ",
-    "headline": {
-      "configs": [
-        "gpt-6-luna plain"
-      ],
-      "accuracy": [
-        0.675
-      ]
-    },
-    "balanceDeltaUsd": 0.03
-  },
-  {
-    "slug": "fix-after",
-    "title": "After the one-click fix: supplier book moved to the user message, SERV plain",
-    "reportId": "lQF1cJ-lebtC4wNIyXItpw",
-    "headline": {
-      "configs": [
-        "gpt-6-luna plain"
-      ],
-      "accuracy": [
-        0.975
-      ]
-    },
-    "balanceDeltaUsd": 0.03
-  },
-  {
-    "slug": "parity",
-    "title": "Good layout: SERV off against SERV plain",
-    "reportId": "EcaTkn78IZ3bLHi0BJcXAg",
-    "headline": {
-      "configs": [
-        "gpt-6-luna raw",
-        "gpt-6-luna plain"
-      ],
-      "accuracy": [
-        1,
-        0.95
-      ]
-    },
-    "balanceDeltaUsd": 0.05
-  },
-  {
-    "slug": "hard",
-    "title": "Hard set, 152 clauses in four sources: SERV off against SERV plain",
-    "reportId": "VowHwvFGztQ-aGvCF_9PZw",
+    "title": "Before the fix: supplier book inside the system prompt",
+    "reportId": "2SC_jtj9dqui6VGFIrQQ0A",
     "headline": {
       "configs": [
         "gpt-6-luna raw",
@@ -54,9 +10,57 @@
       ],
       "accuracy": [
         0.975,
-        0.475
+        0.675
       ]
     },
-    "balanceDeltaUsd": 0.1
+    "balanceDeltaUsd": null
+  },
+  {
+    "slug": "fix-after",
+    "title": "After the one-click fix: supplier book moved to the user message",
+    "reportId": "uVNL7475vDXOlUTxxCOVNA",
+    "headline": {
+      "configs": [
+        "gpt-6-luna raw",
+        "gpt-6-luna plain"
+      ],
+      "accuracy": [
+        1,
+        0.975
+      ]
+    },
+    "balanceDeltaUsd": null
+  },
+  {
+    "slug": "parity",
+    "title": "Good layout: SERV off against SERV on",
+    "reportId": "l9eNk-PBGlRDmUnNIxzsxQ",
+    "headline": {
+      "configs": [
+        "gpt-6-luna raw",
+        "gpt-6-luna plain"
+      ],
+      "accuracy": [
+        0.975,
+        0.925
+      ]
+    },
+    "balanceDeltaUsd": null
+  },
+  {
+    "slug": "hard",
+    "title": "Hard set, 152 clauses in four sources: SERV off against SERV on",
+    "reportId": "zTS-p-PZ_w8nRzVCCgHk1g",
+    "headline": {
+      "configs": [
+        "gpt-6-luna raw",
+        "gpt-6-luna plain"
+      ],
+      "accuracy": [
+        0.975,
+        0.45
+      ]
+    },
+    "balanceDeltaUsd": null
   }
 ]

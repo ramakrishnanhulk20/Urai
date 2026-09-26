@@ -17,7 +17,11 @@ import * as api from "./lib/client";
  * was removed.
  */
 
-const CAP_USD = 1.5;
+// 0.70 of this is the accounting reserve for the hard warm-up below, and STOP_MARGIN_USD is kept
+// free, so 0.55 bounds the four runs' spend from token counts. Token counts overstate SERV's real
+// charge (about two thirds of it on these samples), so that is about 0.37 USD real, inside the
+// 0.40 USD Ram approved for the 26 Sep re-run.
+const CAP_USD = 1.3;
 // New calls stop this far below the cap, leaving room for the calls already in flight.
 const STOP_MARGIN_USD = 0.05;
 // SERV builds a reasoning graph the first time plain mode meets a system prompt, about 0.60 USD.
@@ -83,10 +87,10 @@ async function main(): Promise<void> {
 
   const hard = loadWorkload("invoices-hard.json");
   const specs: Spec[] = [
-    { slug: "fix-before", title: "Before the fix: supplier book inside the system prompt, SERV plain", workload: bad, configs: [PLAIN] },
-    { slug: "fix-after", title: "After the one-click fix: supplier book moved to the user message, SERV plain", workload: { ...lint.fix.workload, name: "Invoice approvals after the one-click fix: supplier book moved to the user message" }, configs: [PLAIN] },
-    { slug: "parity", title: "Good layout: SERV off against SERV plain", workload: loadWorkload("invoices-good.json"), configs: [RAW, PLAIN] },
-    { slug: "hard", title: "Hard set, 152 clauses in four sources: SERV off against SERV plain", workload: hard, configs: [RAW, PLAIN] },
+    { slug: "fix-before", title: "Before the fix: supplier book inside the system prompt", workload: bad, configs: [RAW, PLAIN] },
+    { slug: "fix-after", title: "After the one-click fix: supplier book moved to the user message", workload: { ...lint.fix.workload, name: "Invoice approvals after the one-click fix: supplier book moved to the user message" }, configs: [RAW, PLAIN] },
+    { slug: "parity", title: "Good layout: SERV off against SERV on", workload: loadWorkload("invoices-good.json"), configs: [RAW, PLAIN] },
+    { slug: "hard", title: "Hard set, 152 clauses in four sources: SERV off against SERV on", workload: hard, configs: [RAW, PLAIN] },
   ];
 
   const workloads = new Map<string, api.WorkloadCreated>();
@@ -141,6 +145,13 @@ async function main(): Promise<void> {
     RETURNING id`;
   console.log(`operator action: SQL UPDATE workloads SET expires_at = '${EXTENDED_UNTIL}' on the ${ids.length} sample-report team workloads, ${extended.length} rows updated`);
   if (extended.length !== ids.length) throw new Error("not every sample-report workload was extended");
+
+  // The daily clean-up only runs while every report in lib/sample-reports.json is listed here (migration 007).
+  const reportIds = done.map((d) => d.run.reportId);
+  const kept = await db()`
+    INSERT INTO kept_reports (report_id) SELECT unnest(${reportIds}::text[])
+    ON CONFLICT (report_id) DO NOTHING RETURNING report_id`;
+  console.log(`operator action: SQL INSERT INTO kept_reports for ${reportIds.length} sample reports, ${kept.length} new`);
 
   const out = [];
   const rows: string[] = [];

@@ -63,7 +63,7 @@ export interface HowData {
 
 export interface SetupData {
   workloadName: string;
-  findings: { severity: "error" | "warning" | "info"; title: string; detail: string; evidence: string | null }[];
+  findings: { id: string; severity: "error" | "warning" | "info"; title: string; detail: string; evidence: string | null }[];
   moved: { heading: string; kind: string; chars: number }[];
   promptCharsBefore: number;
   promptCharsAfter: number;
@@ -122,10 +122,18 @@ function accuracyOf(totals: ConfigTotals | undefined, where: string): number {
   return totals.accuracy;
 }
 
+/*
+ * Every sample runs one SERV setting against SERV off at most, so the landing page calls that
+ * setting "SERV on" everywhere, including inside the stored sample titles that name the mode.
+ */
+function servOn(text: string): string {
+  return text.replace(/\bSERV plain\b/g, "SERV on");
+}
+
 // The sample titles read "Before the fix: what was different"; the part after the colon is the detail.
 function titleParts(title: string): { head: string; detail: string } {
   const at = title.indexOf(": ");
-  return at === -1 ? { head: title, detail: "" } : { head: title.slice(0, at), detail: title.slice(at + 2) };
+  return at === -1 ? { head: servOn(title), detail: "" } : { head: servOn(title.slice(0, at)), detail: servOn(title.slice(at + 2)) };
 }
 
 function totalTokens(totals: ConfigTotals): number | null {
@@ -147,8 +155,15 @@ function configLabel(config: RunConfig): string {
   return config.mode === "raw" ? "SERV off" : "SERV on";
 }
 
+// The before and after story is about SERV on: the fix changes nothing for the model alone, so the
+// SERV-on column is read by mode, never by position (the samples now run SERV off first).
+function servOnTotals(sample: Sample): ConfigTotals | undefined {
+  const idx = sample.report.configs.findIndex((c) => c.mode !== "raw");
+  return idx === -1 ? undefined : sample.report.totals[idx];
+}
+
 function assayRow(sample: Sample, label: string): AssayRowData {
-  const totals = sample.report.totals[0];
+  const totals = servOnTotals(sample);
   const accuracy = accuracyOf(totals, `sample ${sample.slug}`);
   return {
     label,
@@ -248,7 +263,7 @@ function howData(parity: Sample): HowData {
       disagreements: report.cases.flatMap((c, i) => (disagreeing.has(c.id) ? [i] : [])),
     },
     verdict: {
-      name: report.name,
+      name: servOn(report.name),
       configs,
       tokenChange: tokenChange(report),
       disagreements: report.disagreements.length,
@@ -266,22 +281,25 @@ function firstSentence(text: string): string {
 function setupData(before: Sample, after: Sample): SetupData {
   const bad = parsed(badWorkloadJson, "invoices-bad.json");
   const findings = lintWorkload(bad, { configs: before.report.configs }).map((f) => ({
+    id: f.id,
     severity: f.severity,
     title: f.title,
     detail: firstSentence(f.detail),
     evidence: f.evidence,
   }));
   const fix = applyLayoutFix(bad);
-  const beforeAcc = accuracyOf(before.report.totals[0], "sample fix-before");
-  const afterAcc = accuracyOf(after.report.totals[0], "sample fix-after");
+  const beforeOn = servOnTotals(before);
+  const afterOn = servOnTotals(after);
+  const beforeAcc = accuracyOf(beforeOn, "sample fix-before");
+  const afterAcc = accuracyOf(afterOn, "sample fix-after");
   return {
     workloadName: bad.name,
     findings,
     moved: fix.moved.map((m) => ({ heading: m.heading ?? "DATA", kind: m.kind, chars: m.chars })),
     promptCharsBefore: bad.systemPrompt.length,
     promptCharsAfter: fix.workload.systemPrompt.length,
-    before: { pct: percent(beforeAcc), href: `/r/${before.reportId}`, correct: before.report.totals[0]!.correct, calls: before.report.totals[0]!.calls },
-    after: { pct: percent(afterAcc), href: `/r/${after.reportId}`, correct: after.report.totals[0]!.correct, calls: after.report.totals[0]!.calls },
+    before: { pct: percent(beforeAcc), href: `/r/${before.reportId}`, correct: beforeOn!.correct, calls: beforeOn!.calls },
+    after: { pct: percent(afterAcc), href: `/r/${after.reportId}`, correct: afterOn!.correct, calls: afterOn!.calls },
   };
 }
 
@@ -360,8 +378,9 @@ export async function getLandingData(): Promise<LandingData> {
   const modes = new Set(samples.flatMap((sample) => sample.report.configs.map((config) => config.mode)));
   const bothWays = modes.has("raw") && [...modes].some((mode) => mode !== "raw");
 
-  const beforeRow = assayRow(before, "Before the fix");
-  const afterRow = assayRow(after, "After one click");
+  // Both rows are SERV on: the model alone scored high even before the fix, so the label must not read as a plain before and after.
+  const beforeRow = assayRow(before, "Before the fix, SERV on");
+  const afterRow = assayRow(after, "After one click, SERV on");
 
   return {
     hero: {

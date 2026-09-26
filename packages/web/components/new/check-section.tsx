@@ -2,6 +2,7 @@
 
 import type { LintFinding } from "@urai/engine";
 import { AnimatePresence, motion } from "motion/react";
+import { evidenceText } from "../report/format";
 import type { LayoutFix } from "./api";
 import s from "./new.module.css";
 import { EASE_OUT, Section } from "./parts";
@@ -16,6 +17,8 @@ export interface AppliedFix {
 }
 
 const SEVERITY = { error: s.sevError, warning: s.sevWarning, info: s.sevInfo } as const;
+// The findings about where data and rules sit, the mistake the one-click fix is for.
+const LAYOUT_FINDINGS = new Set(["data-in-system-prompt", "templated-system-prompt"]);
 const NUMBER = new Intl.NumberFormat("en-US");
 
 export interface CheckSectionProps {
@@ -53,6 +56,7 @@ export function CheckSection(props: CheckSectionProps) {
   const fix = result?.kind === "findings" && !stale ? result.fix : null;
   const errors = findings.filter((f) => f.severity === "error").length;
   const movedChars = fix?.moved.reduce((sum, m) => sum + m.chars, 0) ?? 0;
+  const layoutClean = result?.kind === "findings" && !stale && !busy && !findings.some((f) => LAYOUT_FINDINGS.has(f.id));
 
   return (
     <Section
@@ -122,7 +126,7 @@ export function CheckSection(props: CheckSectionProps) {
                     <span className={`${s.sev} ${SEVERITY[f.severity]}`}>{f.severity}</span>
                     <p className={s.findingTitle}>{f.title}</p>
                     <p className={s.findingDetail}>{f.detail}</p>
-                    {f.evidence !== null && <p className={s.findingEvidence}>{f.evidence}</p>}
+                    {f.evidence !== null && <p className={s.findingEvidence}>{evidenceText(f)}</p>}
                   </motion.li>
                 ))}
               </AnimatePresence>
@@ -142,6 +146,11 @@ export function CheckSection(props: CheckSectionProps) {
             <p className={s.status} data-tone={status.bad ? "bad" : undefined} role="status">
               {busy && <span className={s.pulse} aria-hidden="true" />}
               {status.text}
+            </p>
+          )}
+          {layoutClean && (
+            <p className={s.feedback} data-tone="ok">
+              No layout problem: no data block and no per-case template in the system prompt.
             </p>
           )}
 

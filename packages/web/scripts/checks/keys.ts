@@ -32,7 +32,7 @@ async function settle(call: () => Promise<Reply>): Promise<Reply> {
 /**
  * C1, C3, C4, C7 and C33: a made-up key of the right shape never leaves memory, the payer is fixed
  * at run creation, the balance route is gone, and an address that has used its key refusal budget
- * is refused before SERV.
+ * or its serv_unavailable budget is refused before SERV.
  */
 export async function keys(ctx: Ctx): Promise<void> {
   const { rec, sql } = ctx;
@@ -50,11 +50,16 @@ export async function keys(ctx: Ctx): Promise<void> {
   const outcomes: string[] = [];
   let handled = true;
   let refused = 0;
+  // A call SERV could not be reached for hands its refusal charge back and counts as serv_unavailable instead (C33).
+  let unreachable = 0;
   for (const caseId of driven.cases) {
     const r = await settle(() => api.caseCall(driven.runId, caseId, "0", ownerHeaders(driven.ownerToken, canary)));
     outcomes.push(`${caseId}: ${brief(r)}`);
     if (r.status === 401 && r.code === "serv_rejected_key") refused++;
-    else handled = false;
+    else {
+      handled = false;
+      if (r.status === 503 && r.code === "serv_unavailable") unreachable++;
+    }
   }
   rec.add(
     "C1",
@@ -140,24 +145,42 @@ export async function keys(ctx: Ctx): Promise<void> {
     gone.status === 404,
   );
 
+  // Spent before the refusal budget below, so this call reaches the serv_unavailable check and no further.
+  const unavailableBucket = bucketsFor(api.ip).find((b) => b.startsWith("serv_unavailable:"))!;
+  await sql`
+    INSERT INTO rate_limits (bucket, window_start, count)
+    VALUES (${unavailableBucket}, to_timestamp(floor(extract(epoch FROM now()) / ${CONFIG.rateWindowSeconds}) * ${CONFIG.rateWindowSeconds}), ${CONFIG.servUnavailablePerIpPerWindow})
+    ON CONFLICT (bucket, window_start) DO UPDATE SET count = ${CONFIG.servUnavailablePerIpPerWindow}`;
+  const offline = await api.caseCall(idle.runId, idle.cases[0]!, "0", ownerHeaders(idle.ownerToken, canary));
+  const offlineClaims = await claimCount(sql, [idle.runId]);
+  await sql`DELETE FROM rate_limits WHERE bucket = ${unavailableBucket}`;
+  rec.add(
+    "C33",
+    "team call from an address that has used its serv_unavailable budget",
+    `set this address's serv_unavailable count to ${CONFIG.servUnavailablePerIpPerWindow}, then POST case on a team run with x-serv-key ${SHOWN_KEY}`,
+    `${brief(offline)}; case_results rows ${offlineClaims}`,
+    offline.status === 503 && offline.code === "serv_unavailable" && offlineClaims === 0,
+  );
+
   // The last case call of this group, because it spends this address's refusal budget for the hour.
   const refusalBucket = bucketsFor(api.ip).find((b) => b.startsWith("key_refusals:"))!;
   const bucketCount = async () => Number((await sql`SELECT coalesce(sum(count), 0)::int AS n FROM rate_limits WHERE bucket = ${refusalBucket}`)[0]?.n);
   const refusalsBefore = await bucketCount();
   await sql`
     INSERT INTO rate_limits (bucket, window_start, count)
-    VALUES (${refusalBucket},
-            to_timestamp(floor(extract(epoch FROM now()) / ${CONFIG.rateWindowSeconds}) * ${CONFIG.rateWindowSeconds}),
-            ${CONFIG.keyRefusalsPerIpPerWindow})
+    VALUES (${refusalBucket}, to_timestamp(floor(extract(epoch FROM now()) / ${CONFIG.rateWindowSeconds}) * ${CONFIG.rateWindowSeconds}), ${CONFIG.keyRefusalsPerIpPerWindow})
     ON CONFLICT (bucket, window_start) DO UPDATE SET count = ${CONFIG.keyRefusalsPerIpPerWindow}`;
   const blocked = await api.caseCall(idle.runId, idle.cases[0]!, "0", ownerHeaders(idle.ownerToken, canary));
   const blockedClaims = await claimCount(sql, [idle.runId]);
   const refusalsAfter = await bucketCount();
+  // Every team call is charged before the key leaves and kept only when SERV answers with a 4xx
+  // other than 429, so the count must equal the 401s and nothing else: a call SERV could not be
+  // reached for is refunded, and the refused call below adds nothing.
   rec.add(
     "C33",
     "team call from an address that has used its key refusal budget",
     `read this address's key_refusals count, set it to ${CONFIG.keyRefusalsPerIpPerWindow}, then POST case on a team run with x-serv-key ${SHOWN_KEY}`,
-    `refusals counted before ${refusalsBefore} (401s seen ${refused}); ${brief(blocked)}; case_results rows ${blockedClaims}; count after ${refusalsAfter}`,
+    `refusals counted before ${refusalsBefore} (401s seen ${refused}, unreachable ${unreachable}); ${brief(blocked)}; case_results rows ${blockedClaims}; count after ${refusalsAfter}`,
     refusalsBefore === refused &&
       blocked.status === 429 &&
       blocked.code === "rate_limited" &&

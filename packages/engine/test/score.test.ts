@@ -56,6 +56,46 @@ describe("scoreAnswer", () => {
     expect(matches({ field: "n", rule: "number", tolerance: 0.3 }, 1200, 1200.4)).toBe(false);
   });
 
+  it("matches 19.99 against 20.00 at tolerance 0.01, which a plain float comparison misses", () => {
+    expect(Math.abs(20 - 19.99)).toBeGreaterThan(0.01);
+    expect(matches({ field: "n", rule: "number", tolerance: 0.01 }, 19.99, 20)).toBe(true);
+    expect(matches({ field: "n", rule: "number", tolerance: 0.01 }, "20.00", "19.99")).toBe(true);
+    expect(matches({ field: "n", rule: "number", tolerance: 0.01 }, 19.98, 20)).toBe(false);
+  });
+
+  it("never calls a unit off right at tolerance 0, however large the value", () => {
+    expect(matches({ field: "n", rule: "number" }, 1234567890, 1234567891)).toBe(false);
+    expect(matches({ field: "n", rule: "number" }, "12,345,678.90", "12,345,678.91")).toBe(false);
+    expect(matches({ field: "n", rule: "number" }, 1234567890, "1,234,567,890")).toBe(true);
+  });
+
+  it("does not stretch a tolerance with the size of the value", () => {
+    expect(matches({ field: "n", rule: "number", tolerance: 0.01 }, 50_000_000, 50_000_000.05)).toBe(false);
+    expect(matches({ field: "n", rule: "number", tolerance: 0.01 }, "50,000,000", "50,000,000.05")).toBe(false);
+    expect(matches({ field: "n", rule: "number", tolerance: 0.01 }, 50_000_000, 50_000_000.01)).toBe(true);
+  });
+
+  it("matches one million random pairs up to 1e9 exactly one tolerance apart, and none one tolerance plus a relative 1e-9 apart", () => {
+    const tolerances = [0.001, 0.01, 0.05, 0.5, 1, 2.5];
+    const rules = tolerances.map((tolerance): ScoreRule => ({ field: "n", rule: "number", tolerance }));
+    const w = setup(rules[0]!, 0).w;
+    const scoreOne = (rule: ScoreRule, e: number, g: number) =>
+      scoreAnswer({ ...w, scoring: [rule] }, { id: "c1", input: "x", expected: { n: e } }, { n: g }).correct;
+    let edgeMisses = 0;
+    let overMatches = 0;
+    for (let i = 0; i < 1_000_000; i++) {
+      const rule = rules[i % rules.length]!;
+      const tolerance = rule.tolerance!;
+      // Spread evenly over every order of magnitude from 1 to 1e9, in cents, either sign.
+      const e = (Math.random() < 0.5 ? -1 : 1) * (Math.round(10 ** (Math.random() * 9) * 100) / 100);
+      const sign = Math.random() < 0.5 ? -1 : 1;
+      if (!scoreOne(rule, e, e + sign * tolerance)) edgeMisses++;
+      if (scoreOne(rule, e, e + sign * (tolerance + 1e-9 * Math.max(Math.abs(e), tolerance)))) overMatches++;
+    }
+    expect(edgeMisses).toBe(0);
+    expect(overMatches).toBe(0);
+  }, 120_000);
+
   it("never matches null, objects or NaN, on either side", () => {
     expect(matches({ field: "v", rule: "exact" }, null, null)).toBe(false);
     expect(matches({ field: "v", rule: "exact" }, "null", null)).toBe(false);

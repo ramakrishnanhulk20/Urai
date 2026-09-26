@@ -2,6 +2,7 @@
 
 import { use, useId, useSyncExternalStore, type CSSProperties } from "react";
 import s from "./docs.module.css";
+import { ScrollRegion } from "./scroll-region";
 
 export function Mermaid({ chart }: { chart: string }) {
   // Mermaid needs the DOM, so render nothing on the server and during hydration.
@@ -13,6 +14,25 @@ export function Mermaid({ chart }: { chart: string }) {
 
   if (!isClient) return null;
   return <MermaidContent chart={chart} />;
+}
+
+/*
+ * A name for the diagram a screen reader can announce, read from the chart's own source because
+ * the docs never write a title for it: the participants of a sequence diagram, the groups of a
+ * flowchart.
+ */
+export function diagramLabel(chart: string): string {
+  const lines = chart.split("\n").map((l) => l.trim());
+  const unquote = (v: string): string => v.replace(/^"|"$/g, "").replaceAll("<br/>", " ");
+  if (lines.some((l) => l.startsWith("sequenceDiagram"))) {
+    const names = lines.map((l) => /^participant\s+\S+\s+as\s+(.+)$/.exec(l)?.[1]).filter((v): v is string => v !== undefined);
+    return names.length > 0 ? `Sequence diagram between ${names.join(", ")}` : "Sequence diagram";
+  }
+  const groups = lines
+    .map((l) => /^subgraph\s+(\S+?)(?:\[(.+)\])?$/.exec(l))
+    .filter((m): m is RegExpExecArray => m !== null)
+    .map((m) => unquote(m[2] ?? m[1]!));
+  return groups.length > 0 ? `Diagram with groups: ${groups.join("; ")}` : "Diagram";
 }
 
 const cache = new Map<string, Promise<unknown>>();
@@ -67,13 +87,13 @@ function MermaidContent({ chart }: { chart: string }) {
     : undefined;
 
   return (
-    <figure className={s.diagram} style={style}>
+    <ScrollRegion as="figure" label={diagramLabel(chart)} className={s.diagram} style={style}>
       <div
         ref={(container) => {
           if (container) bindFunctions?.(container);
         }}
         dangerouslySetInnerHTML={{ __html: svg }}
       />
-    </figure>
+    </ScrollRegion>
   );
 }

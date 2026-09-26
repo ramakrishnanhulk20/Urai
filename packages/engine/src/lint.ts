@@ -123,6 +123,13 @@ function isPlainObject(v: unknown): v is Record<string, unknown> {
 
 export { normaliseModelId };
 
+// Every number a reader sees in a finding carries thousands separators, so 21,337 reads the same as the numbers beside it.
+const NUMBER = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
+
+function count(n: number): string {
+  return NUMBER.format(n);
+}
+
 function cap(text: string): string {
   return text.length > LIMITS.lintEvidenceMaxChars ? `${text.slice(0, LIMITS.lintEvidenceMaxChars - 3)}...` : text;
 }
@@ -338,7 +345,7 @@ function headingAbove(lines: PromptLine[], claimed: boolean[], first: number): s
 export function scanDataBlocks(systemPrompt: string): { lines: PromptLine[]; blocks: ScannedBlock[] } {
   if (typeof systemPrompt !== "string") throw new LintInputError("The system prompt is not text.");
   if (systemPrompt.length > LIMITS.systemPromptMaxChars) {
-    throw new LintInputError(`The system prompt is over the ${LIMITS.systemPromptMaxChars} character limit.`);
+    throw new LintInputError(`The system prompt is over the ${count(LIMITS.systemPromptMaxChars)} character limit.`);
   }
   const lines = splitLines(systemPrompt);
   const claimed = new Array<boolean>(lines.length).fill(false);
@@ -405,7 +412,7 @@ function nameParts(name: string): string[] {
 }
 
 function walkSchema(node: unknown, path: string, depth: number, visit: (node: Record<string, unknown>, path: string) => void): void {
-  if (depth > LIMITS.schemaMaxDepth) throw new LintInputError(`The answer schema is nested deeper than ${LIMITS.schemaMaxDepth} levels.`);
+  if (depth > LIMITS.schemaMaxDepth) throw new LintInputError(`The answer schema is nested deeper than ${count(LIMITS.schemaMaxDepth)} levels.`);
   if (!isPlainObject(node)) return;
   visit(node, path);
   if (isPlainObject(node.properties)) {
@@ -447,7 +454,7 @@ function runChecks(w: Workload, opts: { models?: ModelList; configs?: RunConfig[
   const sp = w.systemPrompt;
   const configs = opts.configs ?? [];
   if (!Array.isArray(configs) || configs.length > LIMITS.configsPerRunMax) {
-    throw new LintInputError(`A run takes at most ${LIMITS.configsPerRunMax} configurations.`);
+    throw new LintInputError(`A run takes at most ${count(LIMITS.configsPerRunMax)} configurations.`);
   }
   if (!isPlainObject(w.answerSchema) || JSON.stringify(w.answerSchema).length > LIMITS.schemaMaxBytes) {
     throw new LintInputError("The answer schema is missing or over the size limit.");
@@ -460,7 +467,7 @@ function runChecks(w: Workload, opts: { models?: ModelList; configs?: RunConfig[
       severity: "error",
       title: "Data sits inside the system prompt",
       detail: DETAIL.data,
-      evidence: cap(blocks.map((b) => `${b.heading ?? "unlabelled"} (${b.kind}, ${b.end - b.start} characters)`).join("; ")),
+      evidence: cap(blocks.map((b) => `${b.heading ?? "unlabelled"} (${b.kind}, ${count(b.end - b.start)} characters)`).join("; ")),
       fixable: true,
       spans: blocks.slice(0, LIMITS.lintSpansMax).map((b) => ({ start: b.start, end: b.end })),
     });
@@ -580,7 +587,7 @@ function runChecks(w: Workload, opts: { models?: ModelList; configs?: RunConfig[
       severity: "info",
       title: "The system prompt is long",
       detail: DETAIL.large,
-      evidence: `${sp.length} characters, over ${LARGE_PROMPT_CHARS}`,
+      evidence: `${count(sp.length)} characters, over ${count(LARGE_PROMPT_CHARS)}`,
       fixable: false,
       spans: [],
     });

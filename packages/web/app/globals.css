@@ -11,7 +11,8 @@
   --stone: #0b0b0c;
   --text: #efe9df;
   --dim: rgb(239 233 223 / 0.66);
-  --faint: rgb(239 233 223 / 0.42);
+  /* 0.5 is the lowest step of this colour that reads at 4.5:1 on the stone (4.61:1, #7d7a76). */
+  --faint: rgb(239 233 223 / 0.5);
   --gold: #e2b04a;
   --gold-hi: #f4d58c;
   --gold-lo: #9c7226;
@@ -99,6 +100,14 @@ body {
   --color-fd-accent-foreground: var(--text);
   --color-fd-ring: var(--gold);
   --color-fd-overlay: rgb(0 0 0 / 0.6);
+}
+
+/*
+ * github-dark's comment grey, #6a737d, is under 4:1 on the docs code background. #8b949e is
+ * GitHub's own later comment grey, 6.1:1 on #111113 and 4.8:1 on #24292e.
+ */
+.dark .shiki:not(.not-fumadocs-codeblock *) code span[style*="--shiki-dark:#6A737D"] {
+  color: #8b949e;
 }
 
 /* Stops the page jumping sideways when the search dialog locks scrolling (from examples/next/app/global.css). */

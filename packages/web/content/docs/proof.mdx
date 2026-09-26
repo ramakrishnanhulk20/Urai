@@ -3,34 +3,36 @@ title: Live proof
 description: Every number Urai shows about itself, with the report, record or command that backs it.
 ---
 
-Every claim on the landing page traces to one of three things on this page: a public sample report you can open, the latest security check record, or a command you can run yourself.
+Every claim on the landing page traces to one of four sources: a public sample report you can open, the latest security check record, a command you can run yourself, or the benchmark summary at [`packages/bench/FINDINGS.md`](https://github.com/ramakrishnanhulk20/Urai/blob/main/packages/bench/FINDINGS.md) in the repository, which backs the SERV figures the setup check quotes.
 
 ## The four sample reports
 
-All four ran on `gpt-6-luna`, 40 cases each, as normal team runs. SERV on means SERV Reasoning in plain mode. Each column counts correct answers out of calls made.
+All four ran on `gpt-6-luna` on 26 Sep 2026, 40 cases each, as normal team runs, SERV off against SERV on. Each agent went to SERV exactly as written, with its answer schema's fields in the order the file lists them. SERV on means plain mode: SERV's reasoning on, with its output filter off (Urai always switches it off so answers that quote the rules are not cut), nothing else added. Each accuracy column counts correct answers out of calls made.
 
-| Report | What it compares | SERV off | SERV on | Balance drop | Open it |
-|---|---|---|---|---|---|
-| Before the fix | Supplier book inside the system prompt, SERV plain | not run | 27 of 40, 67.5% | $0.03 | [/r/Hb-KceFRYlnwlohJbOD4OQ](/r/Hb-KceFRYlnwlohJbOD4OQ) |
-| After the one-click fix | Supplier book moved to the user message, SERV plain | not run | 39 of 40, 97.5% | $0.03 | [/r/lQF1cJ-lebtC4wNIyXItpw](/r/lQF1cJ-lebtC4wNIyXItpw) |
-| Good layout | SERV off against SERV plain | 40 of 40, 100% | 38 of 40, 95% | $0.05 | [/r/EcaTkn78IZ3bLHi0BJcXAg](/r/EcaTkn78IZ3bLHi0BJcXAg) |
-| Hard set | 152 clauses in four sources, SERV off against SERV plain | 39 of 40, 97.5% | 19 of 40, 47.5% | $0.10 | [/r/VowHwvFGztQ-aGvCF_9PZw](/r/VowHwvFGztQ-aGvCF_9PZw) |
+| Report | SERV off | SERV on | Tokens with SERV on | Cases where they disagreed | Estimated cost | Open it |
+|---|---|---|---|---|---|---|
+| Before the fix: supplier book inside the system prompt | 39 of 40, 97.5% | 27 of 40, 67.5% | 66% fewer | 12 | 0.0733 USD | [/r/2SC_jtj9dqui6VGFIrQQ0A](/r/2SC_jtj9dqui6VGFIrQQ0A) |
+| After the one-click fix: supplier book in the user message | 40 of 40, 100% | 39 of 40, 97.5% | 31% fewer | 1 | 0.0835 USD | [/r/uVNL7475vDXOlUTxxCOVNA](/r/uVNL7475vDXOlUTxxCOVNA) |
+| Good layout: rules in the prompt, data in the user message | 39 of 40, 97.5% | 37 of 40, 92.5% | 33% fewer | 4 | 0.0798 USD | [/r/l9eNk-PBGlRDmUnNIxzsxQ](/r/l9eNk-PBGlRDmUnNIxzsxQ) |
+| Hard set: 152 clauses in four sources | 39 of 40, 97.5% | 18 of 40, 45% | 52% fewer | 21 | 0.1618 USD | [/r/zTS-p-PZ_w8nRzVCCgHk1g](/r/zTS-p-PZ_w8nRzVCCgHk1g) |
 
-The balance drop is the real change in the SERV key's balance across the run, read from SERV before and after on 23 Sep, not an estimate. SERV stopped offering a free balance read on 25 Sep, so new runs show their cost from SERV's token counts instead. The losing run is on this page on purpose. A tester that only ever says yes is not a tester.
+Tokens count input and output together. The estimated cost covers both settings: SERV's token counts times the model's price, at the higher of Urai's own price and SERV's live one, so it runs high. On 23 Sep, before SERV stopped offering a free balance read, earlier runs of these samples were measured against the key's balance. Those were not the runs in the table. The two larger ones (good layout and hard set) dropped the balance by 0.05 and 0.10 USD against estimates of 0.080 and 0.157, about two thirds; the smaller runs were too small to compare, since SERV reports the balance in whole cents. The estimate leaves out SERV's one-off reasoning graph build.
+
+The losing run is on this page on purpose. A tester that only ever says yes is not a tester.
 
 ## The setup check, measured
 
 The first two reports are the same agent, the same 40 invoices and the same model. The only change is where the supplier data sits.
 
-- Before: the setup check flagged "Data sits inside the system prompt". The evidence it gave was one block, `SUPPLIER BOOK (json, 7342 characters)`, in a 21,337-character system prompt. SERV plain scored 27 of 40, 67.5%.
+- Before: the setup check flagged "Data sits inside the system prompt". The evidence it gave was one block, `SUPPLIER BOOK (json, 7,342 characters)`, in a 21,337-character system prompt. SERV on scored 27 of 40, 67.5%. SERV off scored 39 of 40 on the same layout, so the mistake only hurts with SERV on.
 - The one-click fix moved that block into shared data, which travels in the user message. The system prompt dropped to 13,979 characters.
-- After: SERV plain scored 39 of 40, 97.5%.
+- After: SERV on scored 39 of 40, 97.5%, against 40 of 40 with SERV off.
 
 What the check looks for and how the fix works is on [Setup check](/docs/concepts/setup-check).
 
 ## The security check record
 
-Urai has a written threat model with 34 rules, C1 to C34, and a suite that attacks a running server to test most of them.
+Urai has a written threat model with 35 rules, C1 to C35, and a suite that attacks a running server to test most of them.
 
 <SecurityRecord />
 
@@ -53,7 +55,7 @@ It spends real money, about 0.05 USD, and stops sending new calls before the spe
 |---|---|---|
 | 1 | `GET /api/models` | The list is not empty, is verified live from SERV, and includes `gpt-6-luna` |
 | 2 | `POST /api/lint` on the bad-layout sample | A "data in the system prompt" finding comes back, with a one-click fix |
-| 3 | A team run on the fixed workload's first 10 cases, SERV off and SERV plain | The spend from SERV's token counts stays under the cap, and all 20 calls come back |
+| 3 | A team run on the fixed workload's first 10 cases, SERV off and SERV on | The spend from SERV's token counts stays under the cap, and all 20 calls come back |
 | 4 | A demo run on `sample-invoices-good`, no key | The run holds exactly 12 cases, all 24 calls come back, and the report carries no balance reading |
 | 5 | Share the demo run, then fetch it by report id with no header | The public report has the same totals as the owner's, and the run id appears nowhere in it |
 

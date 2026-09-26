@@ -4,6 +4,7 @@ import { MotionConfig, motion, useInView } from "motion/react";
 import Link from "next/link";
 import { useRef } from "react";
 import type { SetupData } from "../../lib/landing-data";
+import { evidenceText } from "../report/format";
 import { usePrefersReducedMotion } from "../reduced-motion";
 import l from "./landing.module.css";
 import { EASE_OUT, Reveal, rise, SectionMarker } from "./reveal";
@@ -71,7 +72,7 @@ export function SetupCheck({ data }: { data: SetupData }) {
                     <span className={`${l.sev} ${SEVERITY[f.severity]}`}>{f.severity}</span>
                     <p className={l.findingTitle}>{f.title}</p>
                     <p className={l.findingDetail}>{f.detail}</p>
-                    {f.severity === "error" && f.evidence !== null && <p className={l.findingEvidence}>{f.evidence}</p>}
+                    {f.severity === "error" && f.evidence !== null && <p className={l.findingEvidence}>{evidenceText(f)}</p>}
                   </motion.li>
                 ))}
               </motion.ol>

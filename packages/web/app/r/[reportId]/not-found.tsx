@@ -13,6 +13,8 @@ import { Header } from "../../../components/site/header";
 export default function ReportNotFound() {
   return (
     <div className={s.root}>
+      {/* Next.js takes no metadata export from a not-found page, and generateMetadata stops at the same missing report, so the tab title is set here. */}
+      <title>Report not found | Urai</title>
       <Stone streak={false} />
       <Header />
       <main className={s.content}>

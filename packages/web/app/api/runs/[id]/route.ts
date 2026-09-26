@@ -19,10 +19,10 @@ export const runtime = "nodejs";
  * Run status for the run's owner.
  * Header x-urai-owner must hold the owner token returned when the run was created. A missing or
  * wrong token gets the same 404 not_found as an unknown run, so a stranger learns nothing, not
- * even that the run exists. The report id, sharing state, workload id and every hash stay
- * server-side (C9).
- * Returns 200 { payer, configs, totalCalls, totals: { [status]: count }, results: [{ caseId,
- * configIdx, status, finishedAt }] }. Status only: answers are never read or returned here; the
+ * even that the run exists. The report id, workload id and every hash stay server-side (C9).
+ * Returns 200 { payer, shared, configs, totalCalls, totals: { [status]: count }, results: [{ caseId,
+ * configIdx, status, finishedAt }] }. shared is true while the report is public, so the owner's
+ * page can show it; the report id itself is never returned here. Status only: answers are never read or returned here; the
  * report carries them under its own caps (C29). A body over CONFIG.statusResponseMaxBytes is
  * refused with 500 response_too_large rather than sent cut.
  */
@@ -33,7 +33,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
     const sql = db();
     const rows = await sql`
-      SELECT r.owner_hash, r.payer, r.configs, COALESCE(jsonb_array_length(r.case_ids), jsonb_array_length(w.data->'cases')) AS case_count
+      SELECT r.owner_hash, r.payer, r.shared, r.configs, COALESCE(jsonb_array_length(r.case_ids), json_array_length(w.data->'cases')) AS case_count
       FROM runs r JOIN workloads w ON w.id = r.workload_id
       WHERE r.id = ${id}`;
     const run = rows[0];
@@ -43,6 +43,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       throw new HttpError(404, "not_found");
     }
 
+    if (typeof run.shared !== "boolean") throw new Error("stored run sharing state is not a boolean");
     const configs = canonicalConfigs(run.configs);
     if (configs === null) throw new Error("stored run configs failed validation");
     const caseCount = Number(run.case_count);
@@ -60,6 +61,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
     const body = {
       payer: run.payer,
+      shared: run.shared,
       configs,
       totalCalls: caseCount * configs.length,
       totals: Object.fromEntries(totals),

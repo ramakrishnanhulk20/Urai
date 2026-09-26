@@ -416,6 +416,12 @@
   color: rgb(239 233 223 / 0.36);
 }
 
+/* The lines that differ between the two request cards wrap instead of losing their end to an ellipsis on a phone. */
+.codeLine.wrap {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .hot {
   position: relative;
   color: var(--gold-hi);
@@ -588,10 +594,12 @@
   gap: 0.55em;
 }
 
+/* The grid cells carry a tick or a cross; a swatch has neither, so its colour edge is what makes it read on the stone. */
 .keySwatch {
   display: inline-block;
   width: 0.8em;
   height: 1.1em;
+  border: 1px solid currentColor;
   border-radius: 2px;
 }
 

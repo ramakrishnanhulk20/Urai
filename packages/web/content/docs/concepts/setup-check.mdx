@@ -32,7 +32,7 @@ The data check looks for four kinds of block in the system prompt:
 - A CSV-like run of 4 lines or more, each with the same number (2 or more) of commas, or of tabs. Bulleted and numbered lines, and lines with cells over 60 characters, are prose, not CSV.
 - A run of 5 lines or more where each line holds two or more of: an email address, a `0x` address, a URL, a number of 3 digits or more, and a date.
 
-The finding's evidence names each block by the heading above it, with its kind and size, such as `SUPPLIER BOOK (json, 7342 characters)`.
+The finding's evidence names each block by the heading above it, with its kind and size, such as `SUPPLIER BOOK (json, 7,342 characters)`.
 
 ## What the one-click fix does
 
@@ -51,11 +51,11 @@ You can still run with an error in place, for example to measure what the mistak
 
 ## What it was worth on our sample
 
-Our payables sample, run on `gpt-6-luna` with SERV plain, 40 invoices each time. The setup check found one block, `SUPPLIER BOOK (json, 7342 characters)`, in a 21,337-character system prompt. The fix moved it to shared data and left a 13,979-character prompt.
+Our payables sample, run on `gpt-6-luna` on 26 Sep 2026, SERV off against SERV on, 40 invoices each time. The setup check found one block, `SUPPLIER BOOK (json, 7,342 characters)`, in a 21,337-character system prompt. The fix moved it to shared data and left a 13,979-character prompt.
 
-| | SERV plain accuracy | Report |
-|---|---|---|
-| Before the fix | 27 of 40, 67.5% | [/r/Hb-KceFRYlnwlohJbOD4OQ](/r/Hb-KceFRYlnwlohJbOD4OQ) |
-| After the one-click fix | 39 of 40, 97.5% | [/r/lQF1cJ-lebtC4wNIyXItpw](/r/lQF1cJ-lebtC4wNIyXItpw) |
+| | SERV off | SERV on | Report |
+|---|---|---|---|
+| Before the fix | 39 of 40, 97.5% | 27 of 40, 67.5% | [/r/2SC_jtj9dqui6VGFIrQQ0A](/r/2SC_jtj9dqui6VGFIrQQ0A) |
+| After the one-click fix | 40 of 40, 100% | 39 of 40, 97.5% | [/r/uVNL7475vDXOlUTxxCOVNA](/r/uVNL7475vDXOlUTxxCOVNA) |
 
-Same model, same rules, same invoices. Only the place the supplier data sat changed, and that was worth 30 points.
+Same model, same rules, same invoices. Only the place the supplier data sat changed, and under SERV that was worth 30 points. The model alone scored 97.5% even with the bad layout, so the mistake only costs you when SERV is on.

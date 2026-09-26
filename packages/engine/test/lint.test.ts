@@ -167,6 +167,15 @@ describe("lintWorkload rules", () => {
     expect(ids(lintWorkload(workload("a".repeat(20_000))))).not.toContain("large-system-prompt");
   });
 
+  it("writes every number in evidence with thousands separators", () => {
+    expect(find(lintWorkload(workload("a".repeat(21_337))), "large-system-prompt")?.evidence).toBe("21,337 characters, over 20,000");
+    const data = `SUPPLIERS:\n${JSON.stringify(Array.from({ length: 40 }, (_, i) => ({ id: `sup_${i}`, payout: `0x${"a".repeat(40)}` })), null, 2)}`;
+    expect(find(lintWorkload(workload(data)), "data-in-system-prompt")?.evidence).toMatch(/^SUPPLIERS: \(json, \d{1,3}(,\d{3})+ characters\)$/);
+    const over = lintWorkload(workload("a".repeat(LIMITS.systemPromptMaxChars + 1)));
+    expect(over[0]?.evidence).toBe(`The system prompt is over the ${LIMITS.systemPromptMaxChars.toLocaleString("en-US")} character limit.`);
+    expect(over[0]?.evidence).toMatch(/\d,\d{3}/);
+  });
+
   it("orders findings errors first, then warnings, then info", () => {
     const fs = lintWorkload(sample("invoices-bad.json"), { configs: LUNA });
     expect(fs.map((f) => f.severity)).toStrictEqual(["error", "warning", "info", "info"]);

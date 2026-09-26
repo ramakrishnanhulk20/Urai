@@ -127,12 +127,14 @@ function capPrompt(text: string): string | TruncatedText {
 }
 
 /*
- * Measured in UTF-8 bytes of the serialised JSON, which is never less than its length in
- * characters, so an answer that passes is under the cap by either measure.
+ * Measured on the form the report page renders, JSON.stringify(answer, null, 2), because
+ * indentation grows with depth: a 2 KB answer nested a thousand levels deep renders as about a
+ * megabyte. That form is never shorter than the compact one the response carries, and its UTF-8
+ * bytes are never fewer than its characters, so an answer that passes is under the cap every way.
  */
 function capAnswer(answer: Record<string, unknown> | null): { answer: Record<string, unknown> | null; answerTruncatedChars: number | null } {
   if (answer === null) return { answer: null, answerTruncatedChars: null };
-  const text = JSON.stringify(answer);
+  const text = JSON.stringify(answer, null, 2);
   return Buffer.byteLength(text, "utf8") > CONFIG.reportAnswerMaxChars
     ? { answer: null, answerTruncatedChars: text.length }
     : { answer, answerTruncatedChars: null };
@@ -172,8 +174,9 @@ function totalsFor(rows: ReportRow[]): ConfigTotals {
 /**
  * Builds the report for a run from its workload, settings, case list, balance readings and
  * finished results. Pure: no database, no network. Case input and answer text are capped at
- * CONFIG.reportTextMaxChars, an answer longer than CONFIG.reportAnswerMaxChars once serialised
- * becomes answer null with answerTruncatedChars set, and the system prompt and context are cut at
+ * CONFIG.reportTextMaxChars, an answer longer than CONFIG.reportAnswerMaxChars in the indented
+ * form the page renders becomes answer null with answerTruncatedChars set to that form's length,
+ * and the system prompt and context are cut at
  * CONFIG.reportPromptMaxChars into { truncated: true, chars, text } (C14, C29). Token counts, latency and cost pass through as stored and a
  * null anywhere in a configuration makes that total null (C25). Throws when a row names a case or
  * configuration outside the run, or a run case is missing from the workload (C26).

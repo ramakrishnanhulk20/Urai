@@ -55,10 +55,18 @@ export const EMPTY_DRAFT: Draft = {
 
 export const MODES: { mode: ServMode; label: string; line: string }[] = [
   { mode: "raw", label: "SERV off", line: "The model on its own, with SERV's reasoning switched off. The baseline." },
-  { mode: "plain", label: "SERV plain", line: "SERV's reasoning on, nothing else added." },
+  { mode: "plain", label: "SERV plain", line: "SERV's reasoning on, with its output filter off (Urai always switches it off so answers that quote the rules are not cut), nothing else added." },
   { mode: "guard", label: "SERV with PromptGuard", line: "SERV plus PromptGuard, which can refuse an input before the model runs." },
-  { mode: "multipath", label: "SERV Multipath", line: "The model's SERV Multipath variant." },
-  { mode: "full", label: "SERV full", line: "Multipath, PromptGuard and Shadow Agent together." },
+  {
+    mode: "multipath",
+    label: "SERV Multipath",
+    line: "SERV rewrites your system prompt with a separate reasoning pass built for prompts with many branches, exceptions or competing rules.",
+  },
+  {
+    mode: "full",
+    label: "SERV full",
+    line: "Multipath and PromptGuard, plus Shadow Agent, which checks each answer and asks the model to revise it, up to 3 rounds.",
+  },
 ];
 
 let rowKey = 0;
@@ -151,10 +159,53 @@ export function buildWorkload(d: Draft, schema: SchemaRead, cases: WorkloadCase[
   };
 }
 
-export function buildConfigs(model: string, modes: ServMode[]): RunConfig[] {
+/** The optional second model a team compares against, with the one SERV setting it runs under. An empty model means none. */
+export interface Compare {
+  model: string;
+  mode: ServMode;
+}
+
+export const EMPTY_COMPARE: Compare = { model: "", mode: "raw" };
+
+// The server trims and lowercases model ids (C24), so the form compares them the same way.
+function sameModel(a: string, b: string): boolean {
+  return a.trim().toLowerCase() === b.trim().toLowerCase();
+}
+
+function modeLabel(mode: ServMode): string {
+  return MODES.find((m) => m.mode === mode)?.label ?? mode;
+}
+
+/** How many SERV settings the first model may take: the run cap, less the one the second model uses. */
+export function mainModesMax(compare: Compare, limits: FormLimits): number {
+  return Math.min(MODES.length, limits.configsPerRunMax - (compare.model.trim() === "" ? 0 : 1));
+}
+
+/**
+ * Why the second model cannot join the run as it stands, in plain words, or null when it can (or
+ * when there is none). The server refuses a repeated setting and a run over the cap, so both are
+ * caught here first and explained.
+ */
+export function compareProblem(model: string, modes: ServMode[], compare: Compare, limits: FormLimits): string | null {
+  if (compare.model.trim() === "") return null;
+  if (sameModel(model, compare.model) && modes.includes(compare.mode)) {
+    return `${compare.model.trim()} with ${modeLabel(compare.mode)} is already in the run above. Pick another model to compare with, or another setting for it.`;
+  }
+  if (modes.length + 1 > limits.configsPerRunMax) {
+    return `A run takes at most ${limits.configsPerRunMax} settings. Untick one above to make room for the second model.`;
+  }
+  return null;
+}
+
+/** The run's settings: every ticked mode on the first model, then the second model's one setting when it can join. */
+export function buildConfigs(model: string, modes: ServMode[], compare: Compare, limits: FormLimits): RunConfig[] {
   const id = model.trim();
   if (id === "") return [];
-  return MODES.filter((m) => modes.includes(m.mode)).map((m) => ({ model: id, mode: m.mode }));
+  const main: RunConfig[] = MODES.filter((m) => modes.includes(m.mode)).map((m) => ({ model: id, mode: m.mode }));
+  const second = compare.model.trim();
+  if (second === "") return main;
+  const repeated = main.some((c) => sameModel(c.model, second) && c.mode === compare.mode);
+  return repeated || main.length + 1 > limits.configsPerRunMax ? main : [...main, { model: second, mode: compare.mode }];
 }
 
 /** Bytes of the request body POST /api/workloads will receive, measured the way the server counts them. */
@@ -169,16 +220,22 @@ export const OUTPUT_TOKENS_GUESS = 475;
 
 export interface Estimate {
   calls: number;
+  /** The priced settings only. Null when one of them has no listed price, or when none can be priced. */
   usd: number | null;
   inputTokensPerCall: number;
+  /** Multipath and full settings, left out of usd: their extra SERV passes cost more than tokens show. */
+  leftOut: number;
 }
 
 /**
  * Model token cost only, from SERV's listed prices: every case's system prompt, shared data,
- * input and answer schema as input, and OUTPUT_TOKENS_GUESS as output. SERV's own charges
- * (the reasoning graph on first sight, full mode) are not included and are named on the page.
+ * input and answer schema as input, and OUTPUT_TOKENS_GUESS as output, each setting priced at its
+ * own model. Multipath and full settings are left out and counted in leftOut, the same settings the
+ * report never prices (lib/prices.ts). SERV's reasoning graph on first sight is not included and is
+ * named on the page. usd is null when any priced setting's model has no listed price, because a
+ * partial sum would read as the whole run.
  */
-export function estimate(w: Workload | null, configs: RunConfig[], price: ModelEntry | null): Estimate | null {
+export function estimate(w: Workload | null, configs: RunConfig[], prices: readonly ModelEntry[] | null): Estimate | null {
   if (w === null || configs.length === 0) return null;
   const schemaChars = JSON.stringify(w.answerSchema).length;
   let inputChars = 0;
@@ -188,11 +245,19 @@ export function estimate(w: Workload | null, configs: RunConfig[], price: ModelE
   }
   const inputTokens = inputChars / CHARS_PER_TOKEN;
   const calls = w.cases.length * configs.length;
-  const usd =
-    price === null
-      ? null
-      : configs.length * ((inputTokens * price.inputUsdPerM) / 1e6 + (w.cases.length * OUTPUT_TOKENS_GUESS * price.outputUsdPerM) / 1e6);
-  return { calls, usd, inputTokensPerCall: Math.round(inputTokens / Math.max(1, w.cases.length)) };
+  const priced = configs.filter((c) => c.mode !== "multipath" && c.mode !== "full");
+  let sum = 0;
+  let missing = priced.length === 0;
+  for (const cfg of priced) {
+    const price = prices?.find((m) => sameModel(m.id, cfg.model));
+    if (price === undefined) {
+      missing = true;
+      break;
+    }
+    sum += (inputTokens * price.inputUsdPerM) / 1e6 + (w.cases.length * OUTPUT_TOKENS_GUESS * price.outputUsdPerM) / 1e6;
+  }
+  const usd = missing ? null : sum;
+  return { calls, usd, inputTokensPerCall: Math.round(inputTokens / Math.max(1, w.cases.length)), leftOut: configs.length - priced.length };
 }
 
 /** Printable ASCII with no spaces, the same shape the server checks before a key goes near a header. */

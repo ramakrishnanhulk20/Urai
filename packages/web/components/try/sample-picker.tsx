@@ -20,13 +20,16 @@ export interface SamplePickerProps {
   startError: Exclude<CreateOutcome, { kind: "created" }> | null;
 }
 
-function startErrorText(err: Exclude<CreateOutcome, { kind: "created" }>): string {
+export const STORAGE_FULL = "Urai's storage is full for now; nothing was charged. Open one of the saved reports above, or try again later.";
+
+export function startErrorText(err: Exclude<CreateOutcome, { kind: "created" }>): string {
   switch (err.kind) {
     case "rate_limited":
       return "You have started a lot of demo runs from this address in the last hour. Give it a while, or open one of the saved reports above: each one ran every case.";
     case "network":
       return "Urai could not be reached. Check your connection, then press Run it live again.";
     case "refused":
+      if (err.status === 503 && err.code === "storage_full") return STORAGE_FULL;
       if (err.status === 403 || err.status === 404) {
         return "This sample is not open for live runs right now. Its saved report above still shows a full run, or pick another sample.";
       }
@@ -44,7 +47,7 @@ export function SamplePicker({ samples, cases, selected, onSelect, onStart, star
   const calls = chosen === null ? 0 : cases * chosen.configs.length;
 
   return (
-    <section className={s.section} aria-labelledby="pick-title">
+    <section id="pick" className={s.section} style={{ scrollMarginTop: "88px" }} aria-labelledby="pick-title">
       <motion.p
         className={s.marker}
         initial={{ opacity: 0, y: 24 }}
@@ -56,10 +59,10 @@ export function SamplePicker({ samples, cases, selected, onSelect, onStart, star
         <span id="pick-title">Pick a sample agent</span>
       </motion.p>
 
+      {/* The radio group wraps the list, so each row stays a list item inside a real list. */}
+      <div role="radiogroup" aria-labelledby="pick-title">
       <motion.ol
         className={s.list}
-        role="radiogroup"
-        aria-labelledby="pick-title"
         initial="hidden"
         whileInView="shown"
         viewport={{ once: true, amount: 0.15 }}
@@ -105,6 +108,7 @@ export function SamplePicker({ samples, cases, selected, onSelect, onStart, star
           );
         })}
       </motion.ol>
+      </div>
 
       <motion.div
         className={s.startBar}
@@ -132,7 +136,7 @@ export function SamplePicker({ samples, cases, selected, onSelect, onStart, star
           <Slash className={s.noteSlash} />
           <span>
             {calls > 0 ? `${calls} real calls, three at a time.` : "Pick a sample to start."} Each takes about 5 to 15
-            seconds, because the model really reads the whole rulebook. You pay nothing and need no key.
+            seconds, because every call carries the whole rulebook. You pay nothing and need no key.
           </span>
         </p>
       </motion.div>

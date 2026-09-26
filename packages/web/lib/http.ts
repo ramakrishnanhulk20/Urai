@@ -60,14 +60,26 @@ async function readCappedBody(req: Request): Promise<Uint8Array> {
 }
 
 /**
- * Reads the body under CONFIG.bodyMaxBytes (413 over it, C14), requires a JSON content type
- * (415 otherwise, so a cross-site form post cannot reach the handler without a preflight),
- * decodes strict UTF-8 and parses JSON (400 invalid_json), then validates with schema
+ * The checks on a JSON request that need only its headers: 415 unsupported_media_type unless the
+ * content type is application/json (so a cross-site form post cannot reach the handler without a
+ * preflight), and 413 body_too_large when the declared length passes CONFIG.bodyMaxBytes (C14).
+ * Routes call it before charging a rate bucket, so a request refused here costs the sender nothing;
+ * readJson calls it again, so no route can skip it.
+ */
+export function requireJsonRequest(req: Request): void {
+  const type = req.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase();
+  if (type !== "application/json") throw new HttpError(415, "unsupported_media_type");
+  const declared = req.headers.get("content-length");
+  if (declared !== null && Number(declared) > CONFIG.bodyMaxBytes) throw new HttpError(413, "body_too_large");
+}
+
+/**
+ * Checks the headers with requireJsonRequest, reads the body under CONFIG.bodyMaxBytes (413 over
+ * it, C14), decodes strict UTF-8 and parses JSON (400 invalid_json), then validates with schema
  * (400 invalid_body). Nothing is parsed until the whole body is known to be under the cap.
  */
 export async function readJson<S extends z.ZodType>(req: Request, schema: S): Promise<z.infer<S>> {
-  const type = req.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase();
-  if (type !== "application/json") throw new HttpError(415, "unsupported_media_type");
+  requireJsonRequest(req);
   const bytes = await readCappedBody(req);
   let value: unknown;
   try {

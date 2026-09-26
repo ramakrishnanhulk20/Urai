@@ -11,7 +11,10 @@
     "migrate": "tsx scripts/migrate.ts",
     "seed": "tsx scripts/seed-samples.ts",
     "prove": "tsx scripts/prove.ts",
-    "verify-security": "tsx scripts/verify-security.ts"
+    "verify-security": "tsx scripts/verify-security.ts",
+    "create-app-role": "tsx scripts/create-app-role.ts",
+    "check-app-role": "tsx scripts/check-app-role.ts",
+    "vacuum": "tsx scripts/vacuum.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "1.1.0",

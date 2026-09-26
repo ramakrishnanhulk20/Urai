@@ -2,9 +2,9 @@
  * The model list cache (lib/models.ts), GET /api/models and the lint's model id check, against the
  * real Neon database with the engine's listModels replaced by a fixture, so SERV is never called.
  * The one model_cache row is saved before and put back after. Not covered here: the real SERV
- * list endpoint and its response parsing (the engine's own models.test.ts), two instances
- * refreshing the cache at the same moment (both write the same row; the last one wins), and a
- * database outage (the fail-closed branches are read in review, not executed).
+ * list endpoint and its response parsing (the engine's own models.test.ts), two real server
+ * instances racing for the refresh lease (the lease is one conditional UPDATE, exercised here from
+ * one process), and a database outage (the fail-closed branches are read in review, not executed).
  */
 import { randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -44,11 +44,21 @@ function expectOnlyOperatorKeySent(): void {
   }
 }
 
-function lint(body: unknown) {
+function freshIp(kind: "lint" | "models"): { ip: string; bucket: string } {
   const hex = randomBytes(12).toString("hex").match(/.{4}/g) ?? [];
   const ip = `2001:db8:${hex.join(":")}`;
   if (isIP(ip) !== 6) throw new Error("test fixture built an invalid IPv6 address");
-  buckets.push(`lint:${ipHash(new Request(BASE, { headers: { "x-real-ip": ip } }))}`);
+  const bucket = `${kind}:${ipHash(new Request(BASE, { headers: { "x-real-ip": ip } }))}`;
+  buckets.push(bucket);
+  return { ip, bucket };
+}
+
+function modelsRequest(ip = freshIp("models").ip): Request {
+  return new Request(`${BASE}/api/models`, { headers: { "x-real-ip": ip } });
+}
+
+function lint(body: unknown) {
+  const { ip } = freshIp("lint");
   const req = new Request(`${BASE}/api/lint`, {
     method: "POST",
     headers: { "content-type": "application/json", "x-real-ip": ip },
@@ -117,6 +127,22 @@ describe("getModelList", () => {
     expect(await db()`SELECT 1 FROM model_cache`).toHaveLength(0);
   });
 
+  it("leaves SERV alone while another instance holds the refresh lease, and clears the lease once it writes", async () => {
+    // Written directly: an earlier test leaves this process backing off from an empty cache.
+    await db()`INSERT INTO model_cache (id, models, fetched_at, refresh_lease_until)
+      VALUES (1, ${JSON.stringify(LIST)}::jsonb, now() - make_interval(secs => ${CONFIG.modelCacheMaxAgeSeconds + 60}),
+              now() + make_interval(secs => ${CONFIG.modelRefreshLeaseSeconds}))`;
+    engine.listModels.mockResolvedValue({ ok: true, models: LIST });
+    expect(await getModelList()).toMatchObject({ models: LIST, verified: false });
+    expect(engine.listModels).not.toHaveBeenCalled();
+
+    // A lease whose holder died lapses on its own.
+    await db()`UPDATE model_cache SET refresh_lease_until = now() - interval '1 second'`;
+    expect(await getModelList()).toMatchObject({ models: LIST, verified: true });
+    expect(engine.listModels).toHaveBeenCalledTimes(1);
+    expect((await db()`SELECT refresh_lease_until FROM model_cache`)[0]?.refresh_lease_until).toBeNull();
+  });
+
   it("ignores a cache row that fails validation, and never stores a list that fails it", async () => {
     await db()`INSERT INTO model_cache (id, models, fetched_at) VALUES (1, '[{"id": 1}]'::jsonb, now())`;
     engine.listModels.mockResolvedValueOnce({ ok: true, models: [{ id: "x", inputUsdPerM: -1, outputUsdPerM: 1 }] });
@@ -130,13 +156,28 @@ describe("getModelList", () => {
 describe("GET /api/models", () => {
   it("returns the list with its fetch time and verified flag, uncached by browsers", async () => {
     engine.listModels.mockResolvedValueOnce({ ok: true, models: LIST });
-    const res = await getModels();
+    const res = await getModels(modelsRequest());
     expect(res.status).toBe(200);
     expect(res.headers.get("cache-control")).toBe("no-store");
     expect(res.headers.get("access-control-allow-origin")).toBeNull();
     const body = (await res.json()) as Record<string, unknown>;
     expect(Object.keys(body).sort()).toEqual(["fetchedAt", "models", "verified"]);
     expect(body).toMatchObject({ models: LIST, verified: true });
+  });
+
+  it("charges the per-address models bucket and refuses past it without reading the list (C31)", async () => {
+    const { ip, bucket } = freshIp("models");
+    engine.listModels.mockResolvedValue({ ok: true, models: LIST });
+    expect((await getModels(modelsRequest(ip))).status).toBe(200);
+    expect((await db()`SELECT count FROM rate_limits WHERE bucket = ${bucket}`).map((r) => r.count)).toEqual([1]);
+
+    await db()`UPDATE rate_limits SET count = ${CONFIG.modelsPerIpPerWindow} WHERE bucket = ${bucket}`;
+    await clearCache();
+    engine.listModels.mockClear();
+    const res = await getModels(modelsRequest(ip));
+    expect(res.status).toBe(429);
+    expect(await res.json()).toEqual({ error: "rate_limited" });
+    expect(engine.listModels).not.toHaveBeenCalled();
   });
 });
 

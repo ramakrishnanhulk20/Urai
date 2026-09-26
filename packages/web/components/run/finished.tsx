@@ -20,7 +20,9 @@ export type ShareState =
   | { kind: "unknown" }
   | { kind: "working"; action: "share" | "unshare" }
   | { kind: "shared"; reportId: string }
-  | { kind: "private" }
+  /** Public on the server, but the status read never carries the report id (C9), so the link waits for a press. */
+  | { kind: "public" }
+  | { kind: "private"; again: boolean }
   | { kind: "failed"; action: "share" | "unshare"; code: string };
 
 function CopyLink({ url }: { url: string }) {
@@ -56,26 +58,100 @@ function CopyLink({ url }: { url: string }) {
   );
 }
 
+/*
+ * Everything the public page at /r/<id> shows, in the order it shows it. Kept as one list so the
+ * warning before sharing and the note after it can never drift apart.
+ */
+export function publicItems(hasContext: boolean): string[] {
+  return [
+    "The run's name and every setting, with its model",
+    "The system prompt",
+    ...(hasContext ? ["The shared data you added to every case"] : []),
+    "The answer schema",
+    "Every case's input, up to its first 2,000 characters",
+    "The expected answers",
+    "Every setting's answers and the scores",
+    "The setup check's findings, the token counts and the estimated cost",
+  ];
+}
+
+export function PublicList({ hasContext }: { hasContext: boolean }) {
+  return (
+    <ul className={s.publicList}>
+      {publicItems(hasContext).map((item) => (
+        <li key={item}>
+          <Slash className={s.publicSlash} />
+          <span>{item}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function shareText(state: ShareState): string {
   switch (state.kind) {
     case "shared":
-      return "Anyone with this link can read the report. It shows the answers and the scores, never your key.";
+      return "This report is public. Anyone with this link can read everything listed below. It never shows your SERV key or your private run link.";
+    case "public":
+      return "This report is public. Anyone with its link can read everything listed below. It never shows your SERV key or your private run link.";
     case "private":
-      return "The report is private again. The old link now shows not found; sharing again brings the same link back.";
+      return state.again
+        ? "The report is private again. The old link now shows not found; sharing again brings the same link back."
+        : "The report is private until you share it. Sharing gives a public link; you can make it private again at any time.";
     case "failed":
       return state.action === "share"
         ? `Urai could not share the report (${state.code}). Nothing changed. Try again in a moment.`
         : `Urai could not make the report private (${state.code}). It is still shared. Try again in a moment.`;
-    default:
-      return "The report is private until you share it. Sharing gives a public link; you can make it private again at any time.";
+    case "unknown":
+      return "Urai could not tell whether this report is public. Share it to get its link, or press Unshare to be sure it is private.";
+    case "working":
+      return state.action === "share" ? "Making the report public." : "Making the report private.";
   }
 }
 
-function SharePanel({ state, onShare, onUnshare }: { state: ShareState; onShare: () => void; onUnshare: () => void }) {
+/*
+ * The disclosure a team reads before anything goes public: the exact list of what the public page
+ * shows and a second, explicit press to publish. Shown on its own so it can be checked in a test.
+ */
+export function ShareConfirm({ hasContext, onConfirm, onCancel }: { hasContext: boolean; onConfirm: () => void; onCancel: () => void }) {
+  return (
+    <motion.div
+      className={s.shareConfirm}
+      role="group"
+      aria-label="What sharing makes public"
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+    >
+      <p className={s.shareText}>
+        <strong className={s.shareStrong}>Sharing makes all of this public</strong> to anyone who has the link:
+      </p>
+      <PublicList hasContext={hasContext} />
+      <p className={s.shareText}>Your SERV key and your private run link are never shown. You can make it private again at any time.</p>
+      <div className={s.shareActions}>
+        <button type="button" className={s.primary} onClick={onConfirm}>
+          <span>Yes, make it public</span>
+        </button>
+        <button type="button" className={s.quiet} onClick={onCancel}>
+          Keep it private
+        </button>
+      </div>
+    </motion.div>
+  );
+}
+
+export function SharePanel({ state, hasContext, onShare, onUnshare }: { state: ShareState; hasContext: boolean; onShare: () => void; onUnshare: () => void }) {
   const [origin, setOrigin] = useState("");
+  const [asking, setAsking] = useState(false);
   useEffect(() => setOrigin(window.location.origin), []);
   const working = state.kind === "working";
   const shared = state.kind === "shared";
+  const isPublic = state.kind === "public";
+
+  const confirmShare = (): void => {
+    setAsking(false);
+    onShare();
+  };
 
   return (
     <div className={s.share}>
@@ -84,12 +160,25 @@ function SharePanel({ state, onShare, onUnshare }: { state: ShareState; onShare:
         Share the report
       </p>
       {shared && <CopyLink url={`${origin}/r/${state.reportId}`} />}
-      <p className={s.shareText} role={state.kind === "failed" ? "alert" : undefined}>
-        {shareText(state)}
-      </p>
+      {asking && !shared && !working ? (
+        <ShareConfirm hasContext={hasContext} onConfirm={confirmShare} onCancel={() => setAsking(false)} />
+      ) : (
+        <>
+          <p className={s.shareText} role={state.kind === "failed" ? "alert" : undefined}>
+            {shareText(state)}
+          </p>
+          {(shared || isPublic) && <PublicList hasContext={hasContext} />}
+        </>
+      )}
       <div className={s.shareActions}>
-        {!shared && (
-          <button type="button" className={s.primary} onClick={onShare} disabled={working}>
+        {/* Already public, so the link is fetched with no second confirm: sharing again returns the same report id. */}
+        {isPublic && (
+          <button type="button" className={s.primary} onClick={onShare}>
+            <span>Show the public link</span>
+          </button>
+        )}
+        {!shared && !isPublic && !asking && (
+          <button type="button" className={s.primary} onClick={() => setAsking(true)} disabled={working}>
             {working && state.action === "share" ? <span className={s.spinner} aria-hidden="true" /> : null}
             <span>{working && state.action === "share" ? "Sharing" : "Share the report"}</span>
           </button>
@@ -102,9 +191,9 @@ function SharePanel({ state, onShare, onUnshare }: { state: ShareState; onShare:
             </span>
           </Link>
         )}
-        {state.kind !== "private" && (
+        {state.kind !== "private" && !asking && (
           <button type="button" className={s.quiet} onClick={onUnshare} disabled={working}>
-            {working && state.action === "unshare" ? "Making it private" : shared ? "Unshare" : "Make sure it is private"}
+            {working && state.action === "unshare" ? "Making it private" : "Unshare"}
           </button>
         )}
       </div>
@@ -133,13 +222,13 @@ export function Finished({ report, share, keyHeld, privateLink, onShare, onUnsha
       <div className={r.opening}>
         <ReportSummary report={report} />
         <div className={s.finishAside}>
-          <Ledger labels={configLabels(report.configs)} totals={report.totals} balance={report.balance} />
+          <Ledger labels={configLabels(report.configs)} configs={report.configs} totals={report.totals} balance={report.balance} />
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.9, delay: 0.55, ease: [0.16, 1, 0.3, 1] }}
           >
-            <SharePanel state={share} onShare={onShare} onUnshare={onUnshare} />
+            <SharePanel state={share} hasContext={report.context !== null} onShare={onShare} onUnshare={onUnshare} />
             {privateLink !== null && <PrivateLink url={privateLink} className={s.asideLink} />}
             <p className={s.forget}>
               {keyHeld ? (

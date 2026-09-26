@@ -4,35 +4,38 @@
 
 # Urai
 
-Urai is Tamil for testing gold on a touchstone. It tests SERV Reasoning on your own AI agent.
+Urai is Tamil for testing gold on a touchstone. Cheaper models and middle layers all promise the same quality for less, and teams keep finding that claim breaks on their own data. Urai tests SERV Reasoning on your own AI agent, with your own cases, before you switch it on.
 
-[Live app](https://urai-serv.vercel.app) · [Docs](https://urai-serv.vercel.app/docs) · [Sample report](https://urai-serv.vercel.app/r/lQF1cJ-lebtC4wNIyXItpw)
+[Live app](https://urai-serv.vercel.app) · [Docs](https://urai-serv.vercel.app/docs) · [Sample report](https://urai-serv.vercel.app/r/uVNL7475vDXOlUTxxCOVNA)
 
 ## What it does
 
-OpenServ's SERV Reasoning sits between your agent and the model. It rewrites your system prompt into its own reasoning graph and answers through it. On one of our sample agents it came within 5 points of the model alone on 31% fewer tokens. On another it lost 50 points. The only way to know where your agent lands is to run your own cases both ways.
+A team deciding whether to route a production agent through SERV to cut cost has two options today: a vendor benchmark on someone else's tasks, or reading a few of its own outputs by eye. OpenServ's own Day One guide says to test SERV against your current setup before you switch.
 
-Urai takes your agent's system prompt, its answer schema and a set of test cases where you already know the right answer. It sends every case through the same model with SERV off and with SERV on, scores every answer against the one you wrote down, and puts the two side by side. Before a single call it also checks your setup for the mistakes we measured SERV making worse, and fixes the worst one in one click.
+Urai is that test, and it starts with your setup. SERV rewrites your system prompt into its own reasoning graph and can drop data it finds there, so some mistakes only hurt with SERV on. Before a single call, Urai checks for the ones we measured, free, and fixes the worst in one click. On our payables agent, moving the supplier data out of the system prompt took SERV from 67.5% to 97.5% on the same 40 invoices.
+
+Then Urai takes your system prompt, your answer schema and cases where you already know the right answer. It sends every case with SERV off and with SERV on, or through your current model against a smaller one with SERV on, scores every answer against the one you wrote down, and puts them side by side. That also shows where SERV fits. On one sample agent it came within 5 points of the model alone on 33% fewer tokens. On a 152-clause rulebook the model alone was the better choice, 97.5% against 45%.
 
 | | Testing SERV today | With Urai |
 |---|---|---|
 | Whose data | A vendor benchmark on someone else's tasks | Your own cases, with your own expected answers |
-| How you compare | Guess from the benchmark, or wire SERV into production and watch | SERV off and SERV on, same model, side by side |
+| How you compare | Guess from the benchmark, or wire SERV into production and watch | SERV off and SERV on side by side, on one model or your current model against a smaller one with SERV on |
 | When you find out | After your users do | Before you switch |
 | Setup mistakes | Invisible until accuracy drops | Flagged before you spend anything, with a one-click fix |
-| What it costs you | Engineering time to wire it in | One SERV call per case and setting, on your own key |
+| What it costs you | Engineering time to wire it in | One SERV call per case and setting, on your own key, with the cost per correct answer in the report |
 
 ## Features
 
 ### Check your setup and fix it in one click
 
 - The setup check reads your system prompt, answer schema and settings and reports nine kinds of finding, most serious first. It is free, stores nothing and calls no model.
-- The worst one is data sitting inside the system prompt. SERV compresses the system prompt into its own graph and drops data it finds there. The check names each block by its heading, kind and size, such as `SUPPLIER BOOK (json, 7342 characters)`.
+- The worst one is data sitting inside the system prompt. SERV compresses the system prompt into its own graph and drops data it finds there. The check names each block by its heading, kind and size, such as `SUPPLIER BOOK (json, 7,342 characters)`.
 - "Fix layout" moves every data block into shared data, which travels in the user message. The card shows what will move and the prompt size before and after. "Undo the fix" puts it back. Nothing is applied to a stored workload without you pressing it.
 
 ### Run your cases both ways, on your own key
 
 - Pick a model from SERV's live model list, with its price per million tokens, and tick the settings to compare: SERV off, plain, PromptGuard, Multipath or full.
+- Compare two models in one run, for example your current big model with SERV off against a small model with SERV on.
 - The builder shows the call count and a cost estimate before you start.
 - Every case goes to SERV once per setting, a few at a time, and you watch each answer land in the grid, marked right or wrong.
 - Your key lives in the page's memory, rides in a header on each call, and is dropped. It is never stored or logged.
@@ -40,6 +43,7 @@ Urai takes your agent's system prompt, its answer schema and a set of test cases
 ### Read and share a scored report
 
 - Accuracy per setting, the cases where the settings disagreed, input and output tokens, latency, and an estimated cost worked out from SERV's own token counts for every call.
+- Cost per correct answer for every setting Urai prices, so a cheaper setup that gets more cases wrong shows its real price.
 - Open any disagreement and read both answers next to the expected one.
 - A report is private until you share it. A shared link can be taken back, and it never reveals the run behind it.
 
@@ -50,16 +54,18 @@ Urai takes your agent's system prompt, its answer schema and a set of test cases
 
 ## Live proof
 
-Four sample runs, all on `gpt-6-luna`, 40 invoices each, as normal team runs. SERV on means SERV Reasoning in plain mode. The balance drop is the real change in the key's balance, read from SERV before and after each run on 23 Sep, before SERV stopped offering the free read.
+Four sample runs, all on `gpt-6-luna`, 40 invoices each, run on 26 Sep 2026 as normal team runs with each agent sent exactly as written. SERV on means plain mode: SERV's reasoning on, with its output filter off (Urai always switches it off so answers that quote the rules are not cut), nothing else added. Estimated cost covers SERV off and SERV on together. It is worked out from SERV's own token counts, priced at the higher of Urai's price and SERV's live price. On 23 Sep, before SERV stopped offering a free balance read, earlier runs of these samples were measured against the key's balance. Those were not the runs in the table. The two larger ones (good layout and hard set) dropped the balance by 0.05 and 0.10 USD against estimates of 0.080 and 0.157, about two thirds; the smaller runs were too small to compare, since SERV reports the balance in whole cents.
 
-| Report | What it compares | SERV off | SERV on | Balance drop | Open it |
+Every answer schema now reaches SERV with its fields in the order the team wrote them. Earlier runs sent them in the database's sorted order. SERV off and SERV on always got the same schema.
+
+| Report | What it compares | SERV off | SERV on | Estimated cost | Open it |
 |---|---|---|---|---|---|
-| Before the fix | Supplier book inside the system prompt, SERV plain | not run | 27 of 40, 67.5% | $0.03 | [/r/Hb-KceFRYlnwlohJbOD4OQ](https://urai-serv.vercel.app/r/Hb-KceFRYlnwlohJbOD4OQ) |
-| After the one-click fix | Supplier book moved to the user message, SERV plain | not run | 39 of 40, 97.5% | $0.03 | [/r/lQF1cJ-lebtC4wNIyXItpw](https://urai-serv.vercel.app/r/lQF1cJ-lebtC4wNIyXItpw) |
-| Good layout | SERV off against SERV plain | 40 of 40, 100% | 38 of 40, 95% | $0.05 | [/r/EcaTkn78IZ3bLHi0BJcXAg](https://urai-serv.vercel.app/r/EcaTkn78IZ3bLHi0BJcXAg) |
-| Hard set | 152 clauses in four sources, SERV off against SERV plain | 39 of 40, 97.5% | 19 of 40, 47.5% | $0.10 | [/r/VowHwvFGztQ-aGvCF_9PZw](https://urai-serv.vercel.app/r/VowHwvFGztQ-aGvCF_9PZw) |
+| Before the fix | Supplier book inside the system prompt | 39 of 40, 97.5% | 27 of 40, 67.5% | $0.0733 | [/r/2SC_jtj9dqui6VGFIrQQ0A](https://urai-serv.vercel.app/r/2SC_jtj9dqui6VGFIrQQ0A) |
+| After the one-click fix | Supplier book moved to the user message | 40 of 40, 100% | 39 of 40, 97.5% | $0.0835 | [/r/uVNL7475vDXOlUTxxCOVNA](https://urai-serv.vercel.app/r/uVNL7475vDXOlUTxxCOVNA) |
+| Good layout | The same agent, written with the supplier book in the user message | 39 of 40, 97.5% | 37 of 40, 92.5% | $0.0798 | [/r/l9eNk-PBGlRDmUnNIxzsxQ](https://urai-serv.vercel.app/r/l9eNk-PBGlRDmUnNIxzsxQ) |
+| Hard set | 152 clauses in four sources | 39 of 40, 97.5% | 18 of 40, 45% | $0.1618 | [/r/zTS-p-PZ_w8nRzVCCgHk1g](https://urai-serv.vercel.app/r/zTS-p-PZ_w8nRzVCCgHk1g) |
 
-The first two are the same agent, the same 40 invoices and the same model. The only change is where the supplier data sits, and that was worth 30 points. On the good layout SERV came within 5 points of the model alone on 31% fewer tokens. On the hard set it lost 50 points. The losing run is here on purpose: a tester that only ever says yes is not a tester.
+The first two are the same agent, the same 40 invoices and the same model. The only change is where the supplier data sits. The model alone scored 97.5% even with the supplier book inside the system prompt. SERV on scored 67.5% on that layout, and the one-click fix brought it to 97.5%. So the layout mistake only hurts when SERV is on, and the fix is what makes SERV usable on this agent. On the good layout SERV came within 5 points of the model alone on 33% fewer tokens. On the hard set SERV scored 45% against 97.5%. The losing run is here on purpose: a tester that only ever says yes is not a tester.
 
 ## How it fits together
 
@@ -202,13 +208,13 @@ flowchart LR
   r_cron --> w_db
 ```
 
-The full map, with the data model, is in [ARCHITECTURE.md](ARCHITECTURE.md).
+The full map, with the data model, is in [ARCHITECTURE.md](https://github.com/ramakrishnanhulk20/Urai/blob/main/ARCHITECTURE.md).
 
 ## The two-minute judge path
 
 1. Open the [landing page](https://urai-serv.vercel.app). The first screen asks "Is SERV gold for your agent?" and shows the one layout fix that took SERV from 67.5% to 97.5%. Scroll to the setup check to watch that fix play out.
 2. Open [/try](https://urai-serv.vercel.app/try), pick a sample agent and press "Run it live". Twelve cases go out with SERV off and on, three calls at a time, and each answer lands in the grid as it comes back. No key needed.
-3. Open the [before the fix](https://urai-serv.vercel.app/r/Hb-KceFRYlnwlohJbOD4OQ) report, then the [after the fix](https://urai-serv.vercel.app/r/lQF1cJ-lebtC4wNIyXItpw) report. Same agent, same invoices, 27 of 40 against 39 of 40.
+3. Open the [before the fix](https://urai-serv.vercel.app/r/2SC_jtj9dqui6VGFIrQQ0A) report, then the [after the fix](https://urai-serv.vercel.app/r/uVNL7475vDXOlUTxxCOVNA) report. Same agent, same invoices. SERV on went from 27 of 40 to 39 of 40, while the model alone scored 39 of 40 and then 40 of 40.
 4. Open [/new](https://urai-serv.vercel.app/new) and press "Data in the wrong place" under "Start from a sample". The setup check flags "Data sits inside the system prompt". Press "Fix layout" and watch the supplier book move out of the prompt.
 5. Open [/docs/proof](https://urai-serv.vercel.app/docs/proof) for every sample report, the latest security record and the prove command.
 
@@ -219,25 +225,25 @@ cd packages/web
 npm run prove -- --base https://urai-serv.vercel.app
 ```
 
-Our run on 25 Sep 2026, against a local production build of this repo, printed:
+Our run on 26 Sep 2026, against a local production build of this repo, printed:
 
 ```text
 Urai prove-it against http://localhost:3102
 [PASS] 1 GET /api/models
-       34 models, verified true, fetched 2026-09-25T05:41:20.246Z
+       34 models, verified true, fetched 2026-09-26T14:20:20.714Z
        gpt-6-luna: 0.13 in / 0.65 out USD per million tokens
 [PASS] 2 POST /api/lint on invoices-bad
        findings: data-in-system-prompt (error), quotes-instructions (warning), first-sight-cost (info), large-system-prompt (info)
        fix: yes, moved SUPPLIER BOOK (7342 chars) out of the system prompt
 [PASS] 3 team run: the fixed workload's first 10 cases, raw and plain
-       accuracy: gpt-6-luna raw 10/10 = 100.0%, gpt-6-luna plain 10/10 = 100.0%
-       spend so far from token counts: 0.0223 USD of the 0.1 cap
+       accuracy: gpt-6-luna raw 9/10 = 90.0%, gpt-6-luna plain 10/10 = 100.0%
+       spend so far from token counts: 0.0209 USD of the 0.1 cap
 [PASS] 4 demo run: sample-invoices-good, 12 cases x 2 configs, no key
-       accuracy: gpt-6-luna raw 11/12 = 91.7%, gpt-6-luna plain 11/12 = 91.7%
-       demo budget effect: about 0.0247 USD, from the report's per-config cost
+       accuracy: gpt-6-luna raw 12/12 = 100.0%, gpt-6-luna plain 12/12 = 100.0%
+       demo budget effect: about 0.0237 USD, from the report's per-config cost
 [PASS] 5 share the demo run, then GET /api/reports/:reportId with no header
-       reportId FlFQyOtGPvDPzzsQba_Pnw: same totals as the owner's report (gpt-6-luna raw 11/12 = 91.7%, gpt-6-luna plain 11/12 = 91.7%), and the run id is nowhere in it
-spend: about 0.0470 USD from token counts, cap 0.1
+       reportId 7WVntB8svLf0LA8CMFGuUg: same totals as the owner's report (gpt-6-luna raw 12/12 = 100.0%, gpt-6-luna plain 12/12 = 100.0%), and the run id is nowhere in it
+spend: about 0.0446 USD from token counts, cap 0.1
 RESULT: PASS (5 of 5 steps)
 ```
 
@@ -284,21 +290,21 @@ Every route, header and error code is at [/docs/developers/api](https://urai-ser
 
 ## Test results
 
-From the proof run on 25 Sep 2026.
+From the final proof run on 26 Sep 2026.
 
 ```text
-packages/engine   npm test                  213 passed
-packages/web      npm test                  109 passed, 1 skipped
-live security     npm run verify-security   68 OK, 0 BROKEN, 0 PENDING
+packages/engine   npm test                  225 passed
+packages/web      npm test                  208 passed, 1 skipped
+live security     npm run verify-security   72 OK, 0 BROKEN, 0 PENDING
 ```
 
-The security suite attacks a running server to test every rule in the threat model. Its record for that run is [docs/security/checks/run-2026-09-25T06-19-50.695Z.md](docs/security/checks/run-2026-09-25T06-19-50.695Z.md).
+The security suite covers 25 of the 35 rules: 21 by attacking a running server and 4 (C15 to C18) by confirming their unit tests still exist. C19 is retired; the rest are held by the code and its unit tests. Its record for that run is [docs/security/checks/run-2026-09-26T15-13-06.863Z.md](https://github.com/ramakrishnanhulk20/Urai/blob/main/docs/security/checks/run-2026-09-26T15-13-06.863Z.md).
 
 ## What a run costs
 
 Each case under each setting is one SERV call, billed to your own key at SERV's prices. Forty cases under two settings is eighty calls. The builder shows the count and an estimate before you start, and the report shows the run's cost worked out from SERV's own token counts for every call.
 
-For scale, our four 40-case sample runs on `gpt-6-luna` took $0.03, $0.03, $0.05 and $0.10 off the key's balance, measured on 23 Sep. Two SERV charges come on top of tokens: building the reasoning graph the first time SERV sees a system prompt, about 0.60 USD in our runs, and the full setting at about 0.25 USD per call. The graph build is the one charge token counts cannot see, so a report's cost leaves it out. Urai read the balance before and after each run until 25 Sep, when SERV stopped offering a free way to read it.
+For scale, our four 40-case sample runs on `gpt-6-luna`, SERV off and SERV on together, came to an estimated $0.0733, $0.0835, $0.0798 and $0.1618 from SERV's token counts. On earlier 23 Sep runs of the two larger samples, not the runs priced here, the key's balance dropped by about two thirds of the token-count estimates (0.05 against 0.080 USD, and 0.10 against 0.157). Two SERV charges come on top of tokens: building the reasoning graph the first time SERV sees a system prompt, about 0.60 USD in our runs, and the full setting at about 0.25 USD per call. Token counts cannot see SERV's one-off graph build or the extra passes in Multipath and full mode. So a report's cost leaves the graph build out, and a Multipath or full setting reads unknown: Urai does not price them. Urai read the balance before and after each run until 25 Sep, when SERV stopped offering a free way to read it.
 
 The live demo runs on our key, on our sample agents only, inside a daily budget. When the day's budget is spent, the demo pauses until the next day and points you to the saved reports.
 
@@ -310,7 +316,7 @@ The live demo runs on our key, on our sample agents only, inside a daily budget.
 | `packages/web` | The Next.js app: the landing page, `/try`, `/new`, the live run, reports, `/docs`, the API routes and Postgres storage, plus the migrate, seed, prove and security scripts. |
 | `packages/bench` | The research benchmark that came first: 40 synthetic supplier invoices against a 43-clause payables rulebook, and a 152-clause hard set, sent to SERV in each mode and scored against labels. |
 | `packages/haggle` | A second research benchmark: scripted multi-turn sales conversations against a written pricing policy, scored by arithmetic on whether the agent gave away money the policy does not allow. |
-| `docs/security` | The system description, the threat model with invariants C1 to C34, and the record of every security suite run. |
+| `docs/security` | The system description, the threat model with invariants C1 to C35, and the record of every security suite run. |
 
 ## Tech stack
 
@@ -327,9 +333,9 @@ The live demo runs on our key, on our sample agents only, inside a daily budget.
 
 ## Security
 
-Urai handles a SERV key that can spend a team's credit, a test set that is often private evaluation data, and our own money on the public demo. We wrote the rules that protect all three as a threat model before writing any code, then built a suite that attacks a running server to check them. It now holds 34 invariants; the last two came from the final code review.
+Urai handles a SERV key that can spend a team's credit, a test set that is often private evaluation data, and our own money on the public demo. We wrote the rules that protect all three as a threat model before writing any code, then built a suite that attacks a running server to check them. It now holds 35 invariants. C33 and C34 came from the final code review, and C35, which limits what the app's own database login can do, was added on 26 Sep.
 
-- Your key is never stored. It is forwarded to SERV for one call and never reaches the database, a log line, an error, a response or a report (C1). The only address a key is ever sent to is SERV's, fixed in code (C2).
+- Your key is never stored. It is forwarded to SERV with each call of your run and never reaches the database, a log line, an error, a response or a report (C1). The only address a key is ever sent to is SERV's, fixed in code (C2).
 - Who pays is fixed when a run is created and cannot change halfway (C3). A demo run can only use our sample workloads with the settings we allow, so your text never travels on our key (C4).
 - Each case under each setting is spent at most once, even with ten identical calls at the same moment (C5).
 - The demo budget is reserved atomically before each call (C6) and settled at each call's cost worked out from SERV's token counts, priced at the higher of our own price and SERV's live price (C28).
@@ -337,15 +343,16 @@ Urai handles a SERV key that can spend a team's credit, a test set that is often
 - Reports are private until the run's owner shares them (C11) and can be taken back (C30). A report link reveals no run id and cannot drive the run (C9). Every id is random and at least 128 bits (C8).
 - The one-click fix is shown to you, never applied to a stored workload on its own (C21). Cross-origin requests are refused (C22).
 - Urai is never an open relay for bad keys: calls SERV refuses count against a small hourly budget per network, and past it nothing more is sent (C33).
-- Every production page tells the browser to connect only to Urai, so the key held in page memory cannot be posted anywhere else (C34).
+- Every production page tells the browser to connect only to Urai, as far as a policy can say (C34). The real protection for the key held in page memory is that no injected markup or third-party script runs in the page (C20).
 
-The full list is in [docs/security/threat-model.md](docs/security/threat-model.md), and the latest attack record is [docs/security/checks/run-2026-09-25T06-19-50.695Z.md](docs/security/checks/run-2026-09-25T06-19-50.695Z.md).
+The full list is in [docs/security/threat-model.md](https://github.com/ramakrishnanhulk20/Urai/blob/main/docs/security/threat-model.md), and the latest attack record is [docs/security/checks/run-2026-09-26T15-13-06.863Z.md](https://github.com/ramakrishnanhulk20/Urai/blob/main/docs/security/checks/run-2026-09-26T15-13-06.863Z.md).
 
 ## Where it goes next
 
+- Re-run alerts, the first paid feature: your cases re-run on a schedule, with an alert when SERV or its model list changes and your results move. SERV's changelog for 11 Sep 2026 removed 13 models from the catalog in one go. A team running on one of them needs to know before its agent breaks, and what its numbers look like on the replacement.
+- Saved workspaces next, so a team keeps its cases, runs and reports in one place.
 - Free stays free: the setup check, the live demo and the sample reports, so any team can see what SERV does to an agent like theirs.
-- Paid for teams: saved workspaces, scheduled re-runs, and an alert when SERV's model list changes and your results move. SERV's changelog for 11 Sep 2026 removed 13 models from the catalog in one go. A team running on one of them needs to know before its agent breaks, and what its numbers look like on the replacement.
-- A route for OpenServ: its own day-one guide tells teams to benchmark SERV against the path they already run, on production-like inputs, before they switch. Urai is that benchmark as an open tool OpenServ can point every prospect to.
+- A route for OpenServ: its own Day One guide tells teams to benchmark SERV against the path they already run, on production-like inputs, before they switch, and OpenServ says 84% of companies that benchmark SERV on their own stack sign pilots. Urai is that benchmark as an open tool OpenServ can point every prospect to. Testing AI changes on your own data is already a paid category; Urai is the version built for SERV.
 
 ## Licence
 

@@ -9,38 +9,48 @@ No. Your SERV key lives in the page's memory, goes to our server in a request he
 
 ## What does a run cost?
 
-Each case under each setting is one SERV call, billed to your key at SERV's prices. 40 cases under two settings is 80 calls. The builder shows the count and a rough estimate before you start, and the report shows the run's cost worked out from SERV's own token counts for every call. For scale, our 40-case good-layout sample on `gpt-6-luna`, SERV off and SERV plain, took 0.05 USD off the key's balance, measured on 23 Sep. Two SERV charges come on top of tokens: building the reasoning graph the first time SERV sees a system prompt, about 0.60 USD in our runs, and the full setting at about 0.25 USD per call. The graph build is the one charge token counts cannot see, so the report's cost leaves it out.
+Each case under each setting is one SERV call, billed to your key at SERV's prices. 40 cases under two settings is 80 calls. The builder shows the count and a rough estimate before you start, adding up to about 0.60 USD once for SERV's graph build when any setting has SERV on, and the report shows the run's cost worked out from SERV's own token counts for every call. For scale, our 40-case good-layout sample on `gpt-6-luna`, SERV off and SERV on, came to an estimated 0.08 USD on 26 Sep. That estimate runs high: on earlier 23 Sep runs of our two larger samples, not the 26 Sep runs, the key's balance dropped by about two thirds of the estimates (0.05 against 0.080 USD, and 0.10 against 0.157). Two SERV charges come on top of tokens: building the reasoning graph the first time SERV sees a system prompt, about 0.60 USD in our runs, and the full setting at about 0.25 USD per call. Token counts cannot see SERV's one-off graph build or the extra passes in Multipath and full mode. So the report's cost leaves the graph build out, and a Multipath or full setting reads unknown: Urai does not price them.
 
-Until 25 Sep Urai also read your SERV balance before and after a run. SERV stopped offering a free way to read it that day, so Urai no longer does.
+A call that never reached SERV, or that SERV turned away with 429 because it was busy, costs nothing. Urai does not store it and sends it again later. Urai never reads your SERV balance.
 
 ## Is the demo free?
 
-For you, yes. The live demo on [/try](/try) runs on our own SERV key, on our sample agents, up to their first 12 cases, under a daily budget settled on SERV's own token counts for every call. When the day's budget is spent, the demo pauses until the next day and points you to the saved full reports. You cannot run your own text on the demo: that needs your own key.
+For you, yes. The live demo on [/try](/try) runs on our own SERV key, on our sample agents, up to their first 12 cases, under a daily budget settled on SERV's own token counts for every call. When the day's budget is spent, the demo pauses until the next day and points you to the saved full reports. Each network also gets 72 demo calls an hour, three demo runs' worth, so one visitor cannot use up the day. SERV keeps a prompt's reasoning graph for 30 days and our samples were built on 23 Sep, so from 23 Oct 2026 the demo stops sending calls with SERV on until we build them again. You cannot run your own text on the demo: that needs your own key.
 
 ## Why is SERV sometimes worse?
 
-SERV rewrites your system prompt into its own compressed reasoning graph. That compression can drop things your agent needs. Data in the system prompt is the clearest case: on our sample, moving the supplier book out of the prompt took SERV from 67.5% to 97.5%. A long, layered rulebook is another: on our 152-clause set, SERV plain scored 47.5% where the model alone scored 97.5%. On a well laid out agent the two were close, 95% against 100%, with 31% fewer tokens. See [Where SERV fits](/docs/concepts/where-serv-fits).
+SERV rewrites your system prompt into its own compressed reasoning graph. That compression can drop things your agent needs. Data in the system prompt is the clearest case: on our sample, moving the supplier book out of the prompt took SERV from 67.5% to 97.5%. The model alone scored 97.5% on that same bad layout, so the mistake only hurts with SERV on. A long, layered rulebook is another: on our 152-clause set, SERV on scored 45% where the model alone scored 97.5%. On a well laid out agent the two were close, 92.5% against 97.5%, with 33% fewer tokens. See [Where SERV fits](/docs/concepts/where-serv-fits).
 
 ## What is the difference between plain and Multipath?
 
-SERV plain sends your request to the model id you picked, with SERV's reasoning on and nothing else added. SERV Multipath sends it to the model's Multipath variant, the same id with `-serv-multipath` on the end. SERV full is Multipath plus PromptGuard and Shadow Agent. Start with SERV off against SERV plain on the same model: that isolates what SERV's reasoning alone does. See [SERV settings](/docs/concepts/serv-modes).
+SERV plain sends your request to the model id you picked: SERV's reasoning on, with its output filter off (Urai always switches it off so answers that quote the rules are not cut), nothing else added. SERV Multipath sends it to the model's Multipath variant, the same id with `-serv-multipath` on the end. SERV's docs describe Multipath as a separate reasoning pass for prompts with many branches, exceptions or competing rules. SERV full is Multipath plus PromptGuard and Shadow Agent, which checks each answer and asks for a revision, up to 3 rounds. Start with SERV off against SERV plain on the same model: that isolates what SERV's reasoning alone does. When SERV plain is the only SERV setting in a report, the report calls it SERV on. Multipath, PromptGuard and full always keep their names. See [SERV settings](/docs/concepts/serv-modes).
 
 ## Which models can I test?
 
-Any model in SERV's live model list. The picker on [/new](/new) reads it from SERV, through `GET /api/models`, with each model's input and output price per million tokens. Urai refreshes the list at most once an hour. If SERV cannot be reached, you see the last saved list marked "Not verified", and you can type a model id by hand.
+Any model in SERV's live model list. The picker on [/new](/new) reads it from SERV, through `GET /api/models`, with each model's input and output price per million tokens. Urai refreshes the list at most once an hour. If SERV cannot be reached, you see the last saved list marked "Not verified" and pick from it. Only when there is no list at all, because it could not load or came back empty, does the picker turn into a box where you type the model id exactly as SERV names it.
 
-## How long is my workload kept?
+## Can I compare my current model with a smaller one on SERV?
 
-30 days from when you save it. Then a daily clean-up deletes the workload, its runs, their results and the report together, and any report link answers not found. Our sample workloads do not expire.
+Yes, in one run. On [/new](/new), pick the smaller model under "Settings to compare" and tick SERV plain, then under "Compare with another model" pick your current model with SERV off. SERV off starts ticked on the main model, so untick it there if you want exactly two settings. Every case runs on both, the report names the model in each setting, and it shows what each right answer cost under each one. OpenServ's own [Day One guide](https://docs.openserv.ai/serv-reasoning/day-one) recommends this test: start small, and benchmark SERV against the setup you already run. See [Compare two models](/docs/guides/run-your-agent#compare-two-models).
+
+## What does Urai keep, and for how long?
+
+- Your SERV key: never. It is used for one call at a time and dropped.
+- Your test set (name, system prompt, shared data, answer schema, scoring rules and cases), its runs, every answer, score and token count, and the report: 30 days from when you save it. Then a daily clean-up deletes them together, and any report link answers not found.
+- A test set you save and never run: 48 hours, then the daily clean-up deletes it.
+- Owner tokens: only as a hash.
+- Your network address: only as a salted hash inside the hourly rate-limit counters, which are deleted after 2 days.
+
+The builder says the short version beside its Start button. Demo runs are kept for 7 days, and our sample workloads do not expire. All teams' stored test sets share one storage cap: when it is full, saving a new one is refused and nothing is kept. Separately, if Urai's whole database passes its 400 MB size stop, new runs and calls are refused too until the operator clears space.
 
 ## Can I take a shared report down?
 
-Yes. Press "Unshare" on the run page and the link answers not found straight away. Share again and the same link comes back. Unsharing needs the run's owner token, which lives in the tab that ran it and dies when that tab closes. The run's private link carries it too: open that link in any browser and press "Make sure it is private". See [Share a report](/docs/guides/share-a-report).
+Yes. Press "Unshare" on the run page and the link answers not found straight away. Share again and the same link comes back. Unsharing needs the run's owner token, which lives in the tab that ran it and dies when that tab closes. The run's private link carries it too: open that link in any browser, where the run page says "This report is public", and press "Unshare". See [Share a report](/docs/guides/share-a-report).
 
 ## What data should I not send?
 
-Anything sensitive. Use synthetic or non-sensitive cases. Depending on your SERV account's data collection setting, OpenServ may keep the content of requests made with your key. Urai also stores your prompt, cases, expected answers and the model's answers for 30 days, and a shared report shows all of them to anyone with the link.
+Anything sensitive. Use synthetic or non-sensitive cases. Depending on your SERV account's data collection setting, OpenServ may keep the content of requests made with your key. Urai also stores your prompt, shared data, cases, expected answers and the model's answers for 30 days, and a shared report shows all of them to anyone with the link. Before you share, the page lists exactly what goes public and asks you to confirm.
 
 ## What happens if I close the tab?
 
-The run stops where it is. Nothing new is sent, and answers already stored stay stored. The run's owner token dies with the tab, on purpose, unless you pressed "Copy private link" first: opening that link in any browser brings the run back, and you paste your key again before anything is spent. Anyone with the link can see and share the results, so keep it to yourself. If you shared the report first, its link keeps working. A reload is different: the run stays yours, the page asks for your key again, and it carries on without running any finished call twice. See [How a run works](/docs/concepts/how-it-works).
+The run stops where it is. Nothing new is sent, and answers already stored stay stored. The run's owner token dies with the tab, on purpose, unless you pressed "Copy private link" first: opening that link in any browser brings the run back. It first shows what a key would pay for, the run's settings, calls left and the start of its prompt, and asks you to confirm the run is yours. Only then does it ask for your key, and nothing is spent before you paste it. Anyone with the link can see and share the results, so keep it to yourself. If you shared the report first, its link keeps working. A reload is different: the run stays yours, the page asks for your key again, and it carries on without running any finished call twice. See [How a run works](/docs/concepts/how-it-works).

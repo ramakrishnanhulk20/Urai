@@ -1,11 +1,11 @@
 ---
 title: Threat model
-description: The 34 rules Urai's code must keep, C1 to C34, one line each.
+description: The 35 rules Urai's code must keep, C1 to C35, one line each.
 ---
 
-We wrote the threat model on 23 Sep 2026, at the architecture gate, before any code existed. It names what Urai is in security terms: a relay for a third party's secret key, a spender of our money for anonymous callers, a data store with no accounts where the id is the only lock, and a renderer of text that teams and models control. Section C of it lists the rules the code must keep. C1 to C27 came first. C28 to C32 were added at the backend review on the same day, after asking what the first 27 missed. C33 and C34 were added at the final review on 24 Sep. C7, C19 and C28 were rewritten on 25 Sep, when SERV stopped offering a free balance read.
+We wrote the threat model on 23 Sep 2026, at the architecture gate, before any code existed. It names what Urai is in security terms: a relay for a third party's secret key, a spender of our money for anonymous callers, a data store with no accounts where the id is the only lock, and a renderer of text that teams and models control. Section C of it lists the rules the code must keep. C1 to C27 came first. C28 to C32 were added at the backend review on the same day, after asking what the first 27 missed. C33 and C34 were added at the final review on 24 Sep. C7, C19 and C28 were rewritten on 25 Sep, when SERV stopped offering a free balance read. On 26 Sep, review round 1 added C35, amended C4, C5, C6, C22, C24, C26, C27, C28, C29, C31 and C33, and reworded C34.
 
-This page gives each rule in one line. The full text, with the attacks each rule answers and the test each one needs, is `docs/security/threat-model.md` in the repository.
+This page gives each rule in one line. The full text, with the attacks each rule answers and the test each one needs, is [`docs/security/threat-model.md`](https://github.com/ramakrishnanhulk20/Urai/blob/main/docs/security/threat-model.md) in the repository.
 
 ## Keys and payer
 
@@ -14,10 +14,10 @@ This page gives each rule in one line. The full text, with the attacks each rule
 | C1 | A team key exists only in memory for one case call. Never in the database, a log, an error, a response, a report, or a URL. |
 | C2 | The only address that ever receives a SERV key is SERV's own, `inference-api.openserv.ai`, over TLS, fixed in code. |
 | C3 | Who pays is fixed when the run is created. A call whose key header disagrees with that is refused, and an empty header counts as none. |
-| C4 | No user-supplied text ever travels with the operator key. Demo runs only use operator samples with operator-chosen settings, refused at run creation. |
-| C5 | Credit is spent at most once per run, case and setting. A repeat call returns the stored result with no new SERV request. Amended 24 Sep: on a team run, a call SERV answers with 401, which bills no account, is released instead of stored so the owner can retry with a working key. Every other status, 403 included, is stored as before. Demo calls are never released. Amended at the final review: a team call SERV refuses with 402 for lack of credit is released the same way, so the run resumes after a top-up. |
-| C6 | The daily demo budget cannot be overrun by parallel calls: each call reserves its cost in one atomic write before it is sent, and a budget that cannot be read denies the call. |
-| C7 | Urai never reads a balance by sending a request. Rewritten 25 Sep: until 24 Sep a request SERV refused with a 402 revealed a key's balance for free. On 25 Sep SERV billed that request instead; the guard caught it and stopped the demo, as designed, and the read was removed. Urai now sends SERV only case calls and the model list read, and every cost it shows comes from SERV's token counts (C28). The four sample reports keep the real readings taken on 23 Sep. |
+| C4 | No user-supplied text ever travels with the operator key. Demo runs only use operator samples with operator-chosen settings, refused at run creation. Amended 26 Sep: each demo call checks its setting against the sample's allowed list again at call time. |
+| C5 | Credit is spent at most once per run, case and setting. A repeat call returns the stored result with no new SERV request. Amended 24 Sep: on a team run, a call SERV answers with 401, which bills no account, is released instead of stored so the owner can retry with a working key. Every other status, 403 included, is stored as before. Demo calls are never released. Amended at the final review: a team call SERV refuses with 402 for lack of credit is released the same way, so the run resumes after a top-up. Amended 26 Sep: a call that never reached SERV, or that SERV answered with 429, is released on team and demo runs alike, a demo reservation settles at 0, and the browser pauses a run after three such failures in a row. |
+| C6 | The daily demo budget cannot be overrun by parallel calls: each call reserves its cost in one atomic write before it is sent, and a budget that cannot be read denies the call. Amended 26 Sep: each network also gets 72 demo calls an hour, so one visitor cannot drain the day. |
+| C7 | Urai never reads a balance by sending a request. Rewritten 25 Sep: until 24 Sep a request SERV refused with a 402 revealed a key's balance for free. On 25 Sep SERV billed that request instead; the guard caught it and stopped the demo, as designed, and the read was removed. Urai now sends SERV only case calls and the model list read, and every cost it shows comes from SERV's token counts (C28). A balance reading shows only on a run that stored one before 25 Sep. |
 
 ## Access to stored data
 
@@ -52,33 +52,39 @@ This page gives each rule in one line. The full text, with the attacks each rule
 |---|---|
 | C20 | Everything on the report page and in the run API is escaped as text. A prompt, case or answer holding HTML shows as visible characters. |
 | C21 | Anything copied out of a report is made safe for where it goes, and the one-click rewrite is text to copy, never applied to a stored workload on its own. |
-| C22 | Cross-origin requests are refused. The key stays in page memory only. Amended 23 Sep: the run owner token lives in session storage at most, so it dies with the tab. Amended 24 Sep: the owner can copy it out as a private run link, carried after `#` so no request sends it, stripped from the address bar on arrival, and never with the SERV key. |
+| C22 | Cross-origin requests are refused. The key stays in page memory only. Amended 23 Sep: the run owner token lives in session storage at most, so it dies with the tab. Amended 24 Sep: the owner can copy it out as a private run link, carried after `#` so no request sends it, stripped from the address bar on arrival, and never with the SERV key. Amended 26 Sep: a run opened from a private link shows what a key would pay for and needs a confirm before any key field appears, and a key is held per run id. |
 
 ## General standards
 
 | Rule | In plain words |
 |---|---|
 | C23 | Protection comes from primitives, not lists: one secure random call for ids, one payer field on the run, the validator's own strict mode, a linear-time regex engine or a hard timeout, the framework's default text escaping. |
-| C24 | Normalise before you compare: expected values and answers, schemas at save and at scoring, model ids in the check and in the request, and the budget date all go through one shared function each. |
-| C25 | Outputs are validated like inputs. A missing token count shows as unknown, never zero. Costs come from SERV's token counts, and the only balance numbers shown are the 23 Sep readings stored with the four sample reports. |
-| C26 | Fail closed. Every unknown, unreadable or unexpected state denies or aborts, every limit lives in one config file, reports start private and workloads expire. |
-| C27 | Named non-goals: a hostile copy of the site, a compromised browser, OpenServ keeping content sent with a team's own key, a team publishing its own report, the truth of SERV's answers, a team call lost after sending, attacks on Vercel or OpenServ themselves, and operator misconfiguration. |
+| C24 | Normalise before you compare: expected values and answers, schemas at save and at scoring, model ids in the check and in the request, and the budget date all go through one shared function each. Amended 26 Sep: workloads are stored as `json` text, not `jsonb`, so the answer schema reaches SERV with its fields in the team's order. |
+| C25 | Outputs are validated like inputs. A missing token count shows as unknown, never zero. Costs come from SERV's token counts, and a balance number shows only on a run that stored one before 25 Sep. |
+| C26 | Fail closed. Every unknown, unreadable or unexpected state denies or aborts, every limit lives in one config file, reports start private and workloads expire. Amended 26 Sep: storage cannot fill, since stored team workloads are capped in total (503 storage_full, which clears as old test sets expire), an unrun workload goes after 48 hours, and every database query times out after 15 seconds. A second stop answers 503 storage_full to new workloads, runs and case calls once the whole database passes 400 MB; it clears only after the daily clean-up and then npm run vacuum by the operator. |
+| C27 | Named non-goals: a hostile copy of the site, a compromised browser, OpenServ keeping content sent with a team's own key, a team publishing its own report, the truth of SERV's answers, a team call lost after sending, attacks on Vercel or OpenServ themselves, and operator misconfiguration. Amended 26 Sep: the builder says what is kept, the share panel lists what goes public and asks to confirm, and a caller holding a whole IPv6 /48 is an accepted gap. |
 
 ## Added at the backend review
 
 | Rule | In plain words |
 |---|---|
-| C28 | The demo budget holds on settled cost. Rewritten 25 Sep: each demo call reserves an estimate before it runs (C6) and settles at its real cost from SERV's token counts, at the higher of the configured and live price, and the daily cap applies to the settled total. The one charge token counts cannot see, SERV's graph build for a new system prompt, cannot arise on the demo, whose sample prompts are pre-warmed in SERV's 30-day cache. The operator can stop the demo globally or for one UTC day. |
-| C29 | Every response body has a size cap. Run status never carries answers, and the report caps each answer by its length. |
+| C28 | The demo budget holds on settled cost. Rewritten 25 Sep: each demo call reserves an estimate before it runs (C6) and settles at its real cost from SERV's token counts, at the higher of the configured and live price, and the daily cap applies to the settled total. Token counts cannot see SERV's graph build for a new system prompt or the extra passes in Multipath and full mode. Neither can arise on the demo, which runs only SERV off and plain on sample prompts pre-warmed in SERV's 30-day cache. The operator can stop the demo globally or for one UTC day. Amended 26 Sep: demo calls carry an output token cap, lowering the daily budget applies the same day, and from 23 Oct 2026 demo calls with SERV on stop until the sample prompts are built again. |
+| C29 | Every response body has a size cap. Run status never carries answers, and the report caps each answer by its length. Amended 26 Sep: that length is measured on the indented form the page shows, since a deeply nested answer grew about 1,000 times from its compact form. |
 | C30 | The owner can take a shared report back, and the public link answers not found from then on. |
-| C31 | Public report reads are rate-limited per network address, like every write route. Amended at the final review: the landing page and /try serve the unchanging sample reports from a short server cache. |
+| C31 | Public report reads are rate-limited per network address, like every write route. Amended at the final review: the landing page and /try serve the unchanging sample reports from a short server cache. Amended 26 Sep: the owner report route and the model list route are metered too, and one server at a time refreshes the model list. |
 | C32 | One model id policy everywhere: trim and lowercase, so one setting can never appear as two. |
 
 ## Added at the final review
 
 | Rule | In plain words |
 |---|---|
-| C33 | Urai is not an open relay for bad keys. Every team call SERV refuses with 401 or 402 counts against an hourly budget per network address, and once it is spent the case route answers 429 before anything is sent to SERV. |
-| C34 | The browser only talks to Urai. Every production page sends a Content-Security-Policy that keeps scripts, styles, fonts and images on Urai's own origin and connections to Urai alone, forbids framing, and sends `nosniff`, so a script that got into the page could not post the key to another host. |
+| C33 | Urai is not an open relay for bad keys. Every team call SERV refuses with a 4xx status other than 429 counts against an hourly budget per network address, and once it is spent the case route answers 429 before anything is sent to SERV. Amended 26 Sep: the count is charged before a team call leaves and refunded when SERV accepts the key, so calls in flight cannot slip past it. |
+| C34 | The browser only talks to Urai, as far as a policy can say. Every production page sends a Content-Security-Policy that keeps scripts, styles, fonts and images on Urai's own origin and connections to Urai alone, forbids framing, and sends `nosniff`. Reworded 26 Sep: a policy cannot stop a script from sending the tab elsewhere or opening a WebRTC channel, so the key's real protection is C20 and no third-party scripts, and C34 is a second line. |
+
+## Added on 26 Sep
+
+| Rule | In plain words |
+|---|---|
+| C35 | The live app's database login can do only what the app needs. It connects as `urai_app`, with grants on the columns the code writes, and cannot create, alter or drop anything, read the migration log, set flags, change a run's payer or a workload's owner, or create roles. The owner login stays in the operator's local `.env`. Checked by `npm run check-app-role`. Amended 26 Sep: the daily clean-up and the release of a refused call run through database functions, so the app's login has no DELETE on stored answers. |
 
 How these are tested is on [Security checks](/docs/security/checks).

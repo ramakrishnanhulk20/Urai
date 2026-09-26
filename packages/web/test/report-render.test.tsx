@@ -13,7 +13,7 @@ import { describe, expect, it } from "vitest";
 import { Disagreements } from "../components/report/disagreements";
 import { EveryCase } from "../components/report/every-case";
 import { Findings } from "../components/report/findings";
-import { summarize, summaryText, usd } from "../components/report/format";
+import { builderHref, SAMPLE_WORKLOADS, summarize, summaryText, usd } from "../components/report/format";
 import { ReportSummary } from "../components/report/summary";
 import { Verdict } from "../components/report/verdict";
 import { WhatIsThis } from "../components/report/what-is-this";
@@ -158,13 +158,69 @@ describe("report components", () => {
 
   it("writes the summary from the numbers, and unknown for a missing total, never zero", () => {
     const report = hostileReport();
-    expect(summaryText(summarize(report))).toBe("SERV plain scored 0% against 100% with SERV off, using 31% fewer input tokens.");
+    // One SERV mode reads "SERV on"; tokens are input plus output, 890 against 1,200.
+    expect(summaryText(summarize(report))).toBe("SERV on scored 0% against 100% with SERV off, using 26% fewer tokens.");
 
     report.totals[0] = totals({ inputTokens: null, estCostUsd: null, meanLatencyMs: null });
-    expect(summaryText(summarize(report))).toContain("input token use is unknown");
+    expect(summaryText(summarize(report))).toContain("token use is unknown");
     const html = renderToString(<Verdict report={report} />);
     expect(html).toContain("unknown");
     expect(html).not.toContain("$0.0000");
+  });
+
+  it("names the model in every setting of a two-model run, and shows each setting's cost per correct answer", () => {
+    const report = hostileReport();
+    report.configs = [{ ...OFF, model: "gpt-6-astra" }, PLAIN];
+    report.totals = [totals({ correct: 2, accuracy: 1, estCostUsd: 0.02 }), totals({ correct: 0, accuracy: 0, estCostUsd: 0.001 })];
+    const html = renderAll(report).replaceAll("<!-- -->", "");
+    expect(html).toContain("gpt-6-astra, SERV off");
+    expect(html).toContain("gpt-6-luna, SERV on");
+    // The model is inside each label, so no separate model line repeats it under the setting's name.
+    expect(html).not.toContain(">gpt-6-luna</span>");
+    expect(html).toContain("Cost per correct answer");
+    expect(html).toContain("$0.01");
+    expect(html).toContain("no correct answers");
+    expect(html).toContain("so it is an estimate in the same way");
+    // The model changed too, so the heading does not credit SERV alone.
+    expect(html).toContain(">What changed<");
+    expect(html).not.toContain("What SERV changed");
+  });
+
+  it("gives an unknown cost its real reason: Urai does not price full, and SERV sent every count", () => {
+    const report = hostileReport();
+    report.configs = [OFF, { ...PLAIN, mode: "full" }];
+    report.totals = [totals({ estCostUsd: 0.01 }), totals({ estCostUsd: null })];
+    const html = renderToString(<Verdict report={report} />).replaceAll("<!-- -->", "");
+    expect(html).toContain(">What SERV changed<");
+    // Full is not plain, so its label keeps the mode name instead of reading "SERV on".
+    expect(html).toContain("SERV full reads unknown: Urai does not price Multipath, full, or a model missing from the price list.");
+    expect(html).not.toContain("SERV did not send token counts");
+  });
+
+  it("keeps the short labels and the model line on a one-model run", () => {
+    const html = renderToString(<Verdict report={hostileReport()} />).replaceAll("<!-- -->", "");
+    expect(html).toContain(">SERV off</h3>");
+    expect(html).toContain(">SERV on</h3>");
+    expect(html).toContain(">gpt-6-luna</span>");
+  });
+
+  it("sends a sample report's builder link to that sample, and any other report to the empty builder", () => {
+    for (const sample of SAMPLE_WORKLOADS) {
+      const file = JSON.parse(readFileSync(join(__dirname, `../../engine/workloads/invoices-${sample.slug}.json`), "utf8")) as { name: string; systemPrompt: string };
+      expect(file.name).toBe(sample.name);
+      expect(file.systemPrompt.length).toBe(sample.promptChars);
+      // The report cuts a long prompt, so the match reads the full length it records.
+      const cut = { name: file.name, systemPrompt: { truncated: true as const, chars: file.systemPrompt.length, text: "..." } };
+      expect(builderHref(cut)).toBe(`/new?sample=${sample.slug}`);
+    }
+    const bad = SAMPLE_WORKLOADS[0];
+    expect(builderHref({ name: bad.name, systemPrompt: "A team's own prompt under a borrowed name" })).toBe("/new");
+
+    const report = hostileReport();
+    report.name = bad.name;
+    report.systemPrompt = { truncated: true, chars: bad.promptChars, text: "Rules" };
+    expect(renderToString(<Findings report={report} />)).toContain('href="/new?sample=bad"');
+    expect(renderToString(<Findings report={hostileReport()} />)).toContain('href="/new"');
   });
 
   it("formats money without trailing zeros past the cents", () => {

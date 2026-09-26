@@ -6,7 +6,8 @@
  * Not covered here: the demo_off switch itself (cases.test.ts), the SQL form of the flag check
  * inside reserveDemoCall (the in-memory flag stands in for the table), a status body over its cap
  * (unreachable with the capped inputs, read in review), a real SERV price change, SERV's one-off
- * graph build that token counts cannot see, and Vercel's function time limits.
+ * graph build that token counts cannot see, Vercel's function time limits, and a cap lowered while
+ * other calls are mid-flight (the lowering is one statement; the concurrent reserve is C6's test).
  */
 import { randomBytes } from "node:crypto";
 import { isIP } from "node:net";
@@ -22,6 +23,7 @@ import { POST as postWorkload } from "../app/api/workloads/route";
 import { budgetDay } from "../lib/budget";
 import { CONFIG, OWNER_HEADER } from "../lib/config";
 import { db } from "../lib/db";
+import { serverEnv } from "../lib/env";
 import { HttpError } from "../lib/http";
 import { newId, newOwnerToken } from "../lib/ids";
 import { ipHash } from "../lib/ip";
@@ -38,6 +40,16 @@ const flags = vi.hoisted(() => new Set<string>());
 vi.mock("../lib/flags", () => ({
   isSet: async (name: string) => flags.has(name),
 }));
+
+/*
+ * The configured budget is fixed here, so the cap-lowering test can open a day above it without
+ * ever inserting a cap over migration 006's limit of 10, whatever the root .env sets.
+ */
+const budget = vi.hoisted(() => ({ usd: 2 }));
+vi.mock("../lib/env", async (importOriginal) => {
+  const real = await importOriginal<typeof import("../lib/env")>();
+  return { ...real, serverEnv: () => ({ ...real.serverEnv(), demoDailyBudgetUsd: budget.usd }) };
+});
 
 const BASE = "http://localhost:3000";
 const SAMPLE = "sample-invoices-good";
@@ -60,9 +72,12 @@ function freshIp(): string {
   const ip = `2001:db8:${hex.join(":")}`;
   if (isIP(ip) !== 6) throw new Error("test fixture built an invalid IPv6 address");
   const hash = ipHash(new Request(BASE, { headers: { "x-real-ip": ip } }));
-  created.buckets.push(`workloads:${hash}`, `runs:${hash}`, `report:${hash}`);
+  created.buckets.push(`workloads:${hash}`, `runs:${hash}`, `report:${hash}`, `demo_calls:${hash}`);
   return ip;
 }
+
+// Demo case calls are counted per address, so they come from one fresh address this file cleans up.
+let DEMO_IP = "";
 
 async function body(p: Promise<Response>): Promise<{ status: number; text: string; body: Record<string, unknown> }> {
   const res = await p;
@@ -112,7 +127,7 @@ async function demoRun() {
 }
 
 function demoCall(run: { runId: string; owner: string }, caseId: string) {
-  const req = new Request(`${BASE}/api/runs/${run.runId}/cases/${caseId}?config=0`, { method: "POST", headers: { [OWNER_HEADER]: run.owner } });
+  const req = new Request(`${BASE}/api/runs/${run.runId}/cases/${caseId}?config=0`, { method: "POST", headers: { [OWNER_HEADER]: run.owner, "x-real-ip": DEMO_IP } });
   return body(postCase(req, { params: Promise.resolve({ id: run.runId, caseId }) }));
 }
 
@@ -142,6 +157,10 @@ async function openDay(day: Date, capUsd: number): Promise<string> {
   return d;
 }
 
+async function dayCap(d: string): Promise<number> {
+  return Number((await db()`SELECT cap_usd FROM demo_budget WHERE day = ${d}::date`)[0]?.cap_usd);
+}
+
 async function dayRow(d: string) {
   const rows = await db()`
     SELECT spent_usd::text AS spent, reserved_usd::text AS reserved, calls, stopped FROM demo_budget WHERE day = ${d}::date`;
@@ -150,6 +169,7 @@ async function dayRow(d: string) {
 
 beforeAll(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
+  DEMO_IP = freshIp();
 });
 
 beforeEach(() => {
@@ -196,6 +216,38 @@ describe("C28: the demo budget holds on settled cost", () => {
     await openDay(futureDay(2), 1);
     expect(await demoCall(run, run.cases[0]!)).toMatchObject({ status: 200, body: { status: "scored" } });
     expect(engine.runCase).toHaveBeenCalledTimes(1);
+  });
+
+  it("lowers today's cap at the next call when the configured budget is lower, and never raises it mid-day", async () => {
+    const configured = serverEnv().demoDailyBudgetUsd;
+    expect(configured).toBe(budget.usd);
+    expect(configured + 5).toBeLessThanOrEqual(10);
+    const high = await openDay(futureDay(3), configured + 5);
+    const run = await demoRun();
+    expect((await demoCall(run, run.cases[0]!)).status).toBe(200);
+    expect(await dayCap(high)).toBeCloseTo(configured, 4);
+
+    const low = await openDay(futureDay(4), 0.5 * configured);
+    expect((await demoCall(run, run.cases[1]!)).status).toBe(200);
+    expect(await dayCap(low)).toBeCloseTo(0.5 * configured, 4);
+  });
+});
+
+describe("DEMO_DAILY_BUDGET_USD is bounded by the database's own limit", () => {
+  it("refuses a budget above 10 at boot, naming the variable, and accepts 10 itself", async () => {
+    try {
+      vi.stubEnv("DEMO_DAILY_BUDGET_USD", "10.01");
+      vi.resetModules();
+      const over = await vi.importActual<typeof import("../lib/env")>("../lib/env");
+      expect(() => over.serverEnv()).toThrow("Environment variable missing or invalid: DEMO_DAILY_BUDGET_USD");
+
+      vi.stubEnv("DEMO_DAILY_BUDGET_USD", "10");
+      vi.resetModules();
+      const top = await vi.importActual<typeof import("../lib/env")>("../lib/env");
+      expect(top.serverEnv().demoDailyBudgetUsd).toBe(10);
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });
 
@@ -253,9 +305,9 @@ describe("C29: every response body has a stated size cap", () => {
       scoring: [{ field: "v", rule: "exact" }],
       cases: caseIds.map((id) => ({ id, input: worst.repeat(LIMITS.caseInputMaxChars), expected: { v: "pay" } })),
     };
-    // The largest answer that is still shown in full: exactly the cap once serialised.
-    const answer = { v: "x".repeat(CONFIG.reportAnswerMaxChars - JSON.stringify({ v: "" }).length) };
-    expect(JSON.stringify(answer)).toHaveLength(CONFIG.reportAnswerMaxChars);
+    // The largest answer that is still shown in full: exactly the cap in the indented form the page renders.
+    const answer = { v: "x".repeat(CONFIG.reportAnswerMaxChars - JSON.stringify({ v: "" }, null, 2).length) };
+    expect(JSON.stringify(answer, null, 2)).toHaveLength(CONFIG.reportAnswerMaxChars);
     const rows: ReportRow[] = caseIds.flatMap((caseId) =>
       configs.map((_, configIdx) => ({
         caseId,
@@ -287,13 +339,14 @@ describe("C29: every response body has a stated size cap", () => {
     ];
     const report = buildReport({ workload: w, configs: [LUNA_RAW], caseIds: ["c0", "c1"], balance: { before: null, after: null }, rows });
     expect(report.cases[0]!.results[0]!.answer).toBeNull();
-    expect(report.cases[0]!.results[0]!.answerTruncatedChars).toBe(JSON.stringify(wide).length);
+    // Measured in the indented form the page renders, the one the cap applies to.
+    expect(report.cases[0]!.results[0]!.answerTruncatedChars).toBe(JSON.stringify(wide, null, 2).length);
     // The text is kept, cut so it fits the cap once JSON-escaped: its four quote marks count two bytes each.
     const kept = report.cases[0]!.results[0]!.answerText!;
     expect(JSON.stringify(wide).startsWith(kept)).toBe(true);
     expect(Buffer.byteLength(JSON.stringify(kept), "utf8")).toBe(CONFIG.reportTextMaxChars + 2);
     expect(report.cases[1]!.results[0]!.answer).toBeNull();
-    expect(report.cases[1]!.results[0]!.answerTruncatedChars).toBe(JSON.stringify(multibyte).length);
+    expect(report.cases[1]!.results[0]!.answerTruncatedChars).toBe(JSON.stringify(multibyte, null, 2).length);
     expect(report.systemPrompt).toBe("Decide pay or hold.");
 
     let thrown: unknown;
@@ -317,12 +370,22 @@ function ownerPost(route: typeof postShare, path: string, runId: string, owner?:
   return body(route(new Request(`${BASE}${path}`, { method: "POST", headers }), { params: Promise.resolve({ id: runId }) }));
 }
 
+function runStatus(run: { runId: string; owner: string }) {
+  const req = new Request(`${BASE}/api/runs/${run.runId}`, { headers: { [OWNER_HEADER]: run.owner } });
+  return body(getRun(req, { params: Promise.resolve({ id: run.runId }) }));
+}
+
 describe("C30: the owner can take a shared report back", () => {
   it("unshares only with the run's owner token, after which the public report is 404", async () => {
     const run = await teamRun();
     const other = await teamRun();
+    expect(await runStatus(run)).toMatchObject({ status: 200, body: { shared: false } });
     expect((await ownerPost(postShare, `/api/runs/${run.runId}/share`, run.runId, run.owner)).status).toBe(200);
     expect((await publicReport(run.reportId)).status).toBe(200);
+    // The owner's status route says the report is public, and still never returns the report id (C9).
+    const shared = await runStatus(run);
+    expect(shared).toMatchObject({ status: 200, body: { shared: true } });
+    expect(shared.text).not.toContain(run.reportId);
 
     for (const token of [undefined, other.owner, newOwnerToken(), run.reportId]) {
       expect(await ownerPost(postUnshare, `/api/runs/${run.runId}/unshare`, run.runId, token)).toMatchObject({ status: 404, body: { error: "not_found" } });
@@ -332,6 +395,7 @@ describe("C30: the owner can take a shared report back", () => {
     expect(await ownerPost(postUnshare, `/api/runs/${run.runId}/unshare`, run.runId, run.owner)).toMatchObject({ status: 200, body: { shared: false } });
     expect(await publicReport(run.reportId)).toMatchObject({ status: 404, body: { error: "not_found" } });
     expect((await db()`SELECT shared FROM runs WHERE id = ${run.runId}`)[0]?.shared).toBe(false);
+    expect(await runStatus(run)).toMatchObject({ status: 200, body: { shared: false } });
     // The report id is not a run id on the unshare route either (C9).
     expect((await ownerPost(postUnshare, `/api/runs/${run.reportId}/unshare`, run.reportId, run.owner)).status).toBe(404);
   });

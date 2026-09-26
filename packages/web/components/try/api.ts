@@ -5,8 +5,8 @@ const OWNER_HEADER = "x-urai-owner";
 
 // The server answers 202 or run_busy while a call is still going, so the page waits this long and asks again.
 export const RETRY_AFTER_MS = 2_000;
-// A demo claim goes stale after 150 s on the server; asking a little past that means a stuck call ends as lost, not as a hang here.
-const MAX_WAITS = 90;
+// A demo claim goes stale after 310 s on the server. 160 waits of 2 s ask a little past that, so a stuck call ends as lost, not as a hang here.
+const MAX_WAITS = 160;
 const NETWORK_RETRIES = 2;
 
 const STATUSES = ["scored", "failed", "refused", "filtered", "upstream_error", "timeout"] as const;
@@ -19,6 +19,8 @@ export interface CaseView {
   /** The model's verdict field when it is a short string, else null. Shown as plain text only. */
   verdict: string | null;
   latencyMs: number | null;
+  /** Input plus output tokens SERV reported for the call. Null when either count is missing. */
+  tokens: number | null;
 }
 
 export interface DemoRun {
@@ -38,6 +40,8 @@ export type CreateOutcome =
 export type CaseOutcome =
   | { kind: "result"; view: CaseView }
   | { kind: "budget" }
+  /** 503 serv_unavailable: the call never reached SERV, or SERV said it was rate limited. Nothing was stored or charged. */
+  | { kind: "unavailable" }
   /** The run itself is gone or refuses this page: nothing else in it will work either. */
   | { kind: "fatal"; status: number; code: string }
   /** This one call failed; the rest of the run can go on. */
@@ -63,7 +67,7 @@ function errorCode(body: unknown): string {
   return isRecord(body) && typeof body.error === "string" ? body.error.slice(0, 40) : "unknown";
 }
 
-function wait(ms: number, signal: AbortSignal): Promise<void> {
+export function wait(ms: number, signal: AbortSignal): Promise<void> {
   return new Promise((done) => {
     if (signal.aborted) return done();
     const timer = window.setTimeout(done, ms);
@@ -94,13 +98,24 @@ function toRun(body: unknown): DemoRun | null {
   return { runId, reportId, ownerToken, cases, configs: parsed as DemoConfig[] };
 }
 
+function count(v: unknown): number | null {
+  return typeof v === "number" && Number.isInteger(v) && v >= 0 ? v : null;
+}
+
+function tokensOf(usage: unknown): number | null {
+  if (!isRecord(usage)) return null;
+  const input = count(usage.inputTokens);
+  const output = count(usage.outputTokens);
+  return input === null || output === null ? null : input + output;
+}
+
 function toView(body: unknown): CaseView | null {
   if (!isRecord(body)) return null;
   const status = STATUSES.find((s) => s === body.status);
   if (status === undefined || typeof body.correct !== "boolean") return null;
   const latency = typeof body.latencyMs === "number" && Number.isFinite(body.latencyMs) ? body.latencyMs : null;
   const verdict = isRecord(body.answer) && typeof body.answer.verdict === "string" ? body.answer.verdict.slice(0, 24) : null;
-  return { status, correct: body.correct, verdict, latencyMs: latency };
+  return { status, correct: body.correct, verdict, latencyMs: latency, tokens: tokensOf(body.usage) };
 }
 
 /**
@@ -132,7 +147,9 @@ export async function createDemoRun(workloadId: string, configs: DemoConfig[]): 
  * Runs one case under one setting and waits for its answer. 202 in_progress and 429 run_busy are
  * asked again every RETRY_AFTER_MS, which is safe because the server runs each call at most once
  * and hands back the stored answer on a repeat. A dropped connection is asked again for the same
- * reason. 429 budget_exhausted stops the caller.
+ * reason. 429 budget_exhausted stops the caller. 429 rate_limited means this network has used its
+ * hourly demo calls, which also stops the run. 503 serv_unavailable hands the call back unrun. 503
+ * storage_full stops the run, with nothing stored or charged.
  */
 export async function runDemoCase(run: DemoRun, caseId: string, configIdx: number, signal: AbortSignal): Promise<CaseOutcome> {
   const url = `/api/runs/${encodeURIComponent(run.runId)}/cases/${encodeURIComponent(caseId)}?config=${configIdx}`;
@@ -164,6 +181,9 @@ export async function runDemoCase(run: DemoRun, caseId: string, configIdx: numbe
       continue;
     }
     if (res.status === 429 && code === "budget_exhausted") return { kind: "budget" };
+    if (res.status === 503 && code === "serv_unavailable") return { kind: "unavailable" };
+    // Nothing is claimed while the database is full, and every later call would meet the same stop, so the run ends here.
+    if (res.status === 503 && code === "storage_full") return { kind: "fatal", status: res.status, code };
     if (res.status >= 400 && res.status < 500) return { kind: "fatal", status: res.status, code };
     return { kind: "failed", code };
   }

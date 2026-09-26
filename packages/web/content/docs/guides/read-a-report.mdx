@@ -3,13 +3,15 @@ title: Read a report
 description: Every part of a Urai report page, what each number means, and what each answer status tells you.
 ---
 
-A report is one run: every case under every setting, scored. Its public address is `/r/<reportId>`, and the run owner sees the same report at the end of the run. Open a [sample report](/r/EcaTkn78IZ3bLHi0BJcXAg) alongside this page.
+A report is one run: every case under every setting, scored. Its public address is `/r/<reportId>`, and the run owner sees the same report at the end of the run. Open a [sample report](/r/l9eNk-PBGlRDmUnNIxzsxQ) alongside this page.
 
 ## The opening
 
-The top of the page names the workload, with a line of facts under it: the model, the number of cases, and the settings compared, such as "SERV off vs SERV plain".
+The top of the page names the workload, with a line of facts under it: the model, the number of cases, and the settings compared, such as "SERV off vs SERV on".
 
-Under the title is one sentence built only from the report's own numbers. With SERV run both off and on, it compares the first SERV setting with SERV off: its accuracy, SERV off's accuracy, and how many more or fewer input tokens it used. With one setting, it gives that setting's accuracy, right answers and input tokens.
+A run over two models names the model in every setting instead, such as "gpt-6-astra, SERV off vs gpt-6-luna, SERV on", in the opening, the verdict, the disagreements, every case and the run page's cost ledger. A run on one model keeps the short labels.
+
+Under the title is one sentence built only from the report's own numbers. With SERV run both off and on, it compares the first SERV setting with SERV off: its accuracy, SERV off's accuracy, and how many more or fewer tokens it used, input and output together. With one setting, it gives that setting's accuracy, right answers and tokens.
 
 ## The verdict: totals per setting
 
@@ -18,14 +20,15 @@ One row per setting, with:
 | Figure | What it is |
 |---|---|
 | Accuracy | Right answers divided by calls made, as a percent with at most one decimal. When settings differ, the best one is marked. |
-| Right and wrong | "38 of 40 right", "2 wrong". Wrong answers that were never scored are named separately, such as "of which 1 timed out", so a model that disagreed is never mixed up with a call that failed. |
+| Right and wrong | "37 of 40 right", "3 wrong". Wrong answers that were never scored are named separately, such as "of which 1 timed out", so a model that disagreed is never mixed up with a call that failed. |
 | Mean latency | The average time per call, as Urai measured it around the SERV request. |
 | Input tokens, output tokens | Totals across every call under that setting, as SERV reported them. |
-| Estimated cost | SERV's token counts times the model's price. Urai uses the higher of its own price table and SERV's live price for the model, so this is an upper estimate: SERV's cache discounts can make the real charge lower. On our sample runs the real balance drop was about two thirds of it. |
+| Estimated cost | SERV's token counts times the model's price. Urai uses the higher of its own price table and SERV's live price for the model, so this is an upper estimate: SERV's cache discounts can make the real charge lower. On 23 Sep, when a key's balance could still be read, our two larger sample runs dropped it by about two thirds of their estimates. A Multipath or full setting, or a model missing from the price list, reads unknown: Urai does not price them. |
+| Cost per correct answer | That setting's estimated cost divided by its right answers, so it is an estimate in the same way. It reads "unknown" when the cost is unknown and "no correct answers" when none were right. A setting that is cheaper per call can still cost more per right answer if it gets fewer right. The run page's cost ledger shows it too. |
 
 A number Urai does not know reads "unknown", never zero. If SERV left out a token count on even one call, that setting's token total is unknown, because a partial sum would look complete.
 
-Below the rows is the cost of the whole run from SERV's token counts: the sum over the settings. It leaves out the one charge token counts cannot see, SERV's one-off build of the reasoning graph for a system prompt it has not seen. The four sample reports also show a measured drop in the key's SERV balance, read before and after each run on 23 Sep, before SERV stopped offering a free balance read. New runs carry no balance line.
+Below the rows is the cost of the whole run from SERV's token counts: the sum over the settings. Token counts cannot see SERV's one-off graph build for a system prompt it has not seen, or the extra passes in Multipath and full mode. So the sum leaves the graph build out, and when a setting's cost is unknown the line names that setting and says why. A run from before 25 Sep that stored balance readings also shows the measured drop in the key's SERV balance. Runs since then, the four current sample reports among them, carry no balance line.
 
 ## Where they disagreed
 
@@ -51,7 +54,7 @@ Every answer gets exactly one status. Only a scored answer that matches on every
 | `failed` | Failed | The model answered, but the answer was empty, not JSON, broke your schema, or was over 20,000 characters. Any text it sent is kept so you can read it. |
 | `refused` | Refused | PromptGuard refused the input before the model ran. The refusal text is kept. |
 | `filtered` | Filtered | SERV's output filter cut the answer. |
-| `upstream_error` | No response | No usable response came back: a network failure, an HTTP error from SERV, such as 402 for a key out of credit, or a response that failed Urai's checks. |
+| `upstream_error` | No response | No usable response came back: a network failure, an HTTP error from SERV, such as 403 or 500, or a response that failed Urai's checks. |
 | `timeout` | Timed out | SERV did not answer within 120 seconds. |
 
 ## Size limits in the report

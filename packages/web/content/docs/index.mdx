@@ -3,7 +3,7 @@ title: Urai overview
 description: Urai tests OpenServ's SERV Reasoning on your own agent, on your own cases, before you switch it on.
 ---
 
-Urai runs your agent's own test cases through the same model with SERV Reasoning off and on, and scores every answer against the answer you expected. It also checks your setup for the layout that makes SERV worse, and fixes it in one click.
+Urai runs your agent's own test cases with SERV Reasoning off and on, on the same model or on your current model against a smaller one with SERV on, and scores every answer against the answer you expected. It also checks your setup for the layout that makes SERV worse, and fixes it in one click.
 
 The name is Tamil. Urai means testing gold on a touchstone, and it also means explanation. Urai tests SERV on your agent, then shows you why the numbers came out that way.
 
@@ -21,7 +21,7 @@ That covers the team lead making the call and the engineer setting it up.
 
 ## Why test first
 
-On our payables sample of 40 invoices, the setup mistake cost 30 points under SERV: 67.5% with the supplier book in the system prompt, 97.5% after the fix. On a 152-clause rulebook, SERV scored 47.5% where the model alone scored 97.5%. Your agent will land somewhere on that range, and only your own cases can say where.
+On our payables sample of 40 invoices, the setup mistake cost 30 points under SERV: 67.5% with the supplier book in the system prompt, 97.5% after the fix. The model alone scored 97.5% even with the bad layout, so the mistake only hurts with SERV on. On a 152-clause rulebook, SERV scored 45% where the model alone scored 97.5%. Your agent will land somewhere on that range, and only your own cases can say where.
 
 ## Where to go next
 

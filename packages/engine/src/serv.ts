@@ -3,7 +3,7 @@ import { LIMITS } from "./limits.js";
 import { buildRequest } from "./request.js";
 import { compileAnswerSchema } from "./schema.js";
 import { scoreAnswer } from "./score.js";
-import { isPlausibleKey, scrubDeep, shortMessage } from "./scrub.js";
+import { cutPairSafe, isPlausibleKey, scrubDeep, shortMessage } from "./scrub.js";
 import type { CaseResult, RunConfig, Workload } from "./types.js";
 
 /** The only URL a key is ever posted to for inference (C2). Not configurable on purpose. */
@@ -47,7 +47,12 @@ function sleep(ms: number, signal: AbortSignal): Promise<boolean> {
   });
 }
 
-export type Sent = { ok: true; res: Response } | { ok: false; reason: "timeout" | "aborted" | "network"; code: string | null };
+/**
+ * reason "connect": every attempt failed before the connection completed, so no byte of the
+ * request reached SERV. "network": any other failure without a response, which may have come
+ * after the request was sent.
+ */
+export type Sent = { ok: true; res: Response } | { ok: false; reason: "timeout" | "aborted" | "network" | "connect"; code: string | null };
 
 /**
  * One request with the connect-only retry (C5): up to LIMITS.connectRetriesMax retries,
@@ -67,8 +72,9 @@ export async function sendWithConnectRetry(
       return { ok: true, res: await fetchImpl(url, { ...init, redirect: "error", signal }) };
     } catch (err) {
       if (signal.aborted) return stopped();
-      if (!isConnectFailure(err) || attempt >= LIMITS.connectRetriesMax) {
-        return { ok: false, reason: "network", code: errorCodes(err)[0] ?? null };
+      const connect = isConnectFailure(err);
+      if (!connect || attempt >= LIMITS.connectRetriesMax) {
+        return { ok: false, reason: connect ? "connect" : "network", code: errorCodes(err)[0] ?? null };
       }
       if (!(await sleep(LIMITS.connectRetryBaseMs * 2 ** attempt, signal))) return stopped();
     }
@@ -159,16 +165,33 @@ function httpErrorMessage(status: number, text: string, key: string): string {
 }
 
 function capAnswer(text: string): string {
-  return text.slice(0, LIMITS.answerMaxChars);
+  return cutPairSafe(text, LIMITS.answerMaxChars);
+}
+
+/** The error code of a call whose every attempt failed before the connection completed. */
+export const CONNECT_FAILED = "connect_failed";
+
+/**
+ * True when the call never reached SERV or SERV turned it away with 429 before running it, so
+ * nothing was billed and the caller may release it instead of storing it: the connection never
+ * completed (error CONNECT_FAILED, no HTTP status), or SERV answered 429. A reset or timeout
+ * after sending is not included, because SERV may already have billed that call (C5).
+ */
+export function servUnavailable(r: CaseResult): boolean {
+  if (r.status !== "upstream_error") return false;
+  return r.httpStatus === 429 || (r.httpStatus === null && r.error === CONNECT_FAILED);
 }
 
 /**
  * Runs one case of a workload against SERV under one configuration and classifies the reply.
  * Preconditions: w came from parseWorkload and caseId is one of its cases.
  * Throws, before any network call, when caseId is not in the workload, the answer schema does
- * not compile, or cfg has a blank model or an unknown mode. Thrown messages never hold the key.
+ * not compile, cfg has a blank model or an unknown mode, or opts.maxCompletionTokens is given
+ * and is not a positive integer. Thrown messages never hold the key.
+ * opts.maxCompletionTokens, when given, is sent as max_completion_tokens to cap the answer's cost.
  * Every other outcome, including a key that fails isPlausibleKey, is a returned CaseResult.
- * Classification order: no response (timeout or upstream_error), non-200 (upstream_error),
+ * Classification order: no response (timeout, or upstream_error with error CONNECT_FAILED when
+ * the connection never completed, see servUnavailable), non-200 (upstream_error),
  * a body that fails validation (upstream_error), refusal (refused), content_filter (filtered),
  * empty content, oversized, non-JSON or off-schema content (failed), else scored.
  * The key goes only to SERV_CHAT_URL and never appears anywhere in the result (C1, C2).
@@ -178,7 +201,7 @@ export async function runCase(
   caseId: string,
   cfg: RunConfig,
   apiKey: string,
-  opts: { signal?: AbortSignal; fetchImpl?: typeof fetch } = {},
+  opts: { signal?: AbortSignal; fetchImpl?: typeof fetch; maxCompletionTokens?: number } = {},
 ): Promise<CaseResult> {
   const started = performance.now();
   // A malformed key is still scrubbed; a string shorter than any key is not, so it cannot mangle our own words.
@@ -212,7 +235,7 @@ export async function runCase(
   if (!compiled.ok) throw new Error("runCase: the answer schema does not compile. Parse the workload with parseWorkload first.");
   let built: ReturnType<typeof buildRequest>;
   try {
-    built = buildRequest(w, c, cfg);
+    built = buildRequest(w, c, cfg, { maxCompletionTokens: opts.maxCompletionTokens });
   } catch (err) {
     throw new Error(shortMessage(`runCase: ${err instanceof Error ? err.message : "invalid config"}`, secret));
   }
@@ -234,6 +257,7 @@ export async function runCase(
     timeoutSignal,
   );
   if (!sent.ok) {
+    if (sent.reason === "connect") return done({ error: CONNECT_FAILED });
     if (sent.reason !== "network") return done(stopped());
     return done({ error: sent.code === null ? "network_error" : `network_error: ${sent.code}` });
   }

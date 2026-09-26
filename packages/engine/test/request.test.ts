@@ -73,6 +73,15 @@ describe("buildRequest", () => {
     expect(systems[0]).toBe(w.systemPrompt);
   });
 
+  it("sends max_completion_tokens only when asked, and refuses a cap that is not a positive integer", () => {
+    expect(buildRequest(w, c, { model: "m", mode: "raw" }).body).not.toHaveProperty("max_completion_tokens");
+    expect(buildRequest(w, c, { model: "m", mode: "raw" }, {}).body).not.toHaveProperty("max_completion_tokens");
+    expect(buildRequest(w, c, { model: "m", mode: "plain" }, { maxCompletionTokens: 8192 }).body).toMatchObject({ max_completion_tokens: 8192 });
+    for (const bad of [0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(() => buildRequest(w, c, { model: "m", mode: "raw" }, { maxCompletionTokens: bad })).toThrow("maxCompletionTokens");
+    }
+  });
+
   it("refuses a blank model id and an unknown mode", () => {
     expect(() => buildRequest(w, c, { model: "   ", mode: "raw" })).toThrow("blank");
     expect(() => buildRequest(w, c, { model: "m", mode: "turbo" as ServMode })).toThrow("Unknown SERV mode");

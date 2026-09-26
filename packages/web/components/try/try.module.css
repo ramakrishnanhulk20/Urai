@@ -145,6 +145,11 @@
   color: var(--text);
 }
 
+.jumpRow {
+  grid-column: 2;
+  margin-top: clamp(1.25rem, 2.5vw, 1.75rem);
+}
+
 .enter {
   animation: enter 0.9s var(--ease-out) both;
 }
@@ -988,6 +993,31 @@
   color: var(--dim);
 }
 
+/* The one sentence a visitor takes away, set larger than the explanation under it. */
+.outcomeSentence {
+  max-width: 44ch;
+  margin: 1.1rem 0 0;
+  font-size: clamp(1.2rem, 1.8vw, 1.6rem);
+  line-height: 1.35;
+  color: var(--text);
+}
+
+.outcomeTokens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 1.25rem;
+  margin: 0.9rem 0 0;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.74rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.outcomeTokens > span:first-child {
+  color: var(--gold-hi);
+}
+
 .verdicts {
   display: flex;
   flex-wrap: wrap;
@@ -1092,7 +1122,8 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .lede {
+  .lede,
+  .jumpRow {
     grid-column: 1;
   }
 

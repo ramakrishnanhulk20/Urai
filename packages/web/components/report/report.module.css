@@ -486,10 +486,10 @@ details[open] > summary .chevron {
 
 .vStats {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 1rem 2rem;
   margin: 0.6rem 0 0;
-  max-width: 56rem;
+  max-width: 70rem;
 }
 
 .vStats dt {
@@ -506,6 +506,14 @@ details[open] > summary .chevron {
   font-weight: 700;
   font-stretch: 112%;
   font-variant-numeric: tabular-nums;
+}
+
+/* "unknown" and "no correct answers" are words, not figures, so they sit smaller than the numbers beside them. */
+.vStats dd[data-quiet="true"] {
+  font-size: 0.95rem;
+  font-weight: 500;
+  font-stretch: 100%;
+  color: var(--faint);
 }
 
 .costLine {
@@ -893,6 +901,91 @@ details[open] > summary .chevron {
 
 /* Every case. */
 
+/* A square check, not a pill switch: the same 8px language as every other control. */
+.splitToggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: clamp(1.5rem, 4vh, 2.25rem);
+  font-size: 0.98rem;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.splitToggle input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.splitBox {
+  position: relative;
+  flex: none;
+  width: 1.15rem;
+  height: 1.15rem;
+  border: 1px solid rgb(239 233 223 / 0.35);
+  border-radius: 4px;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.splitToggle:hover .splitBox {
+  border-color: var(--gold);
+}
+
+.splitToggle input:checked + .splitBox {
+  border-color: var(--gold);
+  background: var(--gold);
+}
+
+.splitToggle input:checked + .splitBox::after {
+  content: "";
+  position: absolute;
+  left: 0.36rem;
+  top: 0.14rem;
+  width: 0.3rem;
+  height: 0.6rem;
+  border: solid var(--stone);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.splitToggle input:focus-visible + .splitBox {
+  outline: 2px solid var(--gold-hi);
+  outline-offset: 3px;
+}
+
+.splitCount {
+  margin-left: 0.35rem;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.78rem;
+  color: var(--gold-hi);
+}
+
+.siblings {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgb(239 233 223 / 0.1);
+}
+
+.siblingList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.95rem;
+}
+
+.siblingHere {
+  color: var(--text);
+  font-weight: 700;
+}
+
 .table {
   margin-top: clamp(2.5rem, 6vh, 4rem);
 }
@@ -1046,6 +1139,10 @@ details[open] > summary .chevron {
 
   .tBody {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .vStats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 

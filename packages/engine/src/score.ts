@@ -29,6 +29,11 @@ export function normaliseNumber(v: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+// Inclusive; the slack is four units of double rounding at the operands' scale, so it forgives float error only, never a real difference.
+function withinTolerance(e: number, g: number, tol: number): boolean {
+  return Math.abs(e - g) <= tol + 4 * Number.EPSILON * Math.max(Math.abs(e), Math.abs(g), tol);
+}
+
 function isPlainObject(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
@@ -51,7 +56,7 @@ export function scoreAnswer(w: Workload, c: WorkloadCase, answer: unknown): { fi
     } else if (r.rule === "number") {
       const e = normaliseNumber(expected);
       const g = normaliseNumber(got);
-      match = e !== null && g !== null && Math.abs(e - g) <= (r.tolerance ?? 0);
+      match = e !== null && g !== null && withinTolerance(e, g, r.tolerance ?? 0);
     } else if (r.rule === "oneOf") {
       const g = normaliseText(got);
       match = g !== null && Array.isArray(expected) && expected.some((option) => normaliseText(option) === g);

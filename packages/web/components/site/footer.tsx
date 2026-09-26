@@ -6,7 +6,7 @@ import { Slash } from "../brand/slash";
 import s from "./site.module.css";
 
 const PITCH =
-  "Test SERV Reasoning on your own AI agent before you switch: SERV on and off, side by side, and one-click fixes for the setup mistakes that quietly cost accuracy.";
+  "Test SERV Reasoning on your own AI agent before you switch: SERV on and off, side by side, and a one-click fix for the setup mistake that quietly costs the most accuracy.";
 
 const LINKS = [
   { href: "/docs", label: "Docs" },
@@ -14,6 +14,8 @@ const LINKS = [
   { href: "/#reports", label: "Sample reports" },
   { href: "/docs/security", label: "Security" },
 ] as const;
+
+const REPO = "https://github.com/ramakrishnanhulk20/Urai";
 
 const rise = {
   hidden: { opacity: 0, y: 24 },
@@ -51,6 +53,12 @@ export function Footer() {
                   </Link>
                 </li>
               ))}
+              <li>
+                <a href={REPO} className={s.footLink} target="_blank" rel="noopener noreferrer">
+                  <Slash className={s.footLinkSlash} />
+                  <span>Source on GitHub</span>
+                </a>
+              </li>
             </ul>
           </motion.nav>
         </motion.div>

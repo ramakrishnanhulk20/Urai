@@ -61,9 +61,21 @@ export function scrub(text: string, key: string): string {
   return out + text.slice(at);
 }
 
+/**
+ * text cut to at most max UTF-16 code units. When the cut would split a surrogate pair (an emoji,
+ * for one), the high half goes too, so the result never ends on half a character: Postgres
+ * jsonb refuses a lone surrogate, and a paid answer must never fail to store over one.
+ * Returns text unchanged when it already fits.
+ */
+export function cutPairSafe(text: string, max: number): string {
+  if (text.length <= max) return text;
+  const last = max > 0 ? text.charCodeAt(max - 1) : 0;
+  return text.slice(0, last >= 0xd800 && last <= 0xdbff ? max - 1 : max);
+}
+
 /** Scrubs first, then caps, so a cut can never leave a piece of the key behind the cap. */
 export function shortMessage(text: string, key: string): string {
-  return scrub(text, key).slice(0, LIMITS.errorMaxChars);
+  return cutPairSafe(scrub(text, key), LIMITS.errorMaxChars);
 }
 
 /** Returns a copy of v with every string, including object keys, scrubbed. Only plain JSON-like data is walked. */

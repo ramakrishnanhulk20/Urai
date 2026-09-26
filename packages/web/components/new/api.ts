@@ -41,6 +41,8 @@ export type SaveOutcome =
   | { kind: "invalid" }
   | { kind: "too_large" }
   | { kind: "rate_limited" }
+  /** 503 storage_full: Urai's database is at its size cap, so nothing was stored. */
+  | { kind: "storage_full" }
   | { kind: "refused"; code: string }
   | { kind: "network" };
 
@@ -49,6 +51,7 @@ export type StartOutcome =
   | { kind: "not_found" }
   | { kind: "invalid_configs" }
   | { kind: "rate_limited" }
+  | { kind: "storage_full" }
   | { kind: "refused"; code: string }
   | { kind: "network" };
 
@@ -169,6 +172,7 @@ export async function saveWorkload(workload: Workload): Promise<SaveOutcome> {
   if (res.status === 400 && errorCode(body) === "invalid_workload") return { kind: "invalid" };
   if (res.status === 413) return { kind: "too_large" };
   if (res.status === 429) return { kind: "rate_limited" };
+  if (res.status === 503 && errorCode(body) === "storage_full") return { kind: "storage_full" };
   return { kind: "refused", code: errorCode(body) };
 }
 
@@ -188,5 +192,6 @@ export async function startRun(workloadId: string, workloadToken: string, config
   const code = errorCode(body);
   if (res.status === 400 && code === "invalid_configs") return { kind: "invalid_configs" };
   if (res.status === 429) return { kind: "rate_limited" };
+  if (res.status === 503 && code === "storage_full") return { kind: "storage_full" };
   return { kind: "refused", code };
 }

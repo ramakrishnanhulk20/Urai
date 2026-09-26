@@ -1,7 +1,7 @@
 import { applyLayoutFix, lintWorkload, parseWorkload, type LintFinding, type ModelList, type Workload } from "@urai/engine";
 import { z } from "zod";
 import { CONFIG } from "../../../lib/config";
-import { HttpError, handle, json, readJson } from "../../../lib/http";
+import { HttpError, handle, json, readJson, requireJsonRequest } from "../../../lib/http";
 import { ipHash } from "../../../lib/ip";
 import { getModelList, toModelList } from "../../../lib/models";
 import { enforceRateLimit } from "../../../lib/rate";
@@ -54,6 +54,7 @@ function layoutFix(workload: Workload): ReturnType<typeof applyLayoutFix> | null
  */
 export async function POST(req: Request): Promise<Response> {
   return handle(ROUTE, async () => {
+    requireJsonRequest(req);
     await enforceRateLimit("lint", ipHash(req));
     const body = await readJson(req, bodySchema);
     const configs = canonicalConfigs(body.configs ?? []);

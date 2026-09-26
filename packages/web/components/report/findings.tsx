@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { LintFinding } from "@urai/engine";
 import type { Report, TruncatedText } from "../../lib/report";
-import { isTruncated } from "./format";
+import { builderHref, evidenceText, isTruncated } from "./format";
 import { Reveal, RevealItem } from "./motion";
 import { CutLabel, SectionHead } from "./parts";
 import s from "./report.module.css";
@@ -62,13 +62,13 @@ export function Findings({ report }: { report: Report }) {
                 <p className={s.findingDetail}>{f.detail}</p>
                 {f.evidence !== null && (
                   <p className={s.evidence}>
-                    <span className={s.smallLabel}>Evidence</span> {f.evidence}
+                    <span className={s.smallLabel}>Evidence</span> {evidenceText(f)}
                   </p>
                 )}
                 {f.fixable && (
                   <p className={s.fixLine}>
                     The one-click fix for this is available in the builder.{" "}
-                    <Link href="/new" className={s.textLink}>
+                    <Link href={builderHref(report)} className={s.textLink}>
                       Open the builder
                     </Link>
                   </p>
@@ -81,7 +81,7 @@ export function Findings({ report }: { report: Report }) {
 
       <div className={s.prompts}>
         <PromptBlock label="System prompt" value={report.systemPrompt} />
-        {report.context !== null && <PromptBlock label="Shared context" value={report.context} />}
+        {report.context !== null && <PromptBlock label="Shared data" value={report.context} />}
       </div>
     </section>
   );

@@ -4,7 +4,7 @@ import type { RunConfig } from "@urai/engine";
 import { AnimatePresence, motion } from "motion/react";
 import type { CSSProperties, ReactNode } from "react";
 import { Slash } from "../brand/slash";
-import { clip, configLabels, seconds, splitName, valueText } from "../report/format";
+import { clip, configLabels, hasManyModels, seconds, splitName, valueText } from "../report/format";
 import { useCountUp } from "../try/count-up";
 import type { Answer } from "./api";
 import { Ledger } from "./ledger";
@@ -132,7 +132,7 @@ function CellBody({ cell, field, now }: { cell: Cell; field: string | null; now:
   }
 }
 
-function Board({ label, model, totals, cases, index }: { label: string; model: string; totals: Totals; cases: number; index: number }) {
+function Board({ label, model, totals, cases, index }: { label: string; model: string | null; totals: Totals; cases: number; index: number }) {
   const shown = useCountUp(totals.right, 0);
   return (
     <motion.div
@@ -143,7 +143,7 @@ function Board({ label, model, totals, cases, index }: { label: string; model: s
     >
       <p className={s.boardLabel}>
         <span>{label}</span>
-        <span className={s.boardModel}>{model}</span>
+        {model !== null && <span className={s.boardModel}>{model}</span>}
       </p>
       <p className={s.boardNumber} aria-label={`${totals.right} right of ${cases}`}>
         {Math.round(shown)}
@@ -166,7 +166,7 @@ function clock(ms: number): string {
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
 }
 
-export type LiveStage = "running" | "pausing" | "paused" | "incomplete" | "closing";
+export type LiveStage = "ready" | "running" | "pausing" | "paused" | "incomplete" | "closing";
 
 export interface RunGridProps {
   title: string;
@@ -178,17 +178,43 @@ export interface RunGridProps {
   stage: LiveStage;
   /** What the bar says under the current stage, when it has more to say than the default. */
   notice: ReactNode;
+  /** True while a stop notice shows, so the bar drops its own "resume whenever" line and the notice's advice stands alone. */
+  stopped: boolean;
   actions: ReactNode;
 }
 
-function waitText(stage: LiveStage, inFlight: number): ReactNode {
+function joinLabels(items: string[]): string {
+  return items.length <= 1 ? (items[0] ?? "") : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
+}
+
+/*
+ * The speed line names only the settings this run has, in the run's own labels, so a run without
+ * SERV plain never reads as if it had one. SERV off and plain were the quick ones in our runs and
+ * full the slow one; PromptGuard and Multipath are left unranked.
+ */
+function speedText(configs: RunConfig[], labels: string[]): string {
+  const pick = (modes: string[]): string[] => [...new Set(labels.filter((_, i) => modes.includes(configs[i]!.mode)))];
+  const quick = pick(["raw", "plain"]);
+  const slow = pick(["full"]);
+  const parts = [
+    ...(quick.length > 0 ? [`${joinLabels(quick)} ${quick.length === 1 ? "is the quick one" : "are the quick ones"}`] : []),
+    ...(slow.length > 0 ? [`${joinLabels(slow)} ${slow.length === 1 ? "is the slow one" : "are the slow ones"}`] : []),
+  ];
+  return `Each call takes 5 to 60 seconds depending on the SERV setting${parts.length > 0 ? `: ${parts.join(", ")}` : ""}. Up to three calls run at once, so the rows fill in a wave.`;
+}
+
+function waitText(stage: LiveStage, inFlight: number, stopped: boolean, speed: string): ReactNode {
   switch (stage) {
+    case "ready":
+      return "Ready. Nothing has been sent to SERV from this page yet. Press Continue the run to send the calls still waiting, billed to the key you pasted.";
     case "running":
-      return "Each call takes 5 to 60 seconds depending on the SERV setting: SERV off and plain are the quick ones, full mode is the slow one. Up to three calls run at once, so the rows fill in a wave.";
+      return speed;
     case "pausing":
       return `Pausing. No new calls go out; the ${inFlight} already with SERV finish first, and their answers are kept.`;
     case "paused":
-      return "Paused. Nothing is being sent to SERV. Resume whenever you like; the answers already back are safe.";
+      return stopped
+        ? "Paused. Nothing is being sent to SERV, and the answers already back are safe."
+        : "Paused. Nothing is being sent to SERV. Resume whenever you like; the answers already back are safe.";
     case "incomplete":
       return "Some calls did not come back. Run the missing ones again: Urai never runs a finished call twice, so nothing already answered is paid for again.";
     case "closing":
@@ -202,7 +228,7 @@ function waitText(stage: LiveStage, inFlight: number): ReactNode {
  * then one row per case with a cell per setting. Every string from the API or a model is React
  * text, never HTML (C20).
  */
-export function RunGrid({ title, configs, cases, cells, now, elapsedMs, stage, notice, actions }: RunGridProps) {
+export function RunGrid({ title, configs, cases, cells, now, elapsedMs, stage, notice, stopped, actions }: RunGridProps) {
   const labels = configLabels(configs);
   const { title: main, deck } = splitName(title);
   // One step smaller than the report's poster title: on a working screen the grid should start near the first fold.
@@ -212,6 +238,8 @@ export function RunGrid({ title, configs, cases, cells, now, elapsedMs, stage, n
   const settled = flat.filter((c) => c.kind === "done").length;
   const inFlight = flat.filter((c) => c.kind === "running").length;
   const models = [...new Set(configs.map((c) => c.model))];
+  // Labels on a run over several models already lead with the model, so it is not repeated beside them.
+  const many = hasManyModels(configs);
   const moving = stage === "running" || stage === "pausing" || stage === "closing";
 
   return (
@@ -221,11 +249,11 @@ export function RunGrid({ title, configs, cases, cells, now, elapsedMs, stage, n
           <p className={`${s.marker} ${s.enter}`}>
             <span className={s.live}>
               <span className={s.liveDot} data-still={!moving} aria-hidden="true" />
-              {stage === "paused" ? "Run paused" : stage === "incomplete" ? "Run stopped short" : "Live run"}
+              {stage === "ready" ? "Ready to continue" : stage === "paused" ? "Run paused" : stage === "incomplete" ? "Run stopped short" : "Live run"}
             </span>
           </p>
           <p className={`${s.meta} ${s.enter}`} style={{ animationDelay: "0.08s" }}>
-            {[`${cases.length} ${cases.length === 1 ? "case" : "cases"}`, labels.join(" vs "), models.join(", "), "Your SERV key"].map(
+            {[`${cases.length} ${cases.length === 1 ? "case" : "cases"}`, labels.join(" vs "), ...(many ? [] : [models.join(", ")]), "Your SERV key"].map(
               (item, i) => (
                 <span key={i} className={s.metaItem}>
                   {i > 0 && <Slash className={s.metaSlash} />}
@@ -247,12 +275,12 @@ export function RunGrid({ title, configs, cases, cells, now, elapsedMs, stage, n
             </p>
           )}
         </div>
-        <Ledger labels={labels} totals={null} balance={null} />
+        <Ledger labels={labels} configs={configs} totals={null} balance={null} />
       </div>
 
       <div className={s.boards} data-many={configs.length > 3} style={{ "--cols": configs.length } as CSSProperties}>
         {configs.map((config, k) => (
-          <Board key={k} index={k} label={labels[k]!} model={config.model} totals={totalsFor(cells, k)} cases={cases.length} />
+          <Board key={k} index={k} label={labels[k]!} model={many ? null : config.model} totals={totalsFor(cells, k)} cases={cases.length} />
         ))}
       </div>
 
@@ -273,7 +301,7 @@ export function RunGrid({ title, configs, cases, cells, now, elapsedMs, stage, n
             aria-live="polite"
           >
             <span className={s.liveDot} data-still={!moving} aria-hidden="true" />
-            <span>{waitText(stage, inFlight)}</span>
+            <span>{waitText(stage, inFlight, stopped, speedText(configs, labels))}</span>
           </motion.p>
         </AnimatePresence>
         <div className={s.barSide}>

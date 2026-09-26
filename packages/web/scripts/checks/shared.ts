@@ -42,25 +42,27 @@ export type Group = "keys" | "access" | "input" | "surface" | "budget";
  * 203.0.113.0/24 documentation range, which no real client can have, so groups never share a
  * bucket with each other or with anyone else.
  */
-const GROUP_IP: Record<Exclude<Group, "keys">, string> = {
+const GROUP_IP: Record<Exclude<Group, FreshGroup>, string> = {
   access: "203.0.113.22",
   input: "203.0.113.23",
   surface: "203.0.113.24",
-  budget: "203.0.113.25",
 };
 
 /*
- * The keys group makes SERV refuse a key, and every refusal counts against an hourly budget per
- * address (C33). A fixed address would carry one run's refusals into the next run in the same
- * hour, or into every run after a clean-up that never happened. So it gets a fresh /64 from the
- * 2001:db8::/32 documentation range each run; the server buckets IPv6 by /64.
+ * Two groups spend hourly per-address budgets that a clean-up cannot give back in the same hour:
+ * the keys group makes SERV refuse keys (C33), and the budget group makes demo calls (72 an hour
+ * per address). A fixed address would carry one run's count into the next run in the same hour,
+ * so a few runs in a row would be refused for the wrong reason. Each run gives them a fresh /64
+ * from the 2001:db8::/32 documentation range instead; the server buckets IPv6 by /64.
  */
-function keysGroupIp(): string {
+type FreshGroup = "keys" | "budget";
+
+function freshGroupIp(): string {
   const [a, b] = randomBytes(4).toString("hex").match(/.{4}/g) ?? [];
   return `2001:db8:${a}:${b}::21`;
 }
 
-export const RATE_KINDS = ["workloads", "runs", "lint", "report", "key_refusals"] as const;
+export const RATE_KINDS = ["workloads", "runs", "lint", "report", "key_refusals", "demo_calls", "models", "serv_unavailable"] as const;
 
 /** The rate-limit bucket names the server writes for one client address, from the server's own ipHash. */
 export function bucketsFor(ip: string): string[] {
@@ -260,7 +262,7 @@ export function makeCtx(base: string, sql: Sql, serverLog: string | null): Ctx {
     client(group) {
       let c = clients.get(group);
       if (c === undefined) {
-        const ip = group === "keys" ? keysGroupIp() : GROUP_IP[group];
+        const ip = group === "keys" || group === "budget" ? freshGroupIp() : GROUP_IP[group];
         if (isIP(ip) === 0) throw new Error(`group ${group} has an invalid client address`);
         created.ips.add(ip);
         c = new Client(base, ip, created);

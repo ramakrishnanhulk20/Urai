@@ -49,7 +49,7 @@ npm run verify-security -- --base http://localhost:3102 --server-log server.log
 
 The suite reads the root `.env` to reach the same database as the server, and never prints a value from it. The test key is never written out: the record shows it only as `serv_testkey_` followed by 40 random characters. At the end the suite deletes every workload, run, case result and rate-limit counter it created, and nothing else. It never touches the sample workloads. Money spent on real demo calls stays counted in the day's budget, because it was really spent.
 
-Each run writes a new `run-<time>.md` record into `docs/security/checks`, and updates the counts the landing page shows. Setup steps for a local server are on [Run Urai yourself](/docs/developers/self-host).
+Each run writes a new `run-<time>.md` record into [`docs/security/checks`](https://github.com/ramakrishnanhulk20/Urai/tree/main/docs/security/checks), and updates the counts the landing page shows. Setup steps for a local server are on [Run Urai yourself](/docs/developers/self-host).
 
 ## What it does not cover
 

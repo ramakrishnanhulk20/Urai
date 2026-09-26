@@ -154,20 +154,21 @@ flowchart LR
 ```
 
 The engine is a plain TypeScript library with no framework and no database, so every SERV call, every
-score and every lint rule can be tested on its own (213 engine tests). The web package adds storage,
+score and every lint rule can be tested on its own (225 engine tests). The web package adds storage,
 money rules and the pages.
 
 ## Data model
 
 | Table | Holds | Notes |
 |---|---|---|
-| workloads | the team's rules, context, answer schema, scoring and cases | owner token stored as a hash; expires after 30 days; samples never expire |
+| workloads | the team's rules, context, answer schema, scoring and cases, as `json` text so field order is kept | owner token stored as a hash; expires after 30 days, or 48 hours if it never got a run; total size capped; samples never expire |
 | runs | the settings compared, who pays, the case list, share state | run id and report id are independent random secrets (C8, C9) |
 | case_results | one scored result per (run, case, setting) | the primary key is the double-spend guard (C5) |
 | demo_budget | per UTC day: cap, reserved, spent, calls, stopped | one conditional update per reservation (C6, C28) |
 | rate_limits | per address, per hour, per kind | IPv6 grouped by /64 |
 | model_cache | SERV's live model list and prices | refreshed at most hourly, 60 s back-off on failure |
 | app_flags | global stops, for example demo_off | set and cleared only by the operator |
+| kept_reports | the sample reports the daily clean-up must keep | read-only for the app; only the operator writes it |
 
 ## Browser to server contract
 
@@ -184,7 +185,7 @@ money rules and the pages.
 | GET /api/reports/:reportId | anyone with the link | nothing | the report, only while shared |
 
 Every refusal answers with a code and nothing else. A wrong owner token looks exactly like an unknown
-run (404). The full rules are in docs/security/threat-model.md, invariants C1 to C34. The live suite in
-packages/web/scripts/checks tests C1, C3 to C14, C20 to C22, C26 and C29 to C31 against a running
+run (404). The full rules are in docs/security/threat-model.md, invariants C1 to C35. The live suite in
+packages/web/scripts/checks tests C1, C3 to C14, C20 to C22, C26, C29 to C31 and C33 against a running
 server, and confirms the unit tests for C15 to C18 still exist (C19 was retired with the balance probe) (latest record in docs/security/checks).
 The others are held by the code and its unit tests, with no live check yet.

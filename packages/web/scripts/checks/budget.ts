@@ -2,24 +2,33 @@ import type { CaseResult } from "@urai/engine";
 import { budgetDay } from "../../lib/budget";
 import { CONFIG } from "../../lib/config";
 import { callCostUsd } from "../../lib/prices";
-import { brief, type Ctx, field, LUNA_RAW, ownerHeaders, type Reply, SAMPLE_GOOD, sleep } from "./shared";
+import { brief, bucketsFor, type Ctx, field, LUNA_RAW, ownerHeaders, type Reply, SAMPLE_GOOD, sleep } from "./shared";
 
 const PARALLEL = 10;
 const LET_THROUGH = 3;
 const POLL_MS = 1_500;
 const POLL_TRIES = 120;
 
-type BudgetRow = { cap: string; spent: string; reserved: string };
+type BudgetRow = { cap: string; spent: string; reserved: string; calls: number };
 
 async function budgetRow(ctx: Ctx, day: string): Promise<BudgetRow | null> {
   const row = (await ctx.sql`
-    SELECT cap_usd::text AS cap, spent_usd::text AS spent, reserved_usd::text AS reserved
+    SELECT cap_usd::text AS cap, spent_usd::text AS spent, reserved_usd::text AS reserved, calls
     FROM demo_budget WHERE day = ${day}::date`)[0];
-  return row === undefined ? null : { cap: String(row.cap), spent: String(row.spent), reserved: String(row.reserved) };
+  return row === undefined ? null : { cap: String(row.cap), spent: String(row.spent), reserved: String(row.reserved), calls: Number(row.calls) };
 }
 
 function show(r: BudgetRow | null): string {
-  return r === null ? "no row" : `cap ${r.cap}, spent ${r.spent}, reserved ${r.reserved}`;
+  return r === null ? "no row" : `cap ${r.cap}, spent ${r.spent}, reserved ${r.reserved}, calls ${r.calls}`;
+}
+
+/*
+ * A 200 the engine path produced just now, as opposed to a stored copy read back from Postgres.
+ * The route serialises the engine's CaseResult, whose first key is caseId; jsonb hands keys back
+ * shortest first ("error" and "usage" come before "caseId"), so a stored copy never starts so.
+ */
+function isFresh(r: Reply): boolean {
+  return r.status === 200 && r.text.startsWith('{"caseId"');
 }
 
 // A repeat of a finished call returns the stored result and spends nothing (C5), so polling is free.
@@ -50,11 +59,16 @@ export async function budget(ctx: Ctx): Promise<void> {
   const one = await api.createRun({ workloadId: SAMPLE_GOOD, configs: [LUNA_RAW], payer: "demo" });
   const caseId = one.cases[0]!;
   const call = () => api.caseCall(one.runId, caseId, "0", ownerHeaders(one.ownerToken));
+  const demoBucket = bucketsFor(api.ip).find((b) => b.startsWith("demo_calls:"))!;
+  const demoCharges = async () => Number((await sql`SELECT coalesce(sum(count), 0)::int AS n FROM rate_limits WHERE bucket = ${demoBucket}`)[0]?.n);
+  const chargesBefore = await demoCharges();
   const beforeC5 = await budgetRow(ctx, day);
   const firstReplies = await Promise.all(Array.from({ length: PARALLEL }, call));
   const finalReplies: Reply[] = [];
   for (const r of firstReplies) finalReplies.push(await untilStored(call, r));
   const afterC5 = await budgetRow(ctx, day);
+  // Only the call that claimed the case is charged; a 202 or a replay of the stored result spends nothing.
+  const chargesDelta = (await demoCharges()) - chargesBefore;
 
   const requestIds = new Set(finalReplies.map((r) => field(r.body, "servRequestId")));
   const [onlyId] = [...requestIds];
@@ -76,13 +90,25 @@ export async function budget(ctx: Ctx): Promise<void> {
   const spentBefore = beforeC5 === null ? 0 : Number(beforeC5.spent);
   const spentDelta = afterC5 === null ? Number.NaN : Number(afterC5.spent) - spentBefore;
   const atMostOneCall = spentDelta <= CONFIG.demoCallEstimateUsd + 1e-9;
+  // Exactly one caller ran the case and exactly one call was settled: not zero (nothing ran, or SERV
+  // was unreachable and the call was released), not two (a second spend on the same case).
+  const freshCount = firstReplies.filter(isFresh).length;
+  const callsDelta = afterC5 === null ? Number.NaN : afterC5.calls - (beforeC5?.calls ?? 0);
   const upstream = String(field(finalReplies[0]?.body, "status"));
   rec.add(
     "C5",
     `${PARALLEL} simultaneous identical demo case calls`,
     `${PARALLEL} POST case calls at once on one demo run, same case and config; each 202 re-asked until stored`,
-    `first answers: ${firstCodes}; case_results rows ${rows.length}; all ${PARALLEL} final replies identical: ${sameBody}; distinct servRequestId ${requestIds.size}${typeof onlyId === "string" ? "" : " (none set: SERV did not answer this one call)"}; the one call's status ${upstream}; est_cost_usd ${String(stored)} vs one call ${String(oneCall)}; spent rose ${spentDelta.toFixed(4)} (one call at most ${CONFIG.demoCallEstimateUsd}); budget before ${show(beforeC5)}, after ${show(afterC5)}`,
-    rows.length === 1 && requestIds.size === 1 && sameBody && atMostOneCall && finalReplies.every((r) => r.status === 200) && costMatches,
+    `first answers: ${firstCodes}; fresh engine answers among them ${freshCount}; demo_budget.calls rose ${callsDelta}; case_results rows ${rows.length}; all ${PARALLEL} final replies identical: ${sameBody}; distinct servRequestId ${requestIds.size}${typeof onlyId === "string" ? "" : " (none set: SERV did not answer this one call)"}; the one call's status ${upstream}; est_cost_usd ${String(stored)} vs one call ${String(oneCall)}; demo_calls charges rose ${chargesDelta}; spent rose ${spentDelta.toFixed(4)} (one call at most ${CONFIG.demoCallEstimateUsd}); budget before ${show(beforeC5)}, after ${show(afterC5)}`,
+    rows.length === 1 &&
+      requestIds.size === 1 &&
+      sameBody &&
+      atMostOneCall &&
+      freshCount === 1 &&
+      callsDelta === 1 &&
+      chargesDelta === 1 &&
+      finalReplies.every((r) => r.status === 200) &&
+      costMatches,
   );
 
   const start = await budgetRow(ctx, day);

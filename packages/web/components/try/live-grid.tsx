@@ -6,7 +6,7 @@ import { Slash } from "../brand/slash";
 import type { CaseStatus, CaseView } from "./api";
 import { useCountUp } from "./count-up";
 import s from "./try.module.css";
-import { configLabel, type DemoConfig } from "./types";
+import { configLabels, type DemoConfig } from "./types";
 
 export type Cell =
   | { kind: "pending" }
@@ -23,18 +23,22 @@ export interface ColumnTotals {
   wrong: number;
   /** right / back, the same rule the report uses. Null until something is back. */
   accuracy: number | null;
+  /** Input plus output tokens over every answer back, or null when any answer lacks a count. */
+  tokens: number | null;
 }
 
 export function columnTotals(cells: Cell[][], col: number): ColumnTotals {
   let back = 0;
   let right = 0;
+  let tokens: number | null = 0;
   for (const row of cells) {
     const cell = row[col];
     if (cell?.kind !== "done") continue;
     back += 1;
     if (cell.view.correct) right += 1;
+    tokens = tokens === null || cell.view.tokens === null ? null : tokens + cell.view.tokens;
   }
-  return { back, right, wrong: back - right, accuracy: back === 0 ? null : right / back };
+  return { back, right, wrong: back - right, accuracy: back === 0 ? null : right / back, tokens: back === 0 ? null : tokens };
 }
 
 // Plain words for every way a call can end without a verdict.
@@ -179,6 +183,7 @@ function clock(ms: number): string {
  */
 export function LiveGrid({ title, cases, configs, cells, expected, now, elapsedMs, running }: LiveGridProps) {
   const totals = configs.map((_, k) => columnTotals(cells, k));
+  const labels = configLabels(configs);
   const calls = cases.length * configs.length;
   const settled = cells.flat().filter((c) => c.kind === "done" || c.kind === "failed").length;
 
@@ -200,8 +205,8 @@ export function LiveGrid({ title, cases, configs, cells, expected, now, elapsedM
       </div>
 
       <div className={s.boards} style={{ "--cols": configs.length } as CSSProperties}>
-        {configs.map((config, k) => (
-          <Board key={k} label={configLabel(config)} totals={totals[k]!} cases={cases.length} />
+        {configs.map((_, k) => (
+          <Board key={k} label={labels[k]!} totals={totals[k]!} cases={cases.length} />
         ))}
       </div>
 
@@ -234,9 +239,9 @@ export function LiveGrid({ title, cases, configs, cells, expected, now, elapsedM
         <thead>
           <tr>
             <th scope="col">Case</th>
-            {configs.map((config, k) => (
+            {labels.map((label, k) => (
               <th key={k} scope="col">
-                {configLabel(config)}
+                {label}
               </th>
             ))}
           </tr>

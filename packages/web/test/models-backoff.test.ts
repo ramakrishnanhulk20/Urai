@@ -1,10 +1,11 @@
 /*
- * The failure back-off in lib/models.ts getModelList. The engine's listModels is a fixture, so SERV
- * is never called, and the one model_cache row is an in-memory stand-in for the database, because
- * models.test.ts clears and rewrites the real row from a parallel worker. The clock is faked for
- * Date only. Not covered here: the real SQL for the cache (models.test.ts runs it against Neon),
- * two server instances backing off separately (each keeps its own timestamp in memory; read in
- * review), and a database outage.
+ * The failure back-off and the shared in-process refresh in lib/models.ts getModelList. The
+ * engine's listModels is a fixture, so SERV is never called, and the one model_cache row, lease
+ * included, is an in-memory stand-in for the database, because models.test.ts clears and rewrites
+ * the real row from a parallel worker. The clock is faked for Date only. Not covered here: the real
+ * SQL for the cache and the lease (models.test.ts runs it against Neon), two server instances
+ * backing off separately (each keeps its own timestamp in memory; read in review), and a database
+ * outage.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CONFIG } from "../lib/config";
@@ -16,7 +17,7 @@ vi.mock("@urai/engine", async (importOriginal) => {
   return { ...real, listModels: engine.listModels };
 });
 
-const cache = vi.hoisted(() => ({ row: null as null | { models: unknown; fetchedAt: Date } }));
+const cache = vi.hoisted(() => ({ row: null as null | { models: unknown; fetchedAt: Date; leaseUntil?: number } }));
 vi.mock("../lib/db", async (importOriginal) => {
   const real = await importOriginal<typeof import("../lib/db")>();
   const sql = async (strings: TemplateStringsArray, ...values: unknown[]) => {
@@ -25,6 +26,12 @@ vi.mock("../lib/db", async (importOriginal) => {
       if (cache.row === null) return [];
       const maxAgeMs = Number(values[0]) * 1000;
       return [{ models: cache.row.models, fetched_at: cache.row.fetchedAt, fresh: Date.now() - cache.row.fetchedAt.getTime() < maxAgeMs }];
+    }
+    if (text.startsWith("WITH took AS (")) {
+      if (cache.row === null) return [{ took: 0, present: 0 }];
+      if (cache.row.leaseUntil !== undefined && cache.row.leaseUntil > Date.now()) return [{ took: 0, present: 1 }];
+      cache.row.leaseUntil = Date.now() + Number(values[0]) * 1000;
+      return [{ took: 1, present: 1 }];
     }
     if (text.startsWith("INSERT INTO model_cache")) {
       cache.row = { models: JSON.parse(String(values[0])), fetchedAt: new Date() };
@@ -104,5 +111,27 @@ describe("getModelList failure back-off", () => {
     engine.listModels.mockResolvedValueOnce({ ok: true, models: LIST });
     expect((await getModelList()).verified).toBe(true);
     expect(engine.listModels).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe("getModelList refresh sharing", () => {
+  it("makes one SERV call for requests that arrive while a refresh is running, and gives them all its answer", async () => {
+    let answer: (v: unknown) => void = () => {};
+    engine.listModels.mockReturnValueOnce(new Promise((resolve) => (answer = resolve)));
+    const calls = [getModelList(), getModelList(), getModelList()];
+    // Lets every caller read the cache and reach the refresh before SERV answers.
+    await vi.waitFor(() => expect(engine.listModels).toHaveBeenCalledTimes(1));
+    answer({ ok: true, models: LIST });
+    for (const view of await Promise.all(calls)) expect(view).toMatchObject({ models: LIST, verified: true });
+    expect(engine.listModels).toHaveBeenCalledTimes(1);
+  });
+
+  it("serves the stale list unverified while another instance holds the lease, without asking SERV", async () => {
+    engine.listModels.mockResolvedValueOnce({ ok: true, models: LIST });
+    const fresh = await getModelList();
+    advance(CONFIG.modelCacheMaxAgeSeconds * 1000 + 1_000);
+    cache.row!.leaseUntil = now + CONFIG.modelRefreshLeaseSeconds * 1000;
+    expect(await getModelList()).toEqual({ models: LIST, fetchedAt: fresh.fetchedAt, verified: false });
+    expect(engine.listModels).toHaveBeenCalledTimes(1);
   });
 });

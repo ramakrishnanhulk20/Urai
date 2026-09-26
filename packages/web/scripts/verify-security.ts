@@ -94,12 +94,37 @@ async function cleanup(ctx: Ctx): Promise<Record<string, number>> {
   return { case_results: caseResults, runs: runRows, workloads: workloadRows, rate_limits: rateRows };
 }
 
+/*
+ * How far behind the daily clean-up is. Information, not a verdict: an expired row can sit for up
+ * to a day by design, and only the operator can tell whether the cron is running. Samples never
+ * expire in practice and are never deleted, so they are left out.
+ */
+async function expiredBacklog(ctx: Ctx): Promise<string> {
+  try {
+    const row = (await ctx.sql`
+      SELECT count(*)::int AS n, extract(epoch FROM now() - min(expires_at))::float8 AS secs
+      FROM workloads WHERE expires_at <= now() AND NOT is_sample`)[0];
+    const n = Number(row?.n);
+    if (n === 0) return "no expired team workload is still stored";
+    return `oldest expired team workload still stored: ${(Number(row?.secs) / 3600).toFixed(1)} hours past its retention date (${n} expired row(s) waiting for the daily clean-up)`;
+  } catch (err) {
+    return `could not read the expired workloads (${err instanceof Error ? err.name : "error"})`;
+  }
+}
+
 // The record is read as markdown, and C20 puts real markup into it, so angle brackets are escaped to show as text (C25).
 function cell(text: string): string {
   return text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll("|", "\\|").replaceAll("\r", " ").replaceAll("\n", " ");
 }
 
-function writeRecord(stamp: string, opts: { base: string; skipBudget: boolean }, records: CheckRecord[], unit: UnitLine[], deleted: Record<string, number> | string): string {
+function writeRecord(
+  stamp: string,
+  opts: { base: string; skipBudget: boolean },
+  records: CheckRecord[],
+  unit: UnitLine[],
+  deleted: Record<string, number> | string,
+  info: string,
+): string {
   const count = (o: string) => records.filter((r) => r.outcome === o).length;
   const missing = unit.filter((u) => !u.found).length;
   const lines = [
@@ -119,7 +144,8 @@ function writeRecord(stamp: string, opts: { base: string; skipBudget: boolean },
   }
   lines.push("## Covered by unit tests (listed, not re-run here)", "", "| Rule | File | Test | Found |", "| --- | --- | --- | --- |");
   for (const u of unit) lines.push(`| ${u.rule} | ${u.file} | ${cell(u.test)} | ${u.found ? "yes" : "MISSING"} |`);
-  lines.push("", "## Clean-up", "");
+  lines.push("", "## Information", "", cell(info), "");
+  lines.push("## Clean-up", "");
   lines.push(typeof deleted === "string" ? deleted : `Deleted the suite's own rows: ${Object.entries(deleted).map(([k, v]) => `${k} ${v}`).join(", ")}. demo_budget.spent_usd is left as is: that money was really spent.`);
   lines.push("");
   const dir = `${REPO_ROOT}docs/security/checks`;
@@ -154,10 +180,14 @@ async function main(): Promise<void> {
     }
   }
 
+  const info = await expiredBacklog(ctx);
+  console.log(`
+INFO    ${redact(info)}`);
+
   const unit = unitCoverage();
   ctx.rec.group = "unit tests";
   for (const u of unit) if (!u.found) ctx.rec.add(u.rule, `unit test missing: ${u.test}`, u.file, "not found in the file", false);
-  const file = writeRecord(stamp, opts, ctx.rec.records, unit, deleted);
+  const file = writeRecord(stamp, opts, ctx.rec.records, unit, deleted, info);
   const broken = ctx.rec.records.filter((r) => r.outcome === "BROKEN");
   const ok = ctx.rec.records.filter((r) => r.outcome === "OK").length;
   const pending = ctx.rec.records.filter((r) => r.outcome === "PENDING").length;

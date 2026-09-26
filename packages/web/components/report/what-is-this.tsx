@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Slash } from "../brand/slash";
 import s from "./report.module.css";
+import { SampleSiblings } from "./siblings";
 
 /** For the visitor who opens a report link cold: what Urai is, in one paragraph, and where to go next. */
 export function WhatIsThis() {
@@ -23,6 +24,7 @@ export function WhatIsThis() {
           Try the live demo
         </Link>
       </p>
+      <SampleSiblings />
     </aside>
   );
 }

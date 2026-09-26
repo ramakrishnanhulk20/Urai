@@ -3,7 +3,8 @@
 // (serv.test.ts drives scrubbing through runCase).
 import { randomBytes } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { scrub, scrubDeep, shortMessage } from "../src/scrub.js";
+import { LIMITS } from "../src/limits.js";
+import { cutPairSafe, scrub, scrubDeep, shortMessage } from "../src/scrub.js";
 
 const WINDOW = 16;
 
@@ -25,6 +26,38 @@ const KEY = `sk-canary-${randomBytes(12).toString("hex")}"q\\${randomBytes(8).to
 function forbidden(echo: string): string {
   return JSON.stringify({ error: { message: `Key ${echo} is not allowed to call this model`, type: "permission_error" } });
 }
+
+// A high surrogate with no low one after it, or a low one with no high one before it.
+const LONE_SURROGATE = /[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/;
+
+describe("cutPairSafe never leaves half a character", () => {
+  it("cuts a run of emoji at every offset around the error cap without a lone surrogate", () => {
+    for (let pad = 0; pad < 4; pad++) {
+      const text = `${"a".repeat(pad)}${"\u{1F600}".repeat(LIMITS.errorMaxChars)}`;
+      for (let max = 0; max <= text.length; max++) {
+        const out = cutPairSafe(text, max);
+        expect(out.length).toBeLessThanOrEqual(max);
+        expect(out.length).toBeGreaterThanOrEqual(max - 1);
+        expect(text.startsWith(out)).toBe(true);
+        expect(LONE_SURROGATE.test(out)).toBe(false);
+      }
+    }
+  });
+
+  it("keeps shortMessage well formed at the 200-character error cap for every alignment", () => {
+    for (let pad = 0; pad < 2; pad++) {
+      const msg = shortMessage(`${"x".repeat(pad)}${"\u{1F4B8}".repeat(LIMITS.errorMaxChars)}`, KEY);
+      expect(msg.length).toBeLessThanOrEqual(LIMITS.errorMaxChars);
+      expect(msg.length).toBeGreaterThanOrEqual(LIMITS.errorMaxChars - 1);
+      expect(LONE_SURROGATE.test(msg)).toBe(false);
+    }
+  });
+
+  it("returns text that already fits unchanged", () => {
+    expect(cutPairSafe("ab\u{1F600}", 4)).toBe("ab\u{1F600}");
+    expect(cutPairSafe("", 0)).toBe("");
+  });
+});
 
 describe("scrub removes every 16-character piece of the key", () => {
   it("removes the first 24 characters of the key echoed in a 403-style message", () => {

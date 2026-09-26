@@ -1,17 +1,28 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
-import { budgetDay } from "../../../../lib/budget";
 import { CONFIG } from "../../../../lib/config";
 import { db } from "../../../../lib/db";
 import { cronSecret } from "../../../../lib/env";
 import { HttpError, handle, json } from "../../../../lib/http";
 import sampleReports from "../../../../lib/sample-reports.json";
 
-// Read like input: a malformed file throws before the transaction, so nothing is deleted (C26).
+// Read like input: a malformed file throws before the statement, so nothing is deleted (C26).
 const sampleReportIds = z.array(z.looseObject({ reportId: z.string().min(1) }));
 
+const count = z.number().int().nonnegative();
+// What urai_cleanup() returns; anything else is refused as a server error, never shown as a count.
+const deletedSchema = z.strictObject({
+  workloads: count,
+  runs: count,
+  caseResults: count,
+  demoRuns: count,
+  demoCaseResults: count,
+  unrunWorkloads: count,
+  rateLimits: count,
+  budgetDays: count,
+});
+
 const ROUTE = "GET /api/cron/cleanup";
-const DAY_MS = 86_400_000;
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -28,22 +39,23 @@ function authorized(header: string | null, secret: string | null): boolean {
   return timingSafeEqual(given, expected);
 }
 
-function count(rows: Record<string, unknown>[]): number {
-  const n = Number(rows[0]?.n);
-  if (!Number.isInteger(n) || n < 0) throw new Error("cleanup count is not a number");
-  return n;
-}
-
 /**
  * The daily clean-up, called by Vercel Cron (vercel.json) with "Authorization: Bearer <CRON_SECRET>".
  * Any other caller, and every caller while CRON_SECRET is missing or too short, gets 401
- * unauthorized (fail closed, C26). In one transaction, so a failure deletes nothing: the case
- * results, then the runs, then the workloads of every non-sample workload past its retention date;
- * rate-limit windows older than CONFIG.rateLimitRetentionDays; demo budget days older than
- * CONFIG.demoBudgetRetentionDays; demo runs older than CONFIG.demoRunRetentionDays with their case
- * results. Samples are never deleted. The demo run clean-up never touches a team run, nor any run
- * on a workload behind a report listed in lib/sample-reports.json (the landing page links to them).
- * Returns 200 { deleted: { workloads, runs, caseResults, demoRuns, demoCaseResults, rateLimits, budgetDays } }.
+ * unauthorized (fail closed, C26). The deletes run inside urai_cleanup() (migration 007), a
+ * function owned by the migrating login, so the app's own login holds no DELETE on the tables that
+ * carry its limits (C35). One statement, so a failure deletes nothing: the case results, then the
+ * runs, then the workloads of every non-sample workload past its retention date; demo runs older
+ * than CONFIG.demoRunRetentionDays with their case results; team workloads that never got a run,
+ * once older than CONFIG.unrunWorkloadRetentionHours; rate-limit windows older than
+ * CONFIG.rateLimitRetentionDays; demo budget days older than CONFIG.demoBudgetRetentionDays.
+ * Samples are never deleted. The demo run clean-up never touches a team run, nor any run on a
+ * workload behind a report in the kept_reports table.
+ * The statement deletes nothing and the route answers 500 internal when a report listed in
+ * lib/sample-reports.json is missing from kept_reports, or when urai_retention() disagrees with
+ * CONFIG, so a stale table or a changed config can only ever stop the clean-up, never widen it.
+ * Returns 200 { deleted: { workloads, runs, caseResults, demoRuns, demoCaseResults, unrunWorkloads,
+ * rateLimits, budgetDays } }.
  */
 export async function GET(req: Request): Promise<Response> {
   return handle(ROUTE, async () => {
@@ -55,62 +67,28 @@ export async function GET(req: Request): Promise<Response> {
     }
 
     const keptReports = sampleReportIds.parse(sampleReports).map((s) => s.reportId);
-    const oldestBudgetDay = budgetDay(new Date(Date.now() - CONFIG.demoBudgetRetentionDays * DAY_MS));
-    const sql = db();
+    const retention = JSON.stringify({
+      demoRunRetentionDays: CONFIG.demoRunRetentionDays,
+      unrunWorkloadRetentionHours: CONFIG.unrunWorkloadRetentionHours,
+      rateLimitRetentionDays: CONFIG.rateLimitRetentionDays,
+      demoBudgetRetentionDays: CONFIG.demoBudgetRetentionDays,
+    });
     /*
-     * now() is the transaction's start time, so all three workload deletes use one cut-off, and the
-     * two demo deletes, which carry the same condition, pick the same runs.
+     * The two checks gate the call in the same statement, so the clean-up cannot run between a
+     * check passing and the deletes. A volatile function in the select list runs only for a row
+     * the WHERE lets through.
      */
-    const [demoCaseResults, demoRuns, caseResults, runs, workloads, rateLimits, budgetDays] = await sql.transaction([
-      sql`
-        WITH gone AS (
-          DELETE FROM case_results WHERE run_id IN (
-            SELECT id FROM runs
-            WHERE payer = 'demo' AND created_at < now() - make_interval(days => ${CONFIG.demoRunRetentionDays})
-              AND workload_id NOT IN (SELECT workload_id FROM runs WHERE report_id = ANY(${keptReports})))
-          RETURNING 1)
-        SELECT count(*)::int AS n FROM gone`,
-      sql`
-        WITH gone AS (
-          DELETE FROM runs
-          WHERE payer = 'demo' AND created_at < now() - make_interval(days => ${CONFIG.demoRunRetentionDays})
-            AND workload_id NOT IN (SELECT workload_id FROM runs WHERE report_id = ANY(${keptReports}))
-          RETURNING 1)
-        SELECT count(*)::int AS n FROM gone`,
-      sql`
-        WITH gone AS (
-          DELETE FROM case_results WHERE run_id IN (
-            SELECT r.id FROM runs r JOIN workloads w ON w.id = r.workload_id
-            WHERE w.expires_at <= now() AND NOT w.is_sample)
-          RETURNING 1)
-        SELECT count(*)::int AS n FROM gone`,
-      sql`
-        WITH gone AS (
-          DELETE FROM runs WHERE workload_id IN (
-            SELECT id FROM workloads WHERE expires_at <= now() AND NOT is_sample)
-          RETURNING 1)
-        SELECT count(*)::int AS n FROM gone`,
-      sql`
-        WITH gone AS (DELETE FROM workloads WHERE expires_at <= now() AND NOT is_sample RETURNING 1)
-        SELECT count(*)::int AS n FROM gone`,
-      sql`
-        WITH gone AS (
-          DELETE FROM rate_limits WHERE window_start < now() - make_interval(days => ${CONFIG.rateLimitRetentionDays})
-          RETURNING 1)
-        SELECT count(*)::int AS n FROM gone`,
-      sql`
-        WITH gone AS (DELETE FROM demo_budget WHERE day < ${oldestBudgetDay}::date RETURNING 1)
-        SELECT count(*)::int AS n FROM gone`,
-    ]);
-    const deleted = {
-      workloads: count(workloads!),
-      runs: count(runs!),
-      caseResults: count(caseResults!),
-      demoRuns: count(demoRuns!),
-      demoCaseResults: count(demoCaseResults!),
-      rateLimits: count(rateLimits!),
-      budgetDays: count(budgetDays!),
-    };
+    const rows = await db()`
+      SELECT urai_cleanup() AS deleted
+      WHERE urai_retention() = ${retention}::jsonb
+        AND NOT EXISTS (
+          SELECT 1 FROM unnest(${keptReports}::text[]) AS listed(report_id)
+          WHERE listed.report_id NOT IN (SELECT report_id FROM kept_reports))`;
+    if (rows[0] === undefined) {
+      console.error(`[urai] ${ROUTE}: refused, a listed sample report is missing from kept_reports or urai_retention() differs from CONFIG; nothing deleted`);
+      throw new Error("clean-up preconditions failed");
+    }
+    const deleted = deletedSchema.parse(rows[0].deleted);
     console.info(`[urai] ${ROUTE}: ${JSON.stringify(deleted)}`);
     return json(200, { deleted });
   });

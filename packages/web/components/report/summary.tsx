@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 import type { Report } from "../../lib/report";
 import { Slash } from "../brand/slash";
-import { configLabels, splitName, summarize } from "./format";
+import { configLabels, hasManyModels, servTerms, splitName, summarize } from "./format";
 import s from "./report.module.css";
 
 function delay(step: number): CSSProperties {
@@ -14,13 +14,14 @@ function delay(step: number): CSSProperties {
  * so it plays on first paint without waiting for any script.
  */
 export function ReportSummary({ report }: { report: Report }) {
-  const { title, deck } = splitName(report.name);
+  const { title, deck } = splitName(servTerms(report.name, report.configs));
   const models = [...new Set(report.configs.map((c) => c.model))];
   const labels = configLabels(report.configs);
   const cases = report.cases.length;
   const size = title.length <= 30 ? "short" : title.length <= 60 ? "medium" : "long";
+  // A run over several models names each one inside its setting's label, so the separate model item is left out.
   const meta = [
-    models.join(", "),
+    ...(hasManyModels(report.configs) ? [] : [models.join(", ")]),
     `${cases} ${cases === 1 ? "case" : "cases"}`,
     labels.length === 1 ? labels[0]! : labels.join(" vs "),
   ];

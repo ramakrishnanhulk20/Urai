@@ -86,39 +86,49 @@ function unverified(cached: Cached | null): ModelListView {
   return cached === null ? { models: [], fetchedAt: null, verified: false } : { models: cached.models, fetchedAt: cached.fetchedAt, verified: false };
 }
 
+/*
+ * Takes the refresh lease for CONFIG.modelRefreshLeaseSeconds with one conditional UPDATE, so only
+ * one instance asks SERV at a time. With no row yet there is nothing to lease, and the first refresh
+ * goes ahead unguarded: that happens once per database, costs one free list call per instance at
+ * most, and the in-process promise still holds it to one call per instance. A lease is never
+ * released on failure; letting it lapse keeps the other instances off SERV during an outage too.
+ */
+async function takeLease(): Promise<"taken" | "held" | "no_row"> {
+  const rows = await db()`
+    WITH took AS (
+      UPDATE model_cache SET refresh_lease_until = now() + make_interval(secs => ${CONFIG.modelRefreshLeaseSeconds})
+      WHERE id = 1 AND (refresh_lease_until IS NULL OR refresh_lease_until <= now())
+      RETURNING 1)
+    SELECT (SELECT count(*) FROM took)::int AS took, (SELECT count(*) FROM model_cache WHERE id = 1)::int AS present`;
+  const took = Number(rows[0]?.took);
+  const present = Number(rows[0]?.present);
+  if (!Number.isInteger(took) || !Number.isInteger(present)) throw new Error("model cache lease returned no count");
+  if (took === 1) return "taken";
+  return present === 0 ? "no_row" : "held";
+}
+
 async function writeCache(models: ModelEntry[]): Promise<string> {
   const json = toJsonb(models);
   if (json === null) throw new Error("model list is not storable");
   const rows = await db()`
     INSERT INTO model_cache (id, models, fetched_at) VALUES (1, ${json}::jsonb, now())
-    ON CONFLICT (id) DO UPDATE SET models = EXCLUDED.models, fetched_at = EXCLUDED.fetched_at
+    ON CONFLICT (id) DO UPDATE SET models = EXCLUDED.models, fetched_at = EXCLUDED.fetched_at, refresh_lease_until = NULL
     RETURNING fetched_at`;
   const at = rows[0]?.fetched_at;
   if (!(at instanceof Date) && typeof at !== "string") throw new Error("model cache write returned no time");
   return iso(at);
 }
 
-/**
- * SERV's model list for the picker and the lint. A cached list younger than
- * CONFIG.modelCacheMaxAgeSeconds is returned as is. Otherwise the list is fetched with the
- * operator key, which is the only thing sent (C4), and stored. When SERV cannot be read, the
- * last cached list comes back with verified false, or an empty list with verified false when
- * there is none: a list is never invented (C18).
- * After a failed refresh, SERV is not asked again for CONFIG.modelFailureBackoffSeconds while the
- * cache row is unchanged; those calls get the same unverified answer, never verified true (C18).
- * Throws 503 unavailable on any database error (C26); nothing is fetched after a failed read.
- */
-export async function getModelList(): Promise<ModelListView> {
-  let cached: Cached | null;
-  let rowMark: string | null;
+async function refresh(cached: Cached | null, rowMark: string | null): Promise<ModelListView> {
+  let lease: Awaited<ReturnType<typeof takeLease>>;
   try {
-    ({ cached, rowMark } = await readCache());
+    lease = await takeLease();
   } catch {
-    console.error("[urai] model cache read failed");
+    console.error("[urai] model cache lease failed");
     throw new HttpError(503, "unavailable");
   }
-  if (cached?.fresh === true) return { models: cached.models, fetchedAt: cached.fetchedAt, verified: true };
-  if (backingOff(rowMark)) return unverified(cached);
+  // Another instance is asking SERV right now; until it writes, the stale list is all there is.
+  if (lease === "held") return unverified(cached);
 
   let live: ModelList;
   try {
@@ -142,6 +152,45 @@ export async function getModelList(): Promise<ModelListView> {
     throw new HttpError(503, "unavailable");
   }
   return { models: models.data, fetchedAt, verified: true };
+}
+
+// The refresh this instance is running, so concurrent requests share one SERV call.
+let refreshing: Promise<ModelListView> | null = null;
+
+/**
+ * SERV's model list for the picker and the lint. A cached list younger than
+ * CONFIG.modelCacheMaxAgeSeconds is returned as is. Otherwise the list is fetched with the
+ * operator key, which is the only thing sent (C4), and stored. When SERV cannot be read, the
+ * last cached list comes back with verified false, or an empty list with verified false when
+ * there is none: a list is never invented (C18).
+ * One instance refreshes at a time: a refresh first takes model_cache.refresh_lease_until for
+ * CONFIG.modelRefreshLeaseSeconds, and while another instance holds it the cached list comes
+ * back unverified. Within an instance, requests that arrive during a refresh wait for it and
+ * share its answer.
+ * After a failed refresh, SERV is not asked again for CONFIG.modelFailureBackoffSeconds while the
+ * cache row is unchanged; those calls get the same unverified answer, never verified true (C18).
+ * Throws 503 unavailable on any database error (C26); nothing is fetched after a failed read.
+ */
+export async function getModelList(): Promise<ModelListView> {
+  let cached: Cached | null;
+  let rowMark: string | null;
+  try {
+    ({ cached, rowMark } = await readCache());
+  } catch {
+    console.error("[urai] model cache read failed");
+    throw new HttpError(503, "unavailable");
+  }
+  if (cached?.fresh === true) return { models: cached.models, fetchedAt: cached.fetchedAt, verified: true };
+  if (refreshing !== null) return refreshing;
+  if (backingOff(rowMark)) return unverified(cached);
+
+  const running = refresh(cached, rowMark);
+  refreshing = running;
+  try {
+    return await running;
+  } finally {
+    if (refreshing === running) refreshing = null;
+  }
 }
 
 /**

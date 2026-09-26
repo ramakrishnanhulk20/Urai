@@ -2,11 +2,13 @@
  * Calls the route handlers directly against the real Neon database. Not covered here: the
  * Next.js server itself (routing, its automatic OPTIONS reply), Vercel's rewriting of the IP
  * headers, rate limits under true concurrency, the case endpoint, the demo budget and reports
- * (part 2), and a database outage (the fail-closed branches are read in review, not executed).
+ * (part 2), the storage cap (storage.test.ts), and a database outage (the fail-closed branches are
+ * read in review, not executed).
  */
 import { randomBytes } from "node:crypto";
 import { isIP } from "node:net";
 import { afterAll, describe, expect, it } from "vitest";
+import { POST as postLint } from "../app/api/lint/route";
 import { GET as getRun } from "../app/api/runs/[id]/route";
 import { POST as postRun } from "../app/api/runs/route";
 import { POST as postWorkload } from "../app/api/workloads/route";
@@ -28,7 +30,7 @@ function freshIp(): string {
   // An invalid address would fall into the shared "unknown" bucket and the tests would collide.
   if (isIP(ip) !== 6) throw new Error("test fixture built an invalid IPv6 address");
   const hash = ipHash(new Request(BASE, { headers: { "x-real-ip": ip } }));
-  created.buckets.push(`workloads:${hash}`, `runs:${hash}`);
+  created.buckets.push(`workloads:${hash}`, `runs:${hash}`, `lint:${hash}`);
   return ip;
 }
 
@@ -99,12 +101,14 @@ describe("POST /api/workloads", () => {
     expect(ownerToken).toMatch(/^[A-Za-z0-9_-]{43}$/);
 
     const rows = await db()`
-      SELECT owner_hash, is_sample, row_to_json(w)::text AS whole,
+      SELECT owner_hash, is_sample, row_to_json(w)::text AS whole, size_bytes, octet_length(data::text) AS stored_bytes,
              extract(epoch FROM expires_at - now()) / 86400 AS days_left
       FROM workloads w WHERE id = ${workloadId}`;
     const row = rows[0];
     expect(row?.owner_hash).toBe(hashToken(ownerToken));
     expect(row?.is_sample).toBe(false);
+    expect(row?.size_bytes).toBe(row?.stored_bytes);
+    expect(Number(row?.size_bytes)).toBeGreaterThan(0);
     expect(String(row?.whole)).not.toContain(ownerToken);
     expect(Number(row?.days_left)).toBeGreaterThan(CONFIG.workloadRetentionDays - 0.01);
     expect(Number(row?.days_left)).toBeLessThanOrEqual(CONFIG.workloadRetentionDays);
@@ -249,6 +253,7 @@ describe("GET /api/runs/[id]", () => {
     expect(g.status).toBe(200);
     expect(g.body).toMatchObject({
       payer: "team",
+      shared: false,
       totalCalls: 4,
       totals: { done: 1 },
     });
@@ -258,7 +263,24 @@ describe("GET /api/runs/[id]", () => {
     for (const secret of [runToken, String(w.body.ownerToken), hashToken(runToken), String(r.body.reportId), String(w.body.workloadId)]) {
       expect(text).not.toContain(secret);
     }
-    expect(text).not.toContain("shared");
+  });
+});
+
+describe("checks that come before the rate count", () => {
+  it("refuses a body not declared as JSON on workloads, runs and lint without charging the sender's bucket", async () => {
+    const ip = freshIp();
+    const hash = ipHash(new Request(BASE, { headers: { "x-real-ip": ip } }));
+    const routes: [string, (req: Request) => Promise<Response>][] = [
+      ["/api/workloads", postWorkload],
+      ["/api/runs", postRun],
+      ["/api/lint", postLint],
+    ];
+    for (const [path, handler] of routes) {
+      const req = new Request(`${BASE}${path}`, { method: "POST", headers: { "content-type": "text/plain", "x-real-ip": ip }, body: "{}" });
+      expect(await call(handler(req))).toMatchObject({ status: 415, body: { error: "unsupported_media_type" } });
+    }
+    const counted = await db()`SELECT bucket FROM rate_limits WHERE bucket = ANY(${["workloads", "runs", "lint"].map((k) => `${k}:${hash}`)})`;
+    expect(counted).toEqual([]);
   });
 });
 

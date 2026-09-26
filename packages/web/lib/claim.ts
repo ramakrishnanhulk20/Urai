@@ -189,10 +189,15 @@ export async function finishClaim(key: CaseKey, mark: string, status: string, re
   return rows[0] !== undefined;
 }
 
-/** Drops this request's pending claim, so the case can be called again. Only ever used before any spend. */
-export async function releaseClaim(key: CaseKey, mark: string): Promise<void> {
-  await db()`
-    DELETE FROM case_results
-    WHERE run_id = ${key.runId} AND case_id = ${key.caseId} AND config_idx = ${key.configIdx}
-      AND finished_at IS NULL AND extract(epoch FROM claimed_at) = ${mark}::numeric`;
+/**
+ * Drops this request's pending claim, so the case can be called again. Only ever used before any
+ * spend. Runs through urai_release_claim() (migration 008), which deletes only an unfinished claim
+ * still holding this mark, so the app's login needs no DELETE on case_results and can never remove
+ * a stored answer (C35). Returns true when the claim was deleted, false when it had already been
+ * finished or taken over. Throws on any database error.
+ */
+export async function releaseClaim(key: CaseKey, mark: string): Promise<boolean> {
+  const rows = await db()`
+    SELECT urai_release_claim(${key.runId}, ${key.caseId}, ${key.configIdx}::int, ${mark}::numeric) AS released`;
+  return rows[0]?.released === true;
 }

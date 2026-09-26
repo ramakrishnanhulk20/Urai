@@ -3,17 +3,19 @@ title: Run Urai yourself
 description: Install Urai, point it at your own database and SERV key, then prove it works and attack it.
 ---
 
-Urai is one repository with two packages: `packages/engine`, the library that talks to SERV, and `packages/web`, the Next.js app. You need Node.js and npm, a free Neon Postgres project, and a SERV key.
+Urai is one repository with four packages: `packages/engine`, the library that talks to SERV, `packages/web`, the Next.js app, and two research benchmarks, `packages/bench` and `packages/haggle`, which measured the SERV figures Urai quotes. Running Urai needs only the first two. You need Node.js and npm, a free Neon Postgres project, and a SERV key.
 
 ## 1. Install
 
-From the repository root:
+Clone the repository, then install from its root:
 
 ```bash
+git clone https://github.com/ramakrishnanhulk20/Urai.git
+cd Urai
 npm install
 ```
 
-The root `package.json` is an npm workspace, so this installs both packages and links the engine into the web app.
+The root `package.json` is an npm workspace over the engine and the web app, so this installs both and links the engine into the web app. The two benchmarks install on their own, from their own folders.
 
 ## 2. Set the environment
 
@@ -23,10 +25,12 @@ Copy `.env.example` to `.env` at the repository root and fill it in. Never commi
 |---|---|
 | `SERV_API_KEY` | The operator's SERV key, from console.openserv.ai (Settings, Keys). It pays only for public demo runs on the sample workloads. Teams bring their own key for their own workloads. |
 | `SERV_BASE_URL` | Read only by the research benchmark in `packages/bench`. The app does not read it: the SERV address is fixed in the engine's code, so no setting can send a key anywhere else (C2). |
-| `DATABASE_URL` | The pooled connection string of a free Neon Postgres project. |
+| `DATABASE_URL` | The pooled connection string of a free Neon Postgres project, for its owner login. Used on your machine for migrations, seeding, the tests and the security suite. The live app never gets it. |
+| `DATABASE_URL_APP` | Written by `npm run create-app-role`, never by hand: the connection string of `urai_app`, the least-privilege login the live app uses (C35). On Vercel, paste its value as `DATABASE_URL`. |
 | `URAI_IP_SALT` | A random secret, 64 hex characters, used to hash visitor addresses for the rate limits. The raw address is never stored. |
-| `DEMO_DAILY_BUDGET_USD` | The daily cap on the operator key for public demo runs, in USD. `.env.example` sets 1.00. |
+| `DEMO_DAILY_BUDGET_USD` | The daily cap on the operator key for public demo runs, in USD. `.env.example` sets 1.00. Lowering it takes effect the same day. Any value over 10 fails the start-up check in `lib/env.ts`, so a mistyped value stops the server from answering any route, not only the demo, instead of opening the key wide. The database refuses a day's cap over 10 USD as well. |
 | `CRON_SECRET` | The secret Vercel Cron sends to `/api/cron/cleanup`, at least 32 characters, for example from `openssl rand -hex 32`. If it is missing or shorter, the clean-up refuses every call. |
+| `URAI_PUBLIC_URL` | The public address of the deployed app, for share cards and absolute links. Local dev falls back to `http://localhost:3001`. |
 
 The server checks these the first time it needs them, and its error names any variable that is missing or malformed, never its value.
 
@@ -38,9 +42,27 @@ npm run migrate
 npm run seed
 ```
 
-`migrate` applies every file in `packages/web/db/migrations` that has not run yet, in name order, each in its own transaction. Running it twice is safe.
+`migrate` applies every file in `packages/web/db/migrations` that has not run yet, in name order, each in its own transaction. Running it twice is safe. The latest two are `008_release_claim_function.sql`, which hands back a refused call's claim through a database function, so the live app's own login has no DELETE on stored answers, and `007_cleanup_function_and_indexes.sql`, which does the same for the daily clean-up (C35). Before them, `006_json_workloads_and_limits.sql` stores workloads as `json` text instead of `jsonb`, which had sorted every answer schema's fields by length before they reached SERV. It also adds the size column the storage cap sums, the lease that lets one server refresh the model list at a time, and the 10 USD ceiling on a day's demo cap. Rows stored before it keep the old order; `seed` rewrites the samples.
 
 `seed` adds the three invoice sample workloads: `sample-invoices-good`, `sample-invoices-bad` and `sample-invoices-hard`. Each goes through the same parser as a team's upload. The only settings the operator key will pay for on them are `gpt-6-luna` with SERV off and SERV plain. Running it again changes nothing unless a sample file changed.
+
+SERV keeps a system prompt's reasoning graph for 30 days, and the sample prompts were built at SERV on 23 Sep 2026. From 23 Oct 2026, demo calls with SERV on are refused, so the operator key never pays a graph build that token counts cannot see (C28). To open them again, build the sample prompts at SERV once more and move `samplePromptsWarmUntilMs` in `packages/web/lib/config.ts`.
+
+### The live app's database login
+
+The live app should not connect as the owner. Create its own login once, then prove what it can and cannot do:
+
+```bash
+cd packages/web
+npm run create-app-role
+npm run check-app-role
+```
+
+`create-app-role` reads `DATABASE_URL`, creates `urai_app`, which reads the app's tables whole and writes only the columns the app's code writes, and writes its connection string into the root `.env` as `DATABASE_URL_APP`. It prints nothing secret. Run it again after any migration that adds a table or a column the app writes; `--rotate` gives the login a new password.
+
+`check-app-role` connects as `urai_app`, runs every kind of write the app makes inside a transaction it rolls back, and checks that it cannot create or drop tables, read the migration log, set flags, change a run's payer or a workload's owner, or create roles. It prints PASS or FAIL per line and exits 1 on any FAIL.
+
+The app itself reads `DATABASE_URL`. On your machine that is the owner login. On Vercel, set `DATABASE_URL` to the value of `DATABASE_URL_APP`.
 
 ## 4. Start the app
 
@@ -50,7 +72,21 @@ npm run dev -- --port 3101
 
 Open `http://localhost:3101`. Port 3101 is the one the prove command expects by default.
 
-The daily clean-up runs on Vercel from `packages/web/vercel.json`, at 03:00 UTC. It deletes workloads past their 30 days with their runs and results, demo runs older than 7 days, old rate-limit windows and old demo budget days. It never touches the samples. Locally, nothing calls it unless you do, with the header `Authorization: Bearer` followed by your `CRON_SECRET`.
+The daily clean-up runs on Vercel from `packages/web/vercel.json`, at 03:00 UTC. It deletes workloads past their 30 days with their runs and results, workloads that never got a run once they are 48 hours old, demo runs older than 7 days, old rate-limit windows and old demo budget days. It never touches the samples. Locally, nothing calls it unless you do, with the header `Authorization: Bearer` followed by your `CRON_SECRET`.
+
+### If the site says storage is full
+
+Urai stops taking new test sets, runs and case calls once the whole database passes 400 MB, and answers `503 storage_full`. Nothing is saved or charged. To clear it:
+
+1. Wait for the daily clean-up at 03:00 UTC. It deletes test sets past their 30 days, test sets never run after 48 hours, and demo runs older than 7 days.
+2. Postgres keeps the freed space inside its files, so the size does not fall on its own. As the owner, on your machine where `DATABASE_URL` is the owner login, run:
+
+```bash
+cd packages/web
+npm run vacuum
+```
+
+It rewrites each table without the freed space and prints the database size before and after. It changes no data, but each table is locked for a moment while it is rewritten.
 
 ## 5. Prove it works
 
@@ -64,7 +100,7 @@ Five steps over HTTP: the model list, the setup check on the bad-layout sample, 
 
 ## 6. Attack it
 
-The security suite tries to break every rule in the threat model against a running server. Run it against a production build, with the server's own output captured to a file, because one check searches that output for the test key.
+The security suite covers 25 of the 35 rules: 21 by attacking a running server and 4 (C15 to C18) by confirming their unit tests still exist; the record lists each check. Run it against a production build, with the server's own output captured to a file, because one check searches that output for the test key.
 
 In one terminal:
 
@@ -81,4 +117,4 @@ cd packages/web
 npm run verify-security -- --base http://localhost:3102 --server-log server.log
 ```
 
-Add `--skip-budget` to skip the two checks that make real demo calls on the operator key, about four calls and a fraction of a cent. The suite reads the root `.env` to reach the same database, never prints a value from it, and deletes everything it created when it finishes. It writes its record to `docs/security/checks`. What each result means is on [Security checks](/docs/security/checks).
+Add `--skip-budget` to skip the two checks that make real demo calls on the operator key, about four calls and a fraction of a cent. The suite reads the root `.env` to reach the same database, never prints a value from it, and deletes everything it created when it finishes. It writes its record to [`docs/security/checks`](https://github.com/ramakrishnanhulk20/Urai/tree/main/docs/security/checks). What each result means is on [Security checks](/docs/security/checks).

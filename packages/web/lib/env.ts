@@ -8,8 +8,8 @@ const serverSchema = z.object({
   DATABASE_URL: databaseUrlSchema,
   SERV_API_KEY: z.string().refine(isPlausibleKey),
   URAI_IP_SALT: z.string().regex(/^[0-9a-fA-F]{64}$/),
-  // numeric(10,4) in demo_budget holds at most 999,999.9999.
-  DEMO_DAILY_BUDGET_USD: z.coerce.number().finite().positive().lt(1_000_000),
+  // Migration 006 refuses any demo_budget cap above 10 USD, so a larger value would fail every demo call's reservation.
+  DEMO_DAILY_BUDGET_USD: z.coerce.number().finite().positive().max(10),
 });
 
 export interface ServerEnv {

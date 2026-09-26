@@ -1,4 +1,6 @@
-import type { CSSProperties } from "react";
+"use client";
+
+import { useId, useState, type CSSProperties } from "react";
 import type { Report } from "../../lib/report";
 import { clip, configLabels, expectedText, statusView } from "./format";
 import { Reveal, RevealItem } from "./motion";
@@ -9,12 +11,17 @@ import s from "./report.module.css";
  * Every case against every setting, one row each, with a status dot per setting. A row opens to
  * show the whole input, the expected answer and every answer in full. Rows are native
  * details elements, so they open with no script and a keyboard works them out of the box. On a
- * phone the columns fold into a list where each dot carries its setting's name.
+ * phone the columns fold into a list where each dot carries its setting's name, and the toggle
+ * narrows a long list to the cases where the settings disagreed.
  */
 export function EveryCase({ report }: { report: Report }) {
   const labels = configLabels(report.configs);
   const disagree = new Set(report.disagreements);
   const grid = { "--n": report.configs.length } as CSSProperties;
+  const [onlySplit, setOnlySplit] = useState(false);
+  const toggleId = useId();
+  const canFilter = report.configs.length > 1 && disagree.size > 0;
+  const shown = onlySplit && canFilter ? report.cases.filter((c) => disagree.has(c.id)) : report.cases;
 
   return (
     <section className={s.section} aria-labelledby="cases-title">
@@ -24,6 +31,16 @@ export function EveryCase({ report }: { report: Report }) {
           {labels.length === 1 ? "setting" : "settings"}. Open any row to read the input and every answer in full.
         </p>
       </SectionHead>
+
+      {canFilter && (
+        <label className={s.splitToggle} htmlFor={toggleId}>
+          <input id={toggleId} type="checkbox" checked={onlySplit} onChange={(e) => setOnlySplit(e.target.checked)} />
+          <span className={s.splitBox} aria-hidden="true" />
+          <span>
+            Only the cases where settings disagree <span className={s.splitCount}>{disagree.size}</span>
+          </span>
+        </label>
+      )}
 
       <Reveal className={s.table} amount={0.02}>
         <RevealItem className={`${s.tRow} ${s.tHead}`} style={grid}>
@@ -36,7 +53,7 @@ export function EveryCase({ report }: { report: Report }) {
         </RevealItem>
 
         <RevealItem>
-          {report.cases.map((c) => (
+          {shown.map((c) => (
             <details key={c.id} className={s.tCase}>
               <summary className={s.tRow} style={grid}>
                 <span className={s.tId}>
@@ -54,6 +71,7 @@ export function EveryCase({ report }: { report: Report }) {
                   );
                 })}
                 <span className={s.tExpected}>
+                  <span className={s.tCellLabel}>Expected: </span>
                   {clip(
                     Object.entries(c.expected)
                       .map(([k, v]) => `${k}: ${expectedText(v)}`)
