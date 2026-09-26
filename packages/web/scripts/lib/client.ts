@@ -153,7 +153,7 @@ export async function createRun(
   );
 }
 
-/** The headers a case, balance or report call needs: the run's owner token, and the team key on team runs. */
+/** The headers a case or report call needs: the run's owner token, and the team key on team runs. */
 export function runHeaders(runOwnerToken: string, servKey?: string): Record<string, string> {
   return servKey === undefined ? { [OWNER_HEADER]: runOwnerToken } : { [OWNER_HEADER]: runOwnerToken, [SERV_KEY_HEADER]: servKey };
 }
@@ -167,12 +167,6 @@ export async function runCase(base: string, runId: string, caseId: string, confi
   if (res.status === 202) return { status: 202 };
   shaped(caseResultShape, res.status, res.body);
   return { status: 200, result: res.body as CaseResult };
-}
-
-/** POST /api/runs/:id/balance with the team key. { usd } or { unavailable: true }. */
-export async function balance(base: string, runId: string, runOwnerToken: string, servKey: string): Promise<{ usd: number } | { unavailable: true }> {
-  const res = await request(base, "POST", `/api/runs/${encodeURIComponent(runId)}/balance`, { headers: runHeaders(runOwnerToken, servKey) });
-  return shaped(z.union([z.object({ usd: z.number().finite() }), z.object({ unavailable: z.literal(true) })]), res.status, res.body);
 }
 
 /** POST /api/runs/:id/share. Returns the report id the run is now public at. */

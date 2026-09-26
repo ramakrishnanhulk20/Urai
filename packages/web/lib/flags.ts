@@ -3,13 +3,13 @@ import { HttpError } from "./http";
 
 /**
  * Server-wide stops, one row per name in app_flags.
- * "probe_ran": a balance probe was billed as a real call somewhere (C7 amended). While it is set,
- * every balance probe and every demo call is refused, because the next probe on the same key
- * would be just as dangerous.
- * The app only ever sets a flag. Clearing one is a deliberate operator action, run by hand after
- * the cause is understood: DELETE FROM app_flags WHERE name = 'probe_ran';
+ * "demo_off": the operator's kill switch for the demo (C28). While it is set, every demo call is
+ * refused with 429 budget_exhausted before any budget is reserved or the operator key is read.
+ * The operator sets and clears it by hand:
+ *   INSERT INTO app_flags (name, detail) VALUES ('demo_off', 'why') ON CONFLICT (name) DO NOTHING;
+ *   DELETE FROM app_flags WHERE name = 'demo_off';
  */
-export type FlagName = "probe_ran";
+export type FlagName = "demo_off";
 
 /** True when the flag is set. Throws 503 unavailable when it cannot be read, so callers deny (C26). */
 export async function isSet(name: FlagName): Promise<boolean> {

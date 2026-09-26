@@ -42,8 +42,9 @@ checks the prompt layout for known setup mistakes, offering a one-click rewrite.
    the key, waits up to about 120 seconds, validates the answer against the schema, scores it against
    the expected values, stores the result (verdict, score, tokens, latency, finish reason, SERV request
    id, the answer text) and returns it.
-5. Balance check: before and after a run the server may send SERV a deliberately oversized request
-   whose 402 error states the key's credit balance, to report real cost. No model runs on that call.
+5. Balance check: removed on 25 Sep. Until then the server sent SERV a deliberately oversized
+   request whose 402 error stated the key's balance; SERV began running that request as a paid call,
+   so Urai now reports cost from SERV's token counts and sends no balance request at all.
 6. `GET /api/runs/:id` and `GET /r/:reportId`: the run status and the report page (tables, per-case
    diffs showing the case input, expected answer, and each configuration's answer).
 7. `POST /api/reports/:runId/share`: makes a report public under a random link.

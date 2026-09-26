@@ -570,7 +570,7 @@
   text-transform: uppercase;
 }
 
-/* The ledger: what SERV's own balance said before and after, like a till receipt in the margin. */
+/* The ledger: what the run cost from SERV's token counts, like a till receipt in the margin. */
 
 .ledger {
   position: relative;
@@ -653,6 +653,11 @@
   font-weight: 900;
   font-stretch: 125%;
   color: var(--gold-hi);
+}
+
+.ledgerSpent + .ledgerSpent {
+  padding-top: 0.45rem;
+  border-top: 1px dashed rgb(239 233 223 / 0.14);
 }
 
 .ledgerSpent[data-small="true"] dd {

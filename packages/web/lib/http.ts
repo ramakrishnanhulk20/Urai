@@ -112,7 +112,7 @@ export function teamKeyHeader(req: Request): string | null {
   return value === null || value.trim() === "" ? null : value;
 }
 
-/** A run as the case, balance, share and report handlers use it. Never sent to a caller as is. */
+/** A run as the case, share and report handlers use it. Never sent to a caller as is. */
 export interface RunRecord {
   id: string;
   workloadId: string;

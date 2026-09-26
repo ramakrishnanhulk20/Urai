@@ -1,6 +1,6 @@
 /*
- * Calls the case and balance handlers directly against the real Neon database, with the engine's
- * runCase and readBalance replaced by fixtures, so no request reaches SERV and no money moves.
+ * Calls the case handler directly against the real Neon database, with the engine's runCase
+ * replaced by a fixture, so no request reaches SERV and no money moves.
  * Demo tests run on a made-up day far in the future, so today's real budget row is never touched.
  * Not covered here: the real engine (live-demo.test.ts runs one real demo case), the Next.js
  * server and Vercel's function time limit, a database outage (the fail-closed branches are read
@@ -12,7 +12,6 @@ import { randomBytes } from "node:crypto";
 import { isIP } from "node:net";
 import type { CaseResult, RunConfig } from "@urai/engine";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { POST as postBalance } from "../app/api/runs/[id]/balance/route";
 import { POST as postCase } from "../app/api/runs/[id]/cases/[caseId]/route";
 import { POST as postRun } from "../app/api/runs/route";
 import { POST as postWorkload } from "../app/api/workloads/route";
@@ -24,19 +23,16 @@ import { HttpError, SERV_KEY_HEADER } from "../lib/http";
 import { hashToken, newId, newOwnerToken } from "../lib/ids";
 import { ipHash } from "../lib/ip";
 
-const engine = vi.hoisted(() => ({ runCase: vi.fn(), readBalance: vi.fn() }));
+const engine = vi.hoisted(() => ({ runCase: vi.fn() }));
 vi.mock("@urai/engine", async (importOriginal) => {
   const real = await importOriginal<typeof import("@urai/engine")>();
-  return { ...real, runCase: engine.runCase, readBalance: engine.readBalance };
+  return { ...real, runCase: engine.runCase };
 });
 
-// The probe_ran stop is server-wide; setting the real row would stop every demo call, the live app's included.
+// The demo_off stop is server-wide; setting the real row would stop every demo call, the live app's included.
 const flags = vi.hoisted(() => new Set<string>());
 vi.mock("../lib/flags", () => ({
   isSet: async (name: string) => flags.has(name),
-  setFlag: async (name: string) => {
-    flags.add(name);
-  },
 }));
 
 const operator = vi.hoisted(() => ({ reads: 0 }));
@@ -147,13 +143,6 @@ function callCase(
   return record(postCase(req, { params: Promise.resolve({ id: runId, caseId }) }));
 }
 
-function callBalance(runId: string, owner: string, key?: string) {
-  const headers: Record<string, string> = { [OWNER_HEADER]: owner };
-  if (key !== undefined) headers[SERV_KEY_HEADER] = key;
-  const req = new Request(`${BASE}/api/runs/${runId}/balance`, { method: "POST", headers });
-  return record(postBalance(req, { params: Promise.resolve({ id: runId }) }));
-}
-
 function fixture(caseId: string, config: RunConfig, patch: Partial<CaseResult> = {}): CaseResult {
   return {
     caseId,
@@ -205,9 +194,6 @@ beforeAll(async () => {
 
 beforeEach(() => {
   engine.runCase.mockReset();
-  engine.readBalance.mockReset();
-  // The first demo call of a day reads the operator balance (C28); here it reads as unavailable, which changes nothing.
-  engine.readBalance.mockResolvedValue({ ok: false, reason: "unavailable" });
   flags.clear();
   engine.runCase.mockImplementation(async (_w: unknown, caseId: string, cfg: RunConfig) => {
     await sleep(50);
@@ -282,9 +268,7 @@ describe("C3: the payer comes from the run, and the header must agree", () => {
     expect(r.status).toBe(200);
     expect(engine.runCase).toHaveBeenCalledTimes(1);
     expect(engine.runCase.mock.calls[0]![3]).not.toBe(CANARY);
-    // One read for the call itself, plus one per operator balance probe (C28), which never sees the team key.
-    expect(operator.reads).toBe(1 + engine.readBalance.mock.calls.length);
-    for (const [key] of engine.readBalance.mock.calls) expect(key).not.toBe(CANARY);
+    expect(operator.reads).toBe(1);
   });
 });
 
@@ -599,7 +583,7 @@ describe("C6: the daily demo budget holds under concurrency", () => {
     const after = await budgetRow(MAIN_DAY);
     expect(Number(after!.spent) - Number(before!.spent)).toBeCloseTo(0.0003, 10);
     expect(after!.reserved).toBe(before!.reserved);
-    expect(operator.reads).toBe(1 + engine.readBalance.mock.calls.length);
+    expect(operator.reads).toBe(1);
   });
 });
 
@@ -682,48 +666,24 @@ describe("demo case cap", () => {
   });
 });
 
-describe("C7: the balance probe", () => {
-  it("refuses a demo run and a team call without a key, before probing", async () => {
+describe("C28: the operator's demo_off kill switch", () => {
+  it("refuses a demo call with 429 budget_exhausted before any reservation, engine call or operator key read, and leaves team runs alone", async () => {
     const demo = await demoRun();
-    expect(await callBalance(demo.runId, demo.owner)).toMatchObject({ status: 400, body: { error: "payer_mismatch" } });
-    const a = await teamRun(1);
-    expect(await callBalance(a.runId, a.owner)).toMatchObject({ status: 400, body: { error: "payer_mismatch" } });
-    expect(await callBalance(a.runId, newOwnerToken(), CANARY)).toMatchObject({ status: 404 });
-    expect(engine.readBalance).not.toHaveBeenCalled();
-  });
+    const team = await teamRun(1);
+    const before = await budgetRow(MAIN_DAY);
+    flags.add("demo_off");
 
-  it("records the first reading as before and the latest as after, and stops at the probe limit", async () => {
-    const a = await teamRun(1);
-    engine.readBalance.mockResolvedValueOnce({ ok: true, usd: 3.5 }).mockResolvedValueOnce({ ok: true, usd: 3.25 });
-    expect(await callBalance(a.runId, a.owner, CANARY)).toMatchObject({ status: 200, body: { usd: 3.5 } });
-    expect(await callBalance(a.runId, a.owner, CANARY)).toMatchObject({ status: 200, body: { usd: 3.25 } });
-    expect(await callBalance(a.runId, a.owner, CANARY)).toMatchObject({ status: 429, body: { error: "probe_limit" } });
-    expect(engine.readBalance).toHaveBeenCalledTimes(CONFIG.probesPerRunMax);
-    expect(engine.readBalance.mock.calls[0]![0]).toBe(CANARY);
-    const rows = await db()`SELECT balance_before::float8 AS b, balance_after::float8 AS a, probes FROM runs WHERE id = ${a.runId}`;
-    expect(rows[0]).toEqual({ b: 3.5, a: 3.25, probes: CONFIG.probesPerRunMax });
-  });
+    expect(await callCase(demo.runId, demo.cases[0]!, { owner: demo.owner })).toEqual({ status: 429, body: { error: "budget_exhausted" } });
+    expect(engine.runCase).not.toHaveBeenCalled();
+    expect(operator.reads).toBe(0);
+    expect(await caseRows(demo.runId)).toHaveLength(0);
+    expect(await budgetRow(MAIN_DAY)).toEqual(before);
 
-  it("answers unavailable without a number when the balance cannot be read", async () => {
-    const a = await teamRun(1);
-    engine.readBalance.mockResolvedValueOnce({ ok: false, reason: "unavailable" });
-    expect(await callBalance(a.runId, a.owner, CANARY)).toEqual({ status: 200, body: { unavailable: true } });
-    const rows = await db()`SELECT balance_before, balance_after FROM runs WHERE id = ${a.runId}`;
-    expect(rows[0]).toEqual({ balance_before: null, balance_after: null });
-  });
+    expect(await callCase(team.runId, "c0", { owner: team.owner, key: CANARY })).toMatchObject({ status: 200, body: { status: "scored" } });
 
-  it("flags the run when a probe ran as a paid call, answers 502 and probes it no more", async () => {
-    const a = await teamRun(1);
-    engine.readBalance.mockResolvedValueOnce({ ok: false, reason: "probe_ran" });
-    expect(await callBalance(a.runId, a.owner, CANARY)).toEqual({ status: 502, body: { error: "probe_ran" } });
-    const rows = await db()`SELECT flagged FROM runs WHERE id = ${a.runId}`;
-    expect(rows[0]?.flagged).toBe("probe_ran");
-    expect(flags.has("probe_ran")).toBe(true);
-    expect(await callBalance(a.runId, a.owner, CANARY)).toEqual({ status: 409, body: { error: "run_flagged" } });
-    // C7 amended: the stop is global, so a different run's probe is refused too.
-    const b = await teamRun(1);
-    expect(await callBalance(b.runId, b.owner, CANARY)).toEqual({ status: 503, body: { error: "probe_disabled" } });
-    expect(engine.readBalance).toHaveBeenCalledTimes(1);
+    flags.delete("demo_off");
+    expect(await callCase(demo.runId, demo.cases[0]!, { owner: demo.owner })).toMatchObject({ status: 200, body: { status: "scored" } });
+    expect(operator.reads).toBe(1);
   });
 });
 

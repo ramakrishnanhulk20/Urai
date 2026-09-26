@@ -3,7 +3,7 @@ title: The engine package
 description: What @urai/engine exports, what each export does, and how scoring normalises answers.
 ---
 
-`@urai/engine` lives in `packages/engine`. It is plain TypeScript with no framework and no database. It parses a workload, checks the setup, builds the SERV request, runs one case, and scores the answer. The web app adds storage, money rules and the pages on top. Because the engine stands alone, every SERV call, score and lint rule is tested on its own: 236 tests.
+`@urai/engine` lives in `packages/engine`. It is plain TypeScript with no framework and no database. It parses a workload, checks the setup, builds the SERV request, runs one case, and scores the answer. The web app adds storage, money rules and the pages on top. Because the engine stands alone, every SERV call, score and lint rule is tested on its own: 213 tests.
 
 ## Exports
 
@@ -21,13 +21,12 @@ description: What @urai/engine exports, what each export does, and how scoring n
 | `scoreAnswer(workload, case, answer)` | Scores one parsed answer against one case, one field score per scoring rule. Correct only when there is at least one rule and every rule matches. |
 | `normaliseText(value)` | The text normaliser used on both sides of every `exact` and `oneOf` comparison. |
 | `normaliseNumber(value)` | The number normaliser used on both sides of every `number` comparison. |
-| `readBalance(apiKey)` | Reads a key's SERV balance for free, from the 402 SERV sends for a request it refuses before any model runs. Returns "unavailable" for anything but the one known reply shape, and flags it as a fault if SERV ever runs the request. |
 | `listModels(apiKey)` | SERV's live model list, with input and output prices in USD per million tokens. Any failure returns "not ok", which callers must read as "could not verify", never as "unknown model". |
 | `isPlausibleKey(value)` | True when a value could be a SERV key: 20 to 200 printable characters with no spaces. Says nothing about whether SERV accepts it. |
 | `normaliseModelId(id)` | The one model id policy: trim and lowercase. The lint, the prices and the request all use it, so one setting can never appear as two (C32). |
 | `LIMITS` | Every size, count and time cap in the engine, in one object. Nothing else may hardcode one of these numbers. |
 
-Types exported alongside: `Workload`, `WorkloadCase`, `ScoreRule`, `ExpectedValue`, `RunConfig`, `ServMode`, `CaseResult`, `CaseStatus`, `FieldScore`, `BuiltRequest`, `ParseResult`, `CompileResult`, `Balance`, `ModelList`, `LintFinding` and `LintSeverity`.
+Types exported alongside: `Workload`, `WorkloadCase`, `ScoreRule`, `ExpectedValue`, `RunConfig`, `ServMode`, `CaseResult`, `CaseStatus`, `FieldScore`, `BuiltRequest`, `ParseResult`, `CompileResult`, `ModelList`, `LintFinding` and `LintSeverity`.
 
 ## How scoring normalises answers
 

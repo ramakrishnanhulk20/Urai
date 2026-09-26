@@ -18,9 +18,9 @@ flowchart TB
   end
 
   subgraph Vercel["Next.js on Vercel, region sin1"]
-    API["API routes<br/>workloads, runs, cases,<br/>balance, share, unshare,<br/>reports, lint, models"]
+    API["API routes<br/>workloads, runs, cases,<br/>share, unshare,<br/>reports, lint, models"]
     CRON["Daily cron<br/>/api/cron/cleanup"]
-    ENG["@urai/engine<br/>parseWorkload, lintWorkload,<br/>applyLayoutFix, buildRequest,<br/>runCase, readBalance, listModels"]
+    ENG["@urai/engine<br/>parseWorkload, lintWorkload,<br/>applyLayoutFix, buildRequest,<br/>runCase, listModels"]
   end
 
   DB[("Neon Postgres<br/>ap-southeast-1")]
@@ -40,8 +40,8 @@ flowchart TB
 The browser drives a run: it asks the server to run one case under one setting, a few at a time. The
 server makes exactly one SERV call per case and setting, stores the scored result, and forgets the
 key. The team's key never reaches the database, a log line or a response (threat model C1). Demo runs
-use the operator's key on operator samples only, inside a daily budget checked against SERV's real
-balance (C4, C6, C28).
+use the operator's key on operator samples only, inside a daily budget settled on SERV's own
+token counts (C4, C6, C28).
 
 ## 2. One case, end to end
 
@@ -68,7 +68,7 @@ sequenceDiagram
   E-->>S: CaseResult, key scrubbed (C1)
   S->>P: store the result under the claim
   alt demo run
-    S->>P: settle the real cost,<br/>and on every 20th call<br/>read SERV's balance (C28)
+    S->>P: settle the call's cost<br/>from SERV's token counts (C28)
   end
   S-->>B: 200 CaseResult
 ```
@@ -89,7 +89,6 @@ flowchart LR
     e_score["score"]
     e_scrub["scrub"]
     e_serv["serv (runCase)"]
-    e_balance["balance"]
     e_lint["lint"]
     e_layout["layout"]
   end
@@ -106,7 +105,6 @@ flowchart LR
     w_flags["flags"]
     w_prices["prices"]
     w_models["models"]
-    w_operator["operator-balance"]
     w_report["report"]
   end
 
@@ -114,7 +112,6 @@ flowchart LR
     r_work["workloads"]
     r_runs["runs"]
     r_case["runs/:id/cases/:caseId"]
-    r_bal["runs/:id/balance"]
     r_rep["reports and runs/:id/report"]
     r_lint["lint"]
     r_cron["cron/cleanup"]
@@ -126,7 +123,6 @@ flowchart LR
   e_serv --> e_request
   e_serv --> e_score
   e_serv --> e_scrub
-  e_balance --> e_scrub
   e_lint --> e_modelid
   e_layout --> e_lint
   e_layout --> e_workload
@@ -139,8 +135,6 @@ flowchart LR
   w_budget --> w_flags
   w_prices --> w_models
   w_models --> w_db
-  w_operator --> w_budget
-  w_operator --> e_balance
   w_report --> w_db
   w_rate --> w_config
   w_claim --> w_config
@@ -151,10 +145,7 @@ flowchart LR
   r_case --> w_claim
   r_case --> w_budget
   r_case --> w_prices
-  r_case --> w_operator
   r_case --> e_serv
-  r_bal --> e_balance
-  r_bal --> w_flags
   r_rep --> w_report
   r_rep --> e_lint
   r_lint --> e_layout
@@ -163,7 +154,7 @@ flowchart LR
 ```
 
 The engine is a plain TypeScript library with no framework and no database, so every SERV call, every
-score and every lint rule can be tested on its own (236 engine tests). The web package adds storage,
+score and every lint rule can be tested on its own (213 engine tests). The web package adds storage,
 money rules and the pages.
 
 ## Data model
@@ -173,10 +164,10 @@ money rules and the pages.
 | workloads | the team's rules, context, answer schema, scoring and cases | owner token stored as a hash; expires after 30 days; samples never expire |
 | runs | the settings compared, who pays, the case list, share state | run id and report id are independent random secrets (C8, C9) |
 | case_results | one scored result per (run, case, setting) | the primary key is the double-spend guard (C5) |
-| demo_budget | per UTC day: cap, reserved, spent, calls, start balance, stopped | one conditional update per reservation (C6, C28) |
+| demo_budget | per UTC day: cap, reserved, spent, calls, stopped | one conditional update per reservation (C6, C28) |
 | rate_limits | per address, per hour, per kind | IPv6 grouped by /64 |
 | model_cache | SERV's live model list and prices | refreshed at most hourly, 60 s back-off on failure |
-| app_flags | global stops, for example probe_ran | cleared only by the operator |
+| app_flags | global stops, for example demo_off | set and cleared only by the operator |
 
 ## Browser to server contract
 
@@ -187,7 +178,6 @@ money rules and the pages.
 | GET /api/models | anyone | nothing | { models, fetchedAt, verified } |
 | POST /api/runs | anyone | { workloadId, configs, payer } plus the workload owner token for team runs | { runId, reportId, ownerToken, cases, configs } |
 | POST /api/runs/:id/cases/:caseId?config=i | run owner | x-urai-owner, and x-serv-key on team runs | the scored CaseResult, or 202 while it runs |
-| POST /api/runs/:id/balance | run owner, team runs | x-urai-owner, x-serv-key | { usd } or { unavailable } |
 | GET /api/runs/:id | run owner | x-urai-owner | status per case and setting, no answers |
 | GET /api/runs/:id/report | run owner | x-urai-owner | the full report |
 | POST /api/runs/:id/share and /unshare | run owner | x-urai-owner | { reportId } or { shared: false } |
@@ -196,5 +186,5 @@ money rules and the pages.
 Every refusal answers with a code and nothing else. A wrong owner token looks exactly like an unknown
 run (404). The full rules are in docs/security/threat-model.md, invariants C1 to C34. The live suite in
 packages/web/scripts/checks tests C1, C3 to C14, C20 to C22, C26 and C29 to C31 against a running
-server, and confirms the unit tests for C15 to C19 still exist (latest record in docs/security/checks).
+server, and confirms the unit tests for C15 to C18 still exist (C19 was retired with the balance probe) (latest record in docs/security/checks).
 The others are held by the code and its unit tests, with no live check yet.

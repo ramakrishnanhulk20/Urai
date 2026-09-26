@@ -9,11 +9,13 @@ No. Your SERV key lives in the page's memory, goes to our server in a request he
 
 ## What does a run cost?
 
-Each case under each setting is one SERV call, billed to your key at SERV's prices. 40 cases under two settings is 80 calls. The builder shows the count and a rough estimate before you start, and the report shows the real drop in your SERV balance afterwards. For scale, our 40-case good-layout sample on `gpt-6-luna`, SERV off and SERV plain, cost 0.05 USD. Two SERV charges come on top of tokens: building the reasoning graph the first time SERV sees a system prompt, about 0.60 USD in our runs, and the full setting at about 0.25 USD per call.
+Each case under each setting is one SERV call, billed to your key at SERV's prices. 40 cases under two settings is 80 calls. The builder shows the count and a rough estimate before you start, and the report shows the run's cost worked out from SERV's own token counts for every call. For scale, our 40-case good-layout sample on `gpt-6-luna`, SERV off and SERV plain, took 0.05 USD off the key's balance, measured on 23 Sep. Two SERV charges come on top of tokens: building the reasoning graph the first time SERV sees a system prompt, about 0.60 USD in our runs, and the full setting at about 0.25 USD per call. The graph build is the one charge token counts cannot see, so the report's cost leaves it out.
+
+Until 25 Sep Urai also read your SERV balance before and after a run. SERV stopped offering a free way to read it that day, so Urai no longer does.
 
 ## Is the demo free?
 
-For you, yes. The live demo on [/try](/try) runs on our own SERV key, on our sample agents, up to their first 12 cases, under a daily budget checked against our real balance. When the day's budget is spent, the demo pauses until the next day and points you to the saved full reports. You cannot run your own text on the demo: that needs your own key.
+For you, yes. The live demo on [/try](/try) runs on our own SERV key, on our sample agents, up to their first 12 cases, under a daily budget settled on SERV's own token counts for every call. When the day's budget is spent, the demo pauses until the next day and points you to the saved full reports. You cannot run your own text on the demo: that needs your own key.
 
 ## Why is SERV sometimes worse?
 

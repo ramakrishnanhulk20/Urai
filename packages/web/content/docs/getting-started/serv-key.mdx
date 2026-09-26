@@ -18,7 +18,7 @@ You paste the key into "SERV API key" on [/new](/new). From there:
 - The server forwards it to SERV for that one call, as the `Authorization` header to `inference-api.openserv.ai` over TLS. That host is fixed in code. No setting, header or stored value can send your key anywhere else (C2).
 - The server never writes it to the database, a log line, an error message or a response, and never puts it in a report (C1). If a result from SERV ever held the key in any form, the server throws the whole result away rather than store or return it.
 
-The same header is used to read your SERV balance at the start and end of a run, so the report can show what you really spent. That reading is a request SERV refuses before any model runs, and its refusal states your balance, so it costs nothing. Each run gets at most two readings.
+The header is used for case calls and nothing else. Urai does not read your SERV balance: SERV stopped offering a free way to read it on 25 Sep, so the report shows each run's cost worked out from SERV's own token counts instead.
 
 We check these promises against a running server. The latest record is on [Security checks](/docs/security/checks).
 
@@ -31,7 +31,7 @@ SERV's own charges come on top of token prices, and the setup check warns you ab
 - The first call with a new system prompt makes SERV build its reasoning graph, about 0.60 USD in our runs. Any change to the prompt, even one character, builds a new one. A built graph is cached for 30 days.
 - The full setting (Multipath, PromptGuard and Shadow Agent) cost about 0.25 USD and took about 60 seconds per call in our runs, against about 0.003 USD for plain SERV.
 
-For scale: our 40-case good-layout sample, SERV off and SERV plain on `gpt-6-luna`, dropped the key's balance by 0.05 USD. The report shows your measured drop the same way.
+For scale: our 40-case good-layout sample, SERV off and SERV plain on `gpt-6-luna`, dropped the key's balance by 0.05 USD, measured on 23 Sep. Your report shows the cost worked out from SERV's token counts for every call. The one-off graph build is the one charge those counts cannot see, so it is not in that figure.
 
 A call SERV refuses with 401, meaning it did not accept the key, bills no account. Urai does not record it, and you can run that case again once you paste a working key.
 

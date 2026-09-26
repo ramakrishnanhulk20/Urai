@@ -32,7 +32,7 @@ Per-network limits, per hour: 20 workloads, 40 runs, 60 setup checks and 120 pub
 | Header | Holds | Sent on |
 |---|---|---|
 | `x-urai-owner` | An owner token. The workload's when creating a team run, the run's on every run route. | Owner routes |
-| `x-serv-key` | Your SERV key. Used for that one call and never stored (C1). | Case and balance calls on team runs only |
+| `x-serv-key` | Your SERV key. Used for that one call and never stored (C1). | Case calls on team runs only |
 
 ## POST /api/workloads
 
@@ -99,7 +99,7 @@ The case result has this shape:
 }
 ```
 
-`status` is one of `scored`, `failed`, `refused`, `filtered`, `upstream_error` or `timeout`, explained on [Read a report](/docs/guides/read-a-report). A token count SERV did not report is `null`, never 0. On a team run, SERV's 402 for an empty balance is not stored: the route answers `402 serv_insufficient_credits` instead, listed below.
+`status` is one of `scored`, `failed`, `refused`, `filtered`, `upstream_error` or `timeout`, explained on [Read a report](/docs/guides/read-a-report). A token count SERV did not report is `null`, never 0. On a team run, SERV's 402 for a key out of credit is not stored: the route answers `402 serv_insufficient_credits` instead, listed below.
 
 Errors:
 
@@ -110,20 +110,12 @@ Errors:
 | 400 | `payer_mismatch` | A team run without a usable key header, or a demo run with one. An empty header counts as missing. |
 | 403 | `demo_not_allowed` | A demo run whose workload is no longer a sample. |
 | 401 | `serv_rejected_key` | SERV refused the team key with 401. The claim is released and nothing is stored, so the case can run again with a working key. |
-| 402 | `serv_insufficient_credits` | Team runs only: SERV said the key's balance cannot cover the call, which it decides before any model runs. The claim is released and nothing is stored, so the case runs again after a top-up. |
+| 402 | `serv_insufficient_credits` | Team runs only: SERV said the key is out of credit for the call, which it decides before any model runs. The claim is released and nothing is stored, so the case runs again after a top-up. |
 | 429 | `rate_limited` | Team runs only: keys sent from your network have been refused by SERV 30 times this hour (C33). Nothing was sent to SERV and nothing is stored. Wait, then try again. |
 | 429 | `run_busy` | The run already has four calls in flight. |
-| 429 | `budget_exhausted` | Demo runs only: today's demo budget cannot cover one more call, the real-spend check stopped the day (C28), or the global probe stop is set (C7). |
+| 429 | `budget_exhausted` | Demo runs only: today's demo budget cannot cover one more call, or the operator stopped the demo for the day or switched it off (C28). |
 | 503 | `unavailable` | The demo budget could not be read or written. The call was not sent. |
 | 500 | `internal` | The engine failed before sending, or a result held the key and was thrown away (C1). |
-
-## POST /api/runs/:id/balance
-
-Reads your SERV balance and records it on the run: the first reading as the balance before, the latest as the balance after. It sends SERV a request SERV refuses before any model runs, and reads the balance from the refusal, so it costs nothing (C7). Team runs only. No body.
-
-- Headers: `x-urai-owner` and `x-serv-key`.
-- Success: `200 { "usd" }`, or `200 { "unavailable": true }` when SERV's answer could not be read as a balance (C19).
-- Errors: `404 not_found`. `400 payer_mismatch` on a demo run, or with a missing or implausible key. `429 probe_limit` after 2 readings on one run. `409 run_flagged` when the run was flagged. `503 probe_disabled` while the global probe stop is set. `502 probe_ran` if SERV ever runs the probe as a paid call: the run is flagged and every later probe and demo call stops until the operator looks.
 
 ## GET /api/runs/:id
 
@@ -138,7 +130,7 @@ The run's status. Only the run's owner may call it.
 The full report for the run's owner, shared or not.
 
 - Headers: `x-urai-owner`.
-- Success: `200` with the report: `{ name, systemPrompt, context, answerSchema, configs, totals, balance, cases, disagreements, lint }`. It holds no run id, workload id, report id or token (C9). Long text is cut as described on [Read a report](/docs/guides/read-a-report).
+- Success: `200` with the report: `{ name, systemPrompt, context, answerSchema, configs, totals, balance, cases, disagreements, lint }`. It holds no run id, workload id, report id or token (C9). Each `totals` entry carries `estCostUsd`, that setting's cost from SERV's token counts at the higher of Urai's own price and SERV's live price. `balance` is `{ before, after }` only on runs that stored two readings before SERV stopped offering a free balance read on 25 Sep, the four sample reports among them, and `null` on every other run. Long text is cut as described on [Read a report](/docs/guides/read-a-report).
 - Errors: `404 not_found` for an unknown run, a wrong token, or a workload past its retention date.
 
 ## POST /api/runs/:id/share

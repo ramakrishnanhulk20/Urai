@@ -39,18 +39,18 @@ Urai takes your agent's system prompt, its answer schema and a set of test cases
 
 ### Read and share a scored report
 
-- Accuracy per setting, the cases where the settings disagreed, input and output tokens, latency, and the real drop in your SERV balance, read from SERV before and after.
+- Accuracy per setting, the cases where the settings disagreed, input and output tokens, latency, and an estimated cost worked out from SERV's own token counts for every call.
 - Open any disagreement and read both answers next to the expected one.
 - A report is private until you share it. A shared link can be taken back, and it never reveals the run behind it.
 
 ### Watch a live run with no key
 
-- The demo on `/try` runs one of three sample agents on our own SERV key, 12 cases with SERV off and on, under a daily budget checked against our real balance.
+- The demo on `/try` runs one of three sample agents on our own SERV key, 12 cases with SERV off and on, under a daily budget settled on SERV's own token counts.
 - Each sample also links to its saved full 40-case report.
 
 ## Live proof
 
-Four sample runs, all on `gpt-6-luna`, 40 invoices each, as normal team runs. SERV on means SERV Reasoning in plain mode. The balance drop is the real change in the key's balance, read from SERV before and after.
+Four sample runs, all on `gpt-6-luna`, 40 invoices each, as normal team runs. SERV on means SERV Reasoning in plain mode. The balance drop is the real change in the key's balance, read from SERV before and after each run on 23 Sep, before SERV stopped offering the free read.
 
 | Report | What it compares | SERV off | SERV on | Balance drop | Open it |
 |---|---|---|---|---|---|
@@ -76,9 +76,9 @@ flowchart TB
   end
 
   subgraph Vercel["Next.js on Vercel, region sin1"]
-    API["API routes<br/>workloads, runs, cases,<br/>balance, share, unshare,<br/>reports, lint, models"]
+    API["API routes<br/>workloads, runs, cases,<br/>share, unshare,<br/>reports, lint, models"]
     CRON["Daily cron<br/>/api/cron/cleanup"]
-    ENG["@urai/engine<br/>parseWorkload, lintWorkload,<br/>applyLayoutFix, buildRequest,<br/>runCase, readBalance, listModels"]
+    ENG["@urai/engine<br/>parseWorkload, lintWorkload,<br/>applyLayoutFix, buildRequest,<br/>runCase, listModels"]
   end
 
   DB[("Neon Postgres<br/>ap-southeast-1")]
@@ -120,7 +120,7 @@ sequenceDiagram
   E-->>S: CaseResult, key scrubbed (C1)
   S->>P: store the result under the claim
   alt demo run
-    S->>P: settle the real cost,<br/>and on every 20th call<br/>read SERV's balance (C28)
+    S->>P: settle the call's cost<br/>from SERV's token counts (C28)
   end
   S-->>B: 200 CaseResult
 ```
@@ -138,7 +138,6 @@ flowchart LR
     e_score["score"]
     e_scrub["scrub"]
     e_serv["serv (runCase)"]
-    e_balance["balance"]
     e_lint["lint"]
     e_layout["layout"]
   end
@@ -155,7 +154,6 @@ flowchart LR
     w_flags["flags"]
     w_prices["prices"]
     w_models["models"]
-    w_operator["operator-balance"]
     w_report["report"]
   end
 
@@ -163,7 +161,6 @@ flowchart LR
     r_work["workloads"]
     r_runs["runs"]
     r_case["runs/:id/cases/:caseId"]
-    r_bal["runs/:id/balance"]
     r_rep["reports and runs/:id/report"]
     r_lint["lint"]
     r_cron["cron/cleanup"]
@@ -175,7 +172,6 @@ flowchart LR
   e_serv --> e_request
   e_serv --> e_score
   e_serv --> e_scrub
-  e_balance --> e_scrub
   e_lint --> e_modelid
   e_layout --> e_lint
   e_layout --> e_workload
@@ -188,8 +184,6 @@ flowchart LR
   w_budget --> w_flags
   w_prices --> w_models
   w_models --> w_db
-  w_operator --> w_budget
-  w_operator --> e_balance
   w_report --> w_db
   w_rate --> w_config
   w_claim --> w_config
@@ -200,10 +194,7 @@ flowchart LR
   r_case --> w_claim
   r_case --> w_budget
   r_case --> w_prices
-  r_case --> w_operator
   r_case --> e_serv
-  r_bal --> e_balance
-  r_bal --> w_flags
   r_rep --> w_report
   r_rep --> e_lint
   r_lint --> e_layout
@@ -228,25 +219,25 @@ cd packages/web
 npm run prove -- --base https://urai-serv.vercel.app
 ```
 
-Our run on 24 Sep 2026, against a local production build of this repo, printed:
+Our run on 25 Sep 2026, against a local production build of this repo, printed:
 
 ```text
 Urai prove-it against http://localhost:3102
 [PASS] 1 GET /api/models
-       34 models, verified true, fetched 2026-09-24T05:32:50.586Z
+       34 models, verified true, fetched 2026-09-25T05:41:20.246Z
        gpt-6-luna: 0.13 in / 0.65 out USD per million tokens
 [PASS] 2 POST /api/lint on invoices-bad
        findings: data-in-system-prompt (error), quotes-instructions (warning), first-sight-cost (info), large-system-prompt (info)
        fix: yes, moved SUPPLIER BOOK (7342 chars) out of the system prompt
 [PASS] 3 team run: the fixed workload's first 10 cases, raw and plain
        accuracy: gpt-6-luna raw 10/10 = 100.0%, gpt-6-luna plain 10/10 = 100.0%
-       operator balance: 3.3100 -> 3.3000 USD (SERV reports whole cents), token estimate 0.0204 USD
+       spend so far from token counts: 0.0223 USD of the 0.1 cap
 [PASS] 4 demo run: sample-invoices-good, 12 cases x 2 configs, no key
-       accuracy: gpt-6-luna raw 12/12 = 100.0%, gpt-6-luna plain 12/12 = 100.0%
-       demo budget effect: about 0.0243 USD, from the report's per-config cost
+       accuracy: gpt-6-luna raw 11/12 = 91.7%, gpt-6-luna plain 11/12 = 91.7%
+       demo budget effect: about 0.0247 USD, from the report's per-config cost
 [PASS] 5 share the demo run, then GET /api/reports/:reportId with no header
-       reportId GMpGlG0MXi29VaYSCAF7eA: same totals as the owner's report (gpt-6-luna raw 12/12 = 100.0%, gpt-6-luna plain 12/12 = 100.0%), and the run id is nowhere in it
-spend: about 0.0447 USD from token counts, cap 0.1
+       reportId FlFQyOtGPvDPzzsQba_Pnw: same totals as the owner's report (gpt-6-luna raw 11/12 = 91.7%, gpt-6-luna plain 11/12 = 91.7%), and the run id is nowhere in it
+spend: about 0.0470 USD from token counts, cap 0.1
 RESULT: PASS (5 of 5 steps)
 ```
 
@@ -285,7 +276,6 @@ The pages use the same routes you can call yourself. Every route takes and retur
 | GET /api/models | anyone | nothing | { models, fetchedAt, verified } |
 | POST /api/runs | anyone | { workloadId, configs, payer } plus the workload owner token for team runs | { runId, reportId, ownerToken, cases, configs } |
 | POST /api/runs/:id/cases/:caseId?config=i | run owner | x-urai-owner, and x-serv-key on team runs | the scored CaseResult, or 202 while it runs |
-| POST /api/runs/:id/balance | run owner, team runs | x-urai-owner, x-serv-key | { usd } or { unavailable } |
 | GET /api/runs/:id/report | run owner | x-urai-owner | the full report |
 | POST /api/runs/:id/share and /unshare | run owner | x-urai-owner | { reportId } or { shared: false } |
 | GET /api/reports/:reportId | anyone with the link | nothing | the report, only while shared |
@@ -294,21 +284,21 @@ Every route, header and error code is at [/docs/developers/api](https://urai-ser
 
 ## Test results
 
-From the proof run on 24 Sep 2026.
+From the proof run on 25 Sep 2026.
 
 ```text
-packages/engine   npm test                  236 passed
-packages/web      npm test                  116 passed, 1 skipped
-live security     npm run verify-security   70 OK, 0 BROKEN, 0 PENDING
+packages/engine   npm test                  213 passed
+packages/web      npm test                  109 passed, 1 skipped
+live security     npm run verify-security   68 OK, 0 BROKEN, 0 PENDING
 ```
 
-The security suite attacks a running server to test every rule in the threat model. Its record for that run is [docs/security/checks/run-2026-09-24T05-52-56.500Z.md](docs/security/checks/run-2026-09-24T05-52-56.500Z.md).
+The security suite attacks a running server to test every rule in the threat model. Its record for that run is [docs/security/checks/run-2026-09-25T06-19-50.695Z.md](docs/security/checks/run-2026-09-25T06-19-50.695Z.md).
 
 ## What a run costs
 
-Each case under each setting is one SERV call, billed to your own key at SERV's prices. Forty cases under two settings is eighty calls. The builder shows the count and an estimate before you start, and the report shows the real drop in your SERV balance afterwards.
+Each case under each setting is one SERV call, billed to your own key at SERV's prices. Forty cases under two settings is eighty calls. The builder shows the count and an estimate before you start, and the report shows the run's cost worked out from SERV's own token counts for every call.
 
-For scale, our four 40-case sample runs on `gpt-6-luna` took $0.03, $0.03, $0.05 and $0.10 off the key's balance. Two SERV charges come on top of tokens: building the reasoning graph the first time SERV sees a system prompt, about 0.60 USD in our runs, and the full setting at about 0.25 USD per call.
+For scale, our four 40-case sample runs on `gpt-6-luna` took $0.03, $0.03, $0.05 and $0.10 off the key's balance, measured on 23 Sep. Two SERV charges come on top of tokens: building the reasoning graph the first time SERV sees a system prompt, about 0.60 USD in our runs, and the full setting at about 0.25 USD per call. The graph build is the one charge token counts cannot see, so a report's cost leaves it out. Urai read the balance before and after each run until 25 Sep, when SERV stopped offering a free way to read it.
 
 The live demo runs on our key, on our sample agents only, inside a daily budget. When the day's budget is spent, the demo pauses until the next day and points you to the saved reports.
 
@@ -316,7 +306,7 @@ The live demo runs on our key, on our sample agents only, inside a daily budget.
 
 | Folder | What it is |
 |---|---|
-| `packages/engine` | The TypeScript library that talks to SERV: parses a workload, builds each request, runs one case, scores the answer, reads the balance, runs the setup check and the layout fix. No framework, no database. |
+| `packages/engine` | The TypeScript library that talks to SERV: parses a workload, builds each request, runs one case, scores the answer, runs the setup check and the layout fix. No framework, no database. |
 | `packages/web` | The Next.js app: the landing page, `/try`, `/new`, the live run, reports, `/docs`, the API routes and Postgres storage, plus the migrate, seed, prove and security scripts. |
 | `packages/bench` | The research benchmark that came first: 40 synthetic supplier invoices against a 43-clause payables rulebook, and a 152-clause hard set, sent to SERV in each mode and scored against labels. |
 | `packages/haggle` | A second research benchmark: scripted multi-turn sales conversations against a written pricing policy, scored by arithmetic on whether the agent gave away money the policy does not allow. |
@@ -342,13 +332,14 @@ Urai handles a SERV key that can spend a team's credit, a test set that is often
 - Your key is never stored. It is forwarded to SERV for one call and never reaches the database, a log line, an error, a response or a report (C1). The only address a key is ever sent to is SERV's, fixed in code (C2).
 - Who pays is fixed when a run is created and cannot change halfway (C3). A demo run can only use our sample workloads with the settings we allow, so your text never travels on our key (C4).
 - Each case under each setting is spent at most once, even with ten identical calls at the same moment (C5).
-- The demo budget is reserved atomically before each call (C6) and checked against the operator key's real balance on the first demo call of each day and every 20 calls after (C28).
+- The demo budget is reserved atomically before each call (C6) and settled at each call's cost worked out from SERV's token counts, priced at the higher of our own price and SERV's live price (C28).
+- Urai sends SERV only case calls and the model list read, and never reads a balance. The free read SERV used to offer became a billed call on 25 Sep, Urai's guard stopped the demo as designed, and the read was removed (C7).
 - Reports are private until the run's owner shares them (C11) and can be taken back (C30). A report link reveals no run id and cannot drive the run (C9). Every id is random and at least 128 bits (C8).
 - The one-click fix is shown to you, never applied to a stored workload on its own (C21). Cross-origin requests are refused (C22).
 - Urai is never an open relay for bad keys: calls SERV refuses count against a small hourly budget per network, and past it nothing more is sent (C33).
 - Every production page tells the browser to connect only to Urai, so the key held in page memory cannot be posted anywhere else (C34).
 
-The full list is in [docs/security/threat-model.md](docs/security/threat-model.md), and the latest attack record is [docs/security/checks/run-2026-09-24T05-52-56.500Z.md](docs/security/checks/run-2026-09-24T05-52-56.500Z.md).
+The full list is in [docs/security/threat-model.md](docs/security/threat-model.md), and the latest attack record is [docs/security/checks/run-2026-09-25T06-19-50.695Z.md](docs/security/checks/run-2026-09-25T06-19-50.695Z.md).
 
 ## Where it goes next
 

@@ -34,11 +34,6 @@ const UNIT_TESTS: { rule: string; file: string; tests: string[] }[] = [
     file: "packages/web/test/models.test.ts",
     tests: ["serves a stale cache as unverified when SERV cannot be read, never as current (C18)", "says could not verify, never unknown, when the list is unverified (C18)"],
   },
-  {
-    rule: "C19",
-    file: "packages/engine/test/balance.test.ts",
-    tests: ["reads the balance from the one known 402 shape", "returns unavailable for %s (C19)"],
-  },
 ];
 
 interface UnitLine {

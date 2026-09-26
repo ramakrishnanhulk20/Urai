@@ -508,7 +508,7 @@ details[open] > summary .chevron {
   font-variant-numeric: tabular-nums;
 }
 
-.balance {
+.costLine {
   max-width: 62rem;
   margin: clamp(2rem, 5vh, 3rem) 0 0;
   padding-left: 1rem;

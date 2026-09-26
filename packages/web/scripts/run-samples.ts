@@ -2,13 +2,19 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { parseWorkload, type RunConfig, type Workload } from "@urai/engine";
 import { db } from "../lib/db";
+import type { ModelEntry } from "../lib/models";
+import { callCostUsd } from "../lib/prices";
 import * as api from "./lib/client";
 
 /*
  * Runs the four sample reports the landing page links to, as team runs paid by the operator's key
  * (C4: nothing operator-authored goes through the demo path or its budget), then shares them and
- * writes lib/sample-reports.json. Spends real money: every run is bracketed by two balance probes
- * and the whole script stops once the operator balance has dropped by CAP_USD.
+ * writes lib/sample-reports.json. Spends real money, so spend is a running total of each call's
+ * token counts at the higher of the table price and SERV's live price (lib/prices.ts), and the
+ * whole script stops before it reaches CAP_USD. Token counts cannot see SERV's one-off graph build
+ * for a prompt it has not seen, so the hard warm-up call is charged FIRST_SIGHT_RESERVE_USD on top.
+ * New runs carry no balance reading: SERV began billing the balance probe on 25 Sep 2026 and it
+ * was removed.
  */
 
 const CAP_USD = 1.5;
@@ -16,7 +22,8 @@ const CAP_USD = 1.5;
 const STOP_MARGIN_USD = 0.05;
 // SERV builds a reasoning graph the first time plain mode meets a system prompt, about 0.60 USD.
 const FIRST_SIGHT_RESERVE_USD = 0.7;
-// Pre-run estimate only: prompt characters per token on the low side, and a generous answer length.
+// Pre-run estimates, and the charge for a call SERV reported no token counts for: prompt
+// characters per token on the low side, and a generous answer length.
 const CHARS_PER_TOKEN = 3;
 const ANSWER_TOKENS = 400;
 const EXTENDED_UNTIL = "2027-12-31T23:59:59Z";
@@ -32,11 +39,6 @@ interface Spec {
   configs: RunConfig[];
 }
 
-interface Price {
-  inputUsdPerM: number;
-  outputUsdPerM: number;
-}
-
 function loadWorkload(file: string): Workload {
   const path = fileURLToPath(new URL(`../../engine/workloads/${file}`, import.meta.url));
   const parsed = parseWorkload(JSON.parse(readFileSync(path, "utf8")));
@@ -44,58 +46,35 @@ function loadWorkload(file: string): Workload {
   return parsed.workload;
 }
 
-function estimateCallUsd(w: Workload, caseId: string, price: Price): number {
-  const c = w.cases.find((x) => x.id === caseId);
-  const chars = w.systemPrompt.length + (w.context?.length ?? 0) + (c?.input.length ?? 0);
-  return ((chars / CHARS_PER_TOKEN) * price.inputUsdPerM + ANSWER_TOKENS * price.outputUsdPerM) / 1_000_000;
+function priced(cost: number | null, cfg: RunConfig): number {
+  if (cost === null) throw new Error(`${label(cfg)} has no price, so its spend cannot be counted`);
+  return cost;
 }
 
-function estimateRunUsd(w: Workload, cases: string[], configs: RunConfig[], price: Price): number {
-  return cases.reduce((sum, id) => sum + estimateCallUsd(w, id, price), 0) * configs.length;
+function estimateCallUsd(w: Workload, caseId: string, cfg: RunConfig, live: readonly ModelEntry[]): number {
+  const c = w.cases.find((x) => x.id === caseId);
+  const chars = w.systemPrompt.length + (w.context?.length ?? 0) + (c?.input.length ?? 0);
+  return priced(callCostUsd(cfg, { inputTokens: chars / CHARS_PER_TOKEN, outputTokens: ANSWER_TOKENS }, live), cfg);
+}
+
+function estimateRunUsd(w: Workload, cases: string[], configs: RunConfig[], live: readonly ModelEntry[]): number {
+  return configs.reduce((sum, cfg) => sum + cases.reduce((part, id) => part + estimateCallUsd(w, id, cfg, live), 0), 0);
 }
 
 const usd = (n: number) => n.toFixed(4);
 const round4 = (n: number) => Math.round(n * 10_000) / 10_000;
 const label = (c: RunConfig) => `${c.model} ${c.mode}`;
 
-/**
- * What the operator has spent since the first probe: the realised drop between probes, plus an
- * estimate from token counts for the calls made since the last probe. Anyone else spending on the
- * same key in the meantime counts too, which only makes the cap stricter.
- */
-class Ledger {
-  private start: number | null = null;
-  private last: number | null = null;
-  private sinceProbe = 0;
-
-  record(balanceUsd: number): void {
-    this.start ??= balanceUsd;
-    this.last = balanceUsd;
-    this.sinceProbe = 0;
-  }
-
-  add(estimateUsd: number): void {
-    this.sinceProbe += estimateUsd;
-  }
-
-  spent(): number {
-    return this.start === null || this.last === null ? this.sinceProbe : this.start - this.last + this.sinceProbe;
-  }
-
-  realised(): number | null {
-    return this.start === null || this.last === null ? null : this.start - this.last;
-  }
-}
-
 async function main(): Promise<void> {
   const base = api.baseFromArgs();
   const key = api.loadOperatorKey();
-  const ledger = new Ledger();
+  let spent = 0;
 
   const list = await api.models(base);
-  const price = list.models.find((m) => m.id === MODEL);
+  const live = list.models;
+  const price = live.find((m) => m.id === MODEL);
   if (price === undefined) throw new Error(`${MODEL} is not in the model list, so no spend estimate is possible`);
-  console.log(`model list: ${list.models.length} models, verified ${list.verified}; ${MODEL} ${price.inputUsdPerM}/${price.outputUsdPerM} USD per M tokens`);
+  console.log(`model list: ${live.length} models, verified ${list.verified}; ${MODEL} ${price.inputUsdPerM}/${price.outputUsdPerM} USD per M tokens live, charged at the higher of that and the table price`);
 
   const bad = loadWorkload("invoices-bad.json");
   const lint = await api.lint(base, bad);
@@ -113,57 +92,46 @@ async function main(): Promise<void> {
   const workloads = new Map<string, api.WorkloadCreated>();
   for (const s of specs) workloads.set(s.slug, await api.createWorkload(base, s.workload));
 
-  const probe = async (run: api.RunCreated, when: string): Promise<number> => {
-    const b = await api.balance(base, run.runId, run.ownerToken, key);
-    if (!("usd" in b)) throw new Error(`balance unavailable ${when}; stopping because spend can no longer be checked`);
-    ledger.record(b.usd);
-    return b.usd;
-  };
-
   const drive = async (run: api.RunCreated, w: Workload, cases: string[]): Promise<number> => {
     const summary = await api.driveRun(base, { runId: run.runId, cases, configs: run.configs }, api.runHeaders(run.ownerToken, key), 3, {
-      shouldStop: () => ledger.spent() > CAP_USD - STOP_MARGIN_USD,
-      onResult: ({ caseId, result }) => {
-        const { inputTokens, outputTokens } = result.usage;
-        ledger.add(
-          inputTokens === null || outputTokens === null
-            ? estimateCallUsd(w, caseId, price)
-            : (inputTokens * price.inputUsdPerM + outputTokens * price.outputUsdPerM) / 1_000_000,
-        );
+      shouldStop: () => spent > CAP_USD - STOP_MARGIN_USD,
+      onResult: ({ caseId, configIdx, result }) => {
+        const cfg = run.configs[configIdx]!;
+        spent += callCostUsd(cfg, result.usage, live) ?? estimateCallUsd(w, caseId, cfg, live);
       },
     });
-    if (summary.stopped !== null) throw new Error(`run stopped: ${summary.stopped}; spent so far about ${usd(ledger.spent())} USD`);
+    if (summary.stopped !== null) throw new Error(`run stopped: ${summary.stopped}; spent so far about ${usd(spent)} USD`);
     return summary.results.length;
   };
 
   const headroom = (needUsd: number, what: string): void => {
-    if (ledger.spent() + needUsd > CAP_USD - STOP_MARGIN_USD) {
-      throw new Error(`not starting ${what}: about ${usd(needUsd)} USD needed, ${usd(ledger.spent())} of ${CAP_USD} already spent`);
+    if (spent + needUsd > CAP_USD - STOP_MARGIN_USD) {
+      throw new Error(`not starting ${what}: about ${usd(needUsd)} USD needed, ${usd(spent)} of ${CAP_USD} already spent`);
     }
   };
 
-  // Plain mode has never met the hard prompt, so its first call builds a graph. That one call runs
-  // alone, on a run of its own, so its real cost is read before anything else is spent.
+  // Plain mode may never have met the hard prompt, so its first call can build a graph that token
+  // counts do not show. That one call runs alone, on a run of its own, and the reserve is counted
+  // as spent before it goes out, so the cap holds for any build that costs up to the reserve.
   const hardIds = workloads.get("hard")!;
   const warm = await api.createRun(base, { workloadId: hardIds.workloadId, configs: [PLAIN], payer: "team" }, hardIds.ownerToken);
   const firstCase = warm.cases[0]!;
   headroom(FIRST_SIGHT_RESERVE_USD, "the hard warm-up call");
-  const warmBefore = await probe(warm, "before the hard warm-up");
+  const warmStart = spent;
+  spent += FIRST_SIGHT_RESERVE_USD;
   await drive(warm, hard, [firstCase]);
-  const warmAfter = await probe(warm, "after the hard warm-up");
-  console.log(`hard warm-up (1 plain call, first sight of the prompt): balance ${usd(warmBefore)} -> ${usd(warmAfter)}, spent ${usd(warmBefore - warmAfter)} USD`);
+  console.log(`hard warm-up (1 plain call, first sight of the prompt): ${usd(spent - warmStart - FIRST_SIGHT_RESERVE_USD)} USD from token counts, plus the ${FIRST_SIGHT_RESERVE_USD} USD graph reserve`);
 
-  const done: { spec: Spec; run: api.RunCreated; before: number; after: number }[] = [];
+  const done: { spec: Spec; run: api.RunCreated; spentUsd: number }[] = [];
   for (const spec of specs) {
     const ids = workloads.get(spec.slug)!;
     const run = await api.createRun(base, { workloadId: ids.workloadId, configs: spec.configs, payer: "team" }, ids.ownerToken);
-    headroom(estimateRunUsd(spec.workload, run.cases, run.configs, price), spec.slug);
-    const before = await probe(run, `before ${spec.slug}`);
+    headroom(estimateRunUsd(spec.workload, run.cases, run.configs, live), spec.slug);
+    const before = spent;
     const calls = await drive(run, spec.workload, run.cases);
-    const after = await probe(run, `after ${spec.slug}`);
     if (calls !== run.cases.length * run.configs.length) throw new Error(`${spec.slug}: ${calls} of ${run.cases.length * run.configs.length} calls came back`);
-    console.log(`${spec.slug}: ${calls} calls, balance ${usd(before)} -> ${usd(after)}, spent ${usd(before - after)} USD`);
-    done.push({ spec, run, before, after });
+    console.log(`${spec.slug}: ${calls} calls, ${usd(spent - before)} USD from token counts`);
+    done.push({ spec, run, spentUsd: spent - before });
   }
 
   const ids = [...workloads.values()].map((w) => w.workloadId);
@@ -176,7 +144,7 @@ async function main(): Promise<void> {
 
   const out = [];
   const rows: string[] = [];
-  for (const { spec, run, before, after } of done) {
+  for (const { spec, run, spentUsd } of done) {
     const { reportId } = await api.share(base, run.runId, run.ownerToken);
     const rep = await api.report(base, run.runId, run.ownerToken);
     const shared = await api.publicReport(base, reportId);
@@ -187,20 +155,21 @@ async function main(): Promise<void> {
       title: spec.title,
       reportId,
       headline: { configs: rep.configs.map(label), accuracy },
-      balanceDeltaUsd: round4(before - after),
+      // A new run has no balance reading; the stored 23 Sep samples keep theirs.
+      balanceDeltaUsd: null,
     });
     rep.totals.forEach((t, i) => {
       rows.push(
-        [spec.slug, label(rep.configs[i]!), `${t.correct}/${t.calls} = ${t.accuracy === null ? "n/a" : (t.accuracy * 100).toFixed(1)}%`, `est ${t.estCostUsd === null ? "n/a" : usd(t.estCostUsd)}`, i === 0 ? `delta ${usd(before - after)}` : ""].join(" | "),
+        [spec.slug, label(rep.configs[i]!), `${t.correct}/${t.calls} = ${t.accuracy === null ? "n/a" : (t.accuracy * 100).toFixed(1)}%`, `est ${t.estCostUsd === null ? "n/a" : usd(t.estCostUsd)}`, i === 0 ? `run ${usd(spentUsd)}` : ""].join(" | "),
       );
     });
   }
 
   writeFileSync(OUT, `${JSON.stringify(out, null, 2)}\n`, "utf8");
   console.log("");
-  console.log("slug | config | accuracy | token-estimated cost USD | balance delta USD");
+  console.log("slug | config | accuracy | token-estimated cost USD | run spend from token counts USD");
   for (const r of rows) console.log(r);
-  console.log(`total spend (first probe to last probe, realised): ${usd(ledger.realised() ?? 0)} USD, cap ${CAP_USD}`);
+  console.log(`total spend from token counts, graph reserve included: ${usd(spent)} USD, cap ${CAP_USD}`);
   console.log(`wrote lib/sample-reports.json with ${out.length} shared reports`);
 }
 

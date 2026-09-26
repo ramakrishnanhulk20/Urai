@@ -34,8 +34,6 @@ export const LIMITS = {
   keyMaxChars: 200,
   finishReasonMaxChars: 64,
   requestIdMaxChars: 128,
-  probeTimeoutMs: 30_000,
-  probeResponseMaxBytes: 8_192,
   modelsTimeoutMs: 15_000,
   modelsResponseMaxBytes: 500_000,
   modelsMax: 500,

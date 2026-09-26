@@ -39,7 +39,9 @@ export function callCostUsd(cfg: RunConfig, usage: Usage, live: readonly ModelEn
 /**
  * callCostUsd with the live price read from the model cache in the database. No network call is
  * made from here. When the cache cannot be read, the table price alone is used and the gap is
- * logged; the operator balance check (C28) still catches real spend the table misses.
+ * logged. This settled cost is the demo's money limit (C28): demo runs only use pre-warmed sample
+ * prompts on the allowlisted model, so SERV's one-off graph build, which token counts cannot see,
+ * never happens on them.
  */
 export async function settledCostUsd(cfg: RunConfig, usage: Usage): Promise<number | null> {
   let live: ModelEntry[] | null;

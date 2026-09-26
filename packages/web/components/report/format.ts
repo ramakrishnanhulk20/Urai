@@ -52,6 +52,27 @@ export function usd(value: number | null): string {
   return `$${fixed.replace(/(\.\d\d\d*?)0+$/, "$1")}`;
 }
 
+/** A run's cost from SERV's token counts: the sum over its settings, or null when any setting's count is missing. */
+export function tokenCost(totals: ConfigTotals[]): number | null {
+  let sum = 0;
+  for (const t of totals) {
+    if (t.estCostUsd === null) return null;
+    sum += t.estCostUsd;
+  }
+  return sum;
+}
+
+/*
+ * The measured drop for a run that stored two real readings, taken before SERV stopped offering a
+ * free balance read on 25 Sep. Null when a reading is missing or the balance rose, as a top-up
+ * during the run would make the difference meaningless.
+ */
+export function measuredDrop(balance: Report["balance"]): number | null {
+  if (balance === null || balance.before === null || balance.after === null) return null;
+  const drop = balance.before - balance.after;
+  return drop < 0 ? null : drop;
+}
+
 export type StatusTone = "right" | "wrong" | "other" | "pending";
 
 export interface StatusView {

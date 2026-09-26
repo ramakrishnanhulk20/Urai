@@ -1,5 +1,4 @@
 export type {
-  Balance,
   BuiltRequest,
   CaseResult,
   CaseStatus,
@@ -20,7 +19,6 @@ export { parseWorkload } from "./workload.js";
 export { buildRequest, buildUserMessage } from "./request.js";
 export { normaliseNumber, normaliseText, scoreAnswer } from "./score.js";
 export { runCase, SERV_CHAT_URL } from "./serv.js";
-export { readBalance } from "./balance.js";
 export { listModels } from "./models.js";
 export { isPlausibleKey } from "./scrub.js";
 export type { LintFinding, LintSeverity } from "./lint.js";

@@ -3,7 +3,7 @@ title: Threat model
 description: The 34 rules Urai's code must keep, C1 to C34, one line each.
 ---
 
-We wrote the threat model on 23 Sep 2026, at the architecture gate, before any code existed. It names what Urai is in security terms: a relay for a third party's secret key, a spender of our money for anonymous callers, a data store with no accounts where the id is the only lock, and a renderer of text that teams and models control. Section C of it lists the rules the code must keep. C1 to C27 came first. C28 to C32 were added at the backend review on the same day, after asking what the first 27 missed. C33 and C34 were added at the final review on 24 Sep.
+We wrote the threat model on 23 Sep 2026, at the architecture gate, before any code existed. It names what Urai is in security terms: a relay for a third party's secret key, a spender of our money for anonymous callers, a data store with no accounts where the id is the only lock, and a renderer of text that teams and models control. Section C of it lists the rules the code must keep. C1 to C27 came first. C28 to C32 were added at the backend review on the same day, after asking what the first 27 missed. C33 and C34 were added at the final review on 24 Sep. C7, C19 and C28 were rewritten on 25 Sep, when SERV stopped offering a free balance read.
 
 This page gives each rule in one line. The full text, with the attacks each rule answers and the test each one needs, is `docs/security/threat-model.md` in the repository.
 
@@ -17,7 +17,7 @@ This page gives each rule in one line. The full text, with the attacks each rule
 | C4 | No user-supplied text ever travels with the operator key. Demo runs only use operator samples with operator-chosen settings, refused at run creation. |
 | C5 | Credit is spent at most once per run, case and setting. A repeat call returns the stored result with no new SERV request. Amended 24 Sep: on a team run, a call SERV answers with 401, which bills no account, is released instead of stored so the owner can retry with a working key. Every other status, 403 included, is stored as before. Demo calls are never released. Amended at the final review: a team call SERV refuses with 402 for lack of credit is released the same way, so the run resumes after a top-up. |
 | C6 | The daily demo budget cannot be overrun by parallel calls: each call reserves its cost in one atomic write before it is sent, and a budget that cannot be read denies the call. |
-| C7 | The balance probe cannot become a paid call. SERV must refuse it before any model runs, a probe that succeeds is treated as a fault, and probes are rate-limited. Amended 23 Sep: one such fault anywhere stops every later probe and demo call until the operator clears it. |
+| C7 | Urai never reads a balance by sending a request. Rewritten 25 Sep: until 24 Sep a request SERV refused with a 402 revealed a key's balance for free. On 25 Sep SERV billed that request instead; the guard caught it and stopped the demo, as designed, and the read was removed. Urai now sends SERV only case calls and the model list read, and every cost it shows comes from SERV's token counts (C28). The four sample reports keep the real readings taken on 23 Sep. |
 
 ## Access to stored data
 
@@ -44,7 +44,7 @@ This page gives each rule in one line. The full text, with the attacks each rule
 |---|---|
 | C17 | Every field taken from a SERV response is validated before it is stored or shown. A response that fails is recorded as an upstream error and not scored. |
 | C18 | A failed model list never invents a finding: the check says "could not verify", not "unknown", and the cached list has a bounded age. |
-| C19 | The balance text from SERV is untrusted. One known shape is accepted, and anything else reads as "balance unavailable", never a guessed number. |
+| C19 | Retired 25 Sep with the balance read in C7: no balance text is parsed any more. A 402 on a case call is still classified only by its status and error type, never by its message. |
 
 ## Output
 
@@ -60,7 +60,7 @@ This page gives each rule in one line. The full text, with the attacks each rule
 |---|---|
 | C23 | Protection comes from primitives, not lists: one secure random call for ids, one payer field on the run, the validator's own strict mode, a linear-time regex engine or a hard timeout, the framework's default text escaping. |
 | C24 | Normalise before you compare: expected values and answers, schemas at save and at scoring, model ids in the check and in the request, and the budget date all go through one shared function each. |
-| C25 | Outputs are validated like inputs. A missing token count shows as unknown, never zero, and an unread balance as unavailable. |
+| C25 | Outputs are validated like inputs. A missing token count shows as unknown, never zero. Costs come from SERV's token counts, and the only balance numbers shown are the 23 Sep readings stored with the four sample reports. |
 | C26 | Fail closed. Every unknown, unreadable or unexpected state denies or aborts, every limit lives in one config file, reports start private and workloads expire. |
 | C27 | Named non-goals: a hostile copy of the site, a compromised browser, OpenServ keeping content sent with a team's own key, a team publishing its own report, the truth of SERV's answers, a team call lost after sending, attacks on Vercel or OpenServ themselves, and operator misconfiguration. |
 
@@ -68,7 +68,7 @@ This page gives each rule in one line. The full text, with the attacks each rule
 
 | Rule | In plain words |
 |---|---|
-| C28 | The demo budget is checked against real spend: the operator balance is read on the first demo call of each UTC day and every 20 after, and once the real drop passes the cap, demo calls stop for the day. |
+| C28 | The demo budget holds on settled cost. Rewritten 25 Sep: each demo call reserves an estimate before it runs (C6) and settles at its real cost from SERV's token counts, at the higher of the configured and live price, and the daily cap applies to the settled total. The one charge token counts cannot see, SERV's graph build for a new system prompt, cannot arise on the demo, whose sample prompts are pre-warmed in SERV's 30-day cache. The operator can stop the demo globally or for one UTC day. |
 | C29 | Every response body has a size cap. Run status never carries answers, and the report caps each answer by its length. |
 | C30 | The owner can take a shared report back, and the public link answers not found from then on. |
 | C31 | Public report reads are rate-limited per network address, like every write route. Amended at the final review: the landing page and /try serve the unchanging sample reports from a short server cache. |

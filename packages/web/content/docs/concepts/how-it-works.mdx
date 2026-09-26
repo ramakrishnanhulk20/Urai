@@ -31,7 +31,7 @@ sequenceDiagram
   E-->>S: CaseResult, key scrubbed (C1)
   S->>P: store the result under the claim
   alt demo run
-    S->>P: settle the real cost,<br/>and on every 20th call<br/>read SERV's balance (C28)
+    S->>P: settle the call's cost<br/>from SERV's token counts (C28)
   end
   S-->>B: 200 CaseResult
 ```

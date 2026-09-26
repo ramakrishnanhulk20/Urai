@@ -78,6 +78,4 @@ export interface CaseResult {
   error: string | null;
 }
 
-export type Balance = { ok: true; usd: number } | { ok: false; reason: "unavailable" | "probe_ran" };
-
 export type ModelList = { ok: true; models: { id: string; inputUsdPerM: number; outputUsdPerM: number }[] } | { ok: false };

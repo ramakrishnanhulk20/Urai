@@ -1,16 +1,16 @@
 /*
  * The backend gate review fixes, C28 to C32, against the real Neon database. The engine's runCase
- * and readBalance are replaced by fixtures and the server-wide probe_ran flag lives in memory, so
- * no request reaches SERV, no money moves, and the live app's demo is never stopped. Demo days are
- * made-up days in the 2100s, apart from the ones cases.test.ts uses.
- * Not covered here: the real 402 balance text (packages/engine/test/balance.test.ts), the SQL
- * form of the flag check inside reserveDemoCall (the in-memory flag stands in for the table), a
- * status body over its cap (unreachable with the capped inputs, read in review), a real SERV
- * price change, and Vercel's function time limits.
+ * is replaced by a fixture and the server-wide demo_off flag lives in memory, so no request
+ * reaches SERV, no money moves, and the live app's demo is never stopped. Demo days are made-up
+ * days in the 2100s, apart from the ones cases.test.ts uses.
+ * Not covered here: the demo_off switch itself (cases.test.ts), the SQL form of the flag check
+ * inside reserveDemoCall (the in-memory flag stands in for the table), a status body over its cap
+ * (unreachable with the capped inputs, read in review), a real SERV price change, SERV's one-off
+ * graph build that token counts cannot see, and Vercel's function time limits.
  */
 import { randomBytes } from "node:crypto";
 import { isIP } from "node:net";
-import { type CaseResult, isPlausibleKey, LIMITS, type RunConfig, type Workload } from "@urai/engine";
+import { type CaseResult, LIMITS, type RunConfig, type Workload } from "@urai/engine";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { GET as getPublicReport } from "../app/api/reports/[reportId]/route";
 import { GET as getRun } from "../app/api/runs/[id]/route";
@@ -25,22 +25,18 @@ import { db } from "../lib/db";
 import { HttpError } from "../lib/http";
 import { newId, newOwnerToken } from "../lib/ids";
 import { ipHash } from "../lib/ip";
-import { checkOperatorSpend, isOperatorProbeCall } from "../lib/operator-balance";
 import { callCostUsd } from "../lib/prices";
 import { assertReportSize, buildReport, type ReportRow } from "../lib/report";
 
-const engine = vi.hoisted(() => ({ runCase: vi.fn(), readBalance: vi.fn() }));
+const engine = vi.hoisted(() => ({ runCase: vi.fn() }));
 vi.mock("@urai/engine", async (importOriginal) => {
   const real = await importOriginal<typeof import("@urai/engine")>();
-  return { ...real, runCase: engine.runCase, readBalance: engine.readBalance };
+  return { ...real, runCase: engine.runCase };
 });
 
 const flags = vi.hoisted(() => new Set<string>());
 vi.mock("../lib/flags", () => ({
   isSet: async (name: string) => flags.has(name),
-  setFlag: async (name: string) => {
-    flags.add(name);
-  },
 }));
 
 const BASE = "http://localhost:3000";
@@ -148,7 +144,7 @@ async function openDay(day: Date, capUsd: number): Promise<string> {
 
 async function dayRow(d: string) {
   const rows = await db()`
-    SELECT balance_start_usd::text AS start, calls, stopped FROM demo_budget WHERE day = ${d}::date`;
+    SELECT spent_usd::text AS spent, reserved_usd::text AS reserved, calls, stopped FROM demo_budget WHERE day = ${d}::date`;
   return rows[0];
 }
 
@@ -158,8 +154,6 @@ beforeAll(() => {
 
 beforeEach(() => {
   engine.runCase.mockReset();
-  engine.readBalance.mockReset();
-  engine.readBalance.mockResolvedValue({ ok: false, reason: "unavailable" });
   engine.runCase.mockImplementation(async (_w: unknown, caseId: string, cfg: RunConfig) => fixture(caseId, cfg));
   flags.clear();
 });
@@ -174,79 +168,34 @@ afterAll(async () => {
   await sql`DELETE FROM demo_budget WHERE day = ANY(${created.days}::date[])`;
 });
 
-describe("C28: the demo budget follows the operator's real balance", () => {
-  it("reads the balance on the first call and every 20th, never in between", () => {
-    expect([1, 2, 19, 20, 21, 40, 400].map(isOperatorProbeCall)).toEqual([true, false, false, true, false, true, true]);
-    expect(CONFIG.demoOperatorProbeEvery).toBe(20);
-  });
-
-  it("stores the day's first reading, stops the day once the realised drop passes the cap, and refuses the next demo call", async () => {
-    const d = await openDay(futureDay(0), 0.05);
+describe("C28: the demo budget holds on settled cost", () => {
+  it("counts each demo call at its settled token cost, and refuses the call the settled total leaves no room for", async () => {
+    // Each call reserves 0.01 and settles at 0.0003 (1,000 x 0.13 + 200 x 0.65 per million, rounded up).
+    // A cap of 0.0103 fits two calls only because the first settled well under its estimate.
+    const d = await openDay(futureDay(0), 0.0103);
     const run = await demoRun();
-
-    engine.readBalance.mockResolvedValueOnce({ ok: true, usd: 3.4 });
     expect(await demoCall(run, run.cases[0]!)).toMatchObject({ status: 200, body: { status: "scored" } });
-    expect(engine.readBalance).toHaveBeenCalledTimes(1);
-    expect(isPlausibleKey(engine.readBalance.mock.calls[0]![0])).toBe(true);
-    expect(await dayRow(d)).toEqual({ start: "3.4000", calls: 1, stopped: false });
-
-    // Eighteen more calls happened; the next one is the day's 20th and reads again. 3.40 - 3.30 = 0.10 > 0.05.
-    await db()`UPDATE demo_budget SET calls = 19 WHERE day = ${d}::date`;
-    engine.readBalance.mockResolvedValueOnce({ ok: true, usd: 3.3 });
+    expect(await dayRow(d)).toEqual({ spent: "0.0003", reserved: "0.0000", calls: 1, stopped: false });
     expect((await demoCall(run, run.cases[1]!)).status).toBe(200);
-    expect(await dayRow(d)).toEqual({ start: "3.4000", calls: 20, stopped: true });
+    expect(await dayRow(d)).toEqual({ spent: "0.0006", reserved: "0.0000", calls: 2, stopped: false });
 
     expect(await demoCall(run, run.cases[2]!)).toEqual({ status: 429, text: '{"error":"budget_exhausted"}', body: { error: "budget_exhausted" } });
     expect(engine.runCase).toHaveBeenCalledTimes(2);
     expect(await db()`SELECT 1 FROM case_results WHERE run_id = ${run.runId} AND case_id = ${run.cases[2]!}`).toHaveLength(0);
+    expect(await dayRow(d)).toEqual({ spent: "0.0006", reserved: "0.0000", calls: 2, stopped: false });
   });
 
-  it("keeps the day open while the realised drop is within the cap", async () => {
-    const d = await openDay(futureDay(1), 0.5);
+  it("refuses every demo call on a day the operator stopped, and only on that day", async () => {
+    const d = await openDay(futureDay(1), 1);
+    await db()`UPDATE demo_budget SET stopped = true WHERE day = ${d}::date`;
     const run = await demoRun();
-    engine.readBalance.mockResolvedValueOnce({ ok: true, usd: 3.4 }).mockResolvedValueOnce({ ok: true, usd: 3.2 });
-    expect((await demoCall(run, run.cases[0]!)).status).toBe(200);
-    await db()`UPDATE demo_budget SET calls = 19 WHERE day = ${d}::date`;
-    expect((await demoCall(run, run.cases[1]!)).status).toBe(200);
-    expect(await dayRow(d)).toEqual({ start: "3.4000", calls: 20, stopped: false });
-    expect((await demoCall(run, run.cases[2]!)).status).toBe(200);
-  });
+    expect(await demoCall(run, run.cases[0]!)).toMatchObject({ status: 429, body: { error: "budget_exhausted" } });
+    expect(engine.runCase).not.toHaveBeenCalled();
+    expect(await dayRow(d)).toEqual({ spent: "0.0000", reserved: "0.0000", calls: 0, stopped: true });
 
-  it("sets the global stop and stops the day when the probe was billed as a real call", async () => {
-    const d = await openDay(futureDay(2), 1);
-    const run = await demoRun();
-    engine.readBalance.mockResolvedValueOnce({ ok: false, reason: "probe_ran" });
-    expect((await demoCall(run, run.cases[0]!)).status).toBe(200);
-    expect(flags.has("probe_ran")).toBe(true);
-    expect(await dayRow(d)).toMatchObject({ start: null, stopped: true });
-    expect(await demoCall(run, run.cases[1]!)).toMatchObject({ status: 429, body: { error: "budget_exhausted" } });
-
-    // The global stop alone refuses a demo call on a fresh day, and no probe is sent while it is set.
-    await openDay(futureDay(3), 1);
-    const other = await demoRun();
-    expect(await demoCall(other, other.cases[0]!)).toMatchObject({ status: 429, body: { error: "budget_exhausted" } });
-    expect(await checkOperatorSpend(d)).toBe("probe_disabled");
-    expect(engine.readBalance).toHaveBeenCalledTimes(1);
+    await openDay(futureDay(2), 1);
+    expect(await demoCall(run, run.cases[0]!)).toMatchObject({ status: 200, body: { status: "scored" } });
     expect(engine.runCase).toHaveBeenCalledTimes(1);
-  });
-
-  it("changes nothing when the balance cannot be read", async () => {
-    const d = await openDay(futureDay(4), 1);
-    const run = await demoRun();
-    expect((await demoCall(run, run.cases[0]!)).status).toBe(200);
-    expect(engine.readBalance).toHaveBeenCalledTimes(1);
-    expect(await dayRow(d)).toEqual({ start: null, calls: 1, stopped: false });
-    expect(flags.size).toBe(0);
-    expect((await demoCall(run, run.cases[1]!)).status).toBe(200);
-  });
-
-  it("stops the day without probing once the day's probe allowance is used up", async () => {
-    const d = await openDay(futureDay(5), 1);
-    const beyond = CONFIG.probesPerDayMax * CONFIG.demoOperatorProbeEvery;
-    await db()`UPDATE demo_budget SET calls = ${beyond} WHERE day = ${d}::date`;
-    expect(await checkOperatorSpend(d)).toBe("probe_limit");
-    expect(engine.readBalance).not.toHaveBeenCalled();
-    expect(await dayRow(d)).toMatchObject({ stopped: true });
   });
 });
 

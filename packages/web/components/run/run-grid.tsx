@@ -7,7 +7,7 @@ import { Slash } from "../brand/slash";
 import { clip, configLabels, seconds, splitName, valueText } from "../report/format";
 import { useCountUp } from "../try/count-up";
 import type { Answer } from "./api";
-import { Ledger, type BalanceView } from "./ledger";
+import { Ledger } from "./ledger";
 import s from "./run.module.css";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
@@ -176,8 +176,6 @@ export interface RunGridProps {
   now: number;
   elapsedMs: number;
   stage: LiveStage;
-  before: BalanceView;
-  after: BalanceView;
   /** What the bar says under the current stage, when it has more to say than the default. */
   notice: ReactNode;
   actions: ReactNode;
@@ -194,17 +192,17 @@ function waitText(stage: LiveStage, inFlight: number): ReactNode {
     case "incomplete":
       return "Some calls did not come back. Run the missing ones again: Urai never runs a finished call twice, so nothing already answered is paid for again.";
     case "closing":
-      return "Every answer is back. Reading SERV's balance once more and building the report.";
+      return "Every answer is back. Building the report and adding up the cost from SERV's token counts.";
   }
 }
 
 /*
- * The run as it happens: the title set like poster billing with the balance ledger beside it, a
+ * The run as it happens: the title set like poster billing with the cost ledger beside it, a
  * scoreboard per setting that climbs as answers land, the honest wait label with the controls,
  * then one row per case with a cell per setting. Every string from the API or a model is React
  * text, never HTML (C20).
  */
-export function RunGrid({ title, configs, cases, cells, now, elapsedMs, stage, before, after, notice, actions }: RunGridProps) {
+export function RunGrid({ title, configs, cases, cells, now, elapsedMs, stage, notice, actions }: RunGridProps) {
   const labels = configLabels(configs);
   const { title: main, deck } = splitName(title);
   // One step smaller than the report's poster title: on a working screen the grid should start near the first fold.
@@ -249,7 +247,7 @@ export function RunGrid({ title, configs, cases, cells, now, elapsedMs, stage, b
             </p>
           )}
         </div>
-        <Ledger before={before} after={after} />
+        <Ledger labels={labels} totals={null} balance={null} />
       </div>
 
       <div className={s.boards} data-many={configs.length > 3} style={{ "--cols": configs.length } as CSSProperties}>

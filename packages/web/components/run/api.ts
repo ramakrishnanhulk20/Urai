@@ -36,7 +36,7 @@ export type CaseOutcome =
   | { kind: "bad_key" }
   /** 401 serv_rejected_key: SERV refused the key. Nothing was stored, so the call can run again with another key. */
   | { kind: "key_refused" }
-  /** 402 serv_insufficient_credits: SERV said the balance cannot cover the call. Nothing was stored, so it runs again after a top-up. */
+  /** 402 serv_insufficient_credits: SERV said the key is out of credit for the call. Nothing was stored, so it runs again after a top-up. */
   | { kind: "no_credit" }
   /** 429 rate_limited: this network has spent its hourly budget of refused keys (C33). Nothing was sent to SERV or stored. */
   | { kind: "refusal_budget" }
@@ -44,15 +44,6 @@ export type CaseOutcome =
   | { kind: "gone" }
   | { kind: "failed"; code: string }
   | { kind: "stopped" };
-
-export type BalanceOutcome =
-  | { kind: "usd"; usd: number }
-  | { kind: "unavailable" }
-  /** 503 probe_disabled: the global safety stop is set, so no balance is read for anyone. */
-  | { kind: "disabled" }
-  /** 429 probe_limit: this run has used its two readings. */
-  | { kind: "limit" }
-  | { kind: "refused"; code: string };
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
@@ -195,21 +186,6 @@ export async function runCase(
     if (res.status === 404) return { kind: "gone" };
     return { kind: "failed", code };
   }
-}
-
-/** POST /api/runs/:id/balance. At most two per run on the server; the page asks once before and once after. */
-export async function readBalance(runId: string, token: string, key: string): Promise<BalanceOutcome> {
-  const r = await call("POST", runPath(runId, "/balance"), { [OWNER_HEADER]: token, [KEY_HEADER]: key });
-  if (r === null) return { kind: "refused", code: "network" };
-  const b = r.body;
-  if (r.status === 200 && isRecord(b)) {
-    if (typeof b.usd === "number" && Number.isFinite(b.usd)) return { kind: "usd", usd: b.usd };
-    if (b.unavailable === true) return { kind: "unavailable" };
-  }
-  const code = errorCode(b);
-  if (r.status === 503 && code === "probe_disabled") return { kind: "disabled" };
-  if (r.status === 429 && code === "probe_limit") return { kind: "limit" };
-  return { kind: "refused", code };
 }
 
 export type ShareOutcome = { kind: "shared"; reportId: string } | { kind: "private" } | { kind: "failed"; code: string };

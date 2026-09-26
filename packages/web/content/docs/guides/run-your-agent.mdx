@@ -1,6 +1,6 @@
 ---
 title: Run your agent
-description: A full walk through the builder and the live run page, including pause, resume, a refused key and an empty balance.
+description: A full walk through the builder and the live run page, including pause, resume, a refused key and a key out of credit.
 ---
 
 This guide takes one agent from a blank builder to a finished report. You need a SERV key ([Your SERV key](/docs/getting-started/serv-key)) and your test cases ([Workload format](/docs/getting-started/workload-format)).
@@ -34,7 +34,7 @@ The button reads "Saving your test set", then "Starting the run", then "Opening 
 
 ### Start
 
-The run page reads your SERV balance once, then starts sending cases three at a time. Rows fill from the top. A cell reads "Waiting", then "Reading" while its call is out, then shows the answer as right or wrong.
+The run page starts sending cases three at a time. Rows fill from the top. A cell reads "Waiting", then "Reading" while its call is out, then shows the answer as right or wrong.
 
 ### Pause and resume
 
@@ -60,7 +60,7 @@ Each network gets a budget of 30 calls SERV refuses per hour, so Urai cannot be 
 
 ### If your credit runs out
 
-If SERV answers 402, your balance cannot cover the next call. SERV decides that before any model runs, so nothing is charged. The run pauses and the page says "Your SERV balance ran out." Nothing more is sent, and the call SERV turned down goes back to "Waiting" with the rest, so nothing is lost. Top up your balance on your SERV account, then press "Resume the run" to send everything still waiting.
+If SERV answers 402, your key is out of credit for the next call. SERV decides that before any model runs, so nothing is charged. The run pauses and the page says "Your SERV balance ran out." Nothing more is sent, and the call SERV turned down goes back to "Waiting" with the rest, so nothing is lost. Top up your balance on your SERV account, then press "Resume the run" to send everything still waiting.
 
 ### If some calls do not come back
 
@@ -68,4 +68,4 @@ A call can fail on the way, for example when the network drops. Those cells show
 
 ### Finish
 
-When the last answer is back, the page reads your SERV balance once more and shows the report: the measured spend, accuracy per setting, the cases where settings disagreed, the setup findings, and every case in full. How to read it is on [Read a report](/docs/guides/read-a-report). The report is private until you press "Share the report". See [Share a report](/docs/guides/share-a-report).
+When the last answer is back, the page shows the report: the run's estimated cost from SERV's token counts, accuracy per setting, the cases where settings disagreed, the setup findings, and every case in full. How to read it is on [Read a report](/docs/guides/read-a-report). The report is private until you press "Share the report". See [Share a report](/docs/guides/share-a-report).

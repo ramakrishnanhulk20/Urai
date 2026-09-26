@@ -16,7 +16,7 @@ All four ran on `gpt-6-luna`, 40 cases each, as normal team runs. SERV on means 
 | Good layout | SERV off against SERV plain | 40 of 40, 100% | 38 of 40, 95% | $0.05 | [/r/EcaTkn78IZ3bLHi0BJcXAg](/r/EcaTkn78IZ3bLHi0BJcXAg) |
 | Hard set | 152 clauses in four sources, SERV off against SERV plain | 39 of 40, 97.5% | 19 of 40, 47.5% | $0.10 | [/r/VowHwvFGztQ-aGvCF_9PZw](/r/VowHwvFGztQ-aGvCF_9PZw) |
 
-The balance drop is the real change in the SERV key's balance across the run, read from SERV before and after, not an estimate. The losing run is on this page on purpose. A tester that only ever says yes is not a tester.
+The balance drop is the real change in the SERV key's balance across the run, read from SERV before and after on 23 Sep, not an estimate. SERV stopped offering a free balance read on 25 Sep, so new runs show their cost from SERV's token counts instead. The losing run is on this page on purpose. A tester that only ever says yes is not a tester.
 
 ## The setup check, measured
 
@@ -34,7 +34,7 @@ Urai has a written threat model with 34 rules, C1 to C34, and a suite that attac
 
 <SecurityRecord />
 
-The same run confirmed that all 12 unit tests covering C15 to C19 still exist. How the suite works is on [Security checks](/docs/security/checks).
+The same run confirmed that all 10 unit tests covering C15 to C18 still exist. How the suite works is on [Security checks](/docs/security/checks).
 
 ## The prove command
 
@@ -53,8 +53,8 @@ It spends real money, about 0.05 USD, and stops sending new calls before the spe
 |---|---|---|
 | 1 | `GET /api/models` | The list is not empty, is verified live from SERV, and includes `gpt-6-luna` |
 | 2 | `POST /api/lint` on the bad-layout sample | A "data in the system prompt" finding comes back, with a one-click fix |
-| 3 | A team run on the fixed workload's first 10 cases, SERV off and SERV plain | The balance is read before and after, the drop stays under the cap, and all 20 calls come back |
-| 4 | A demo run on `sample-invoices-good`, no key | The run holds exactly 12 cases, all 24 calls come back, and the report carries no team balance |
+| 3 | A team run on the fixed workload's first 10 cases, SERV off and SERV plain | The spend from SERV's token counts stays under the cap, and all 20 calls come back |
+| 4 | A demo run on `sample-invoices-good`, no key | The run holds exactly 12 cases, all 24 calls come back, and the report carries no balance reading |
 | 5 | Share the demo run, then fetch it by report id with no header | The public report has the same totals as the owner's, and the run id appears nowhere in it |
 
 The last lines print the estimated spend and `RESULT: PASS (5 of 5 steps)`, or FAIL with the count. Any failed step makes the command exit with code 1.

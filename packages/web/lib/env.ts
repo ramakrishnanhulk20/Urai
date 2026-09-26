@@ -53,10 +53,9 @@ export function serverEnv(): ServerEnv {
 }
 
 /**
- * The operator's SERV key. Only the demo case handler, the operator balance check in
- * lib/operator-balance.ts (C28) and the model list refresh in lib/models.ts may call this (C26),
- * which is why it is not part of serverEnv(). The team balance route never reads it. The
- * model list call sends the key and nothing else, so no user text travels with it (C4).
+ * The operator's SERV key. Only the demo case handler and the model list refresh in
+ * lib/models.ts may call this (C26), which is why it is not part of serverEnv(). The model list
+ * call sends the key and nothing else, so no user text travels with it (C4).
  */
 export function operatorServKey(): string {
   return load().operatorKey;

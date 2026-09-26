@@ -5,7 +5,6 @@ import { toJsonb } from "../../../../../../lib/db";
 import { operatorServKey } from "../../../../../../lib/env";
 import { HttpError, handle, json, requireOwnedRun, type RunRecord, teamKeyHeader } from "../../../../../../lib/http";
 import { ipHash } from "../../../../../../lib/ip";
-import { checkOperatorSpend, isOperatorProbeCall } from "../../../../../../lib/operator-balance";
 import { settledCostUsd } from "../../../../../../lib/prices";
 import { assertUnderRateLimit, enforceRateLimit } from "../../../../../../lib/rate";
 import { loadWorkload } from "../../../../../../lib/report";
@@ -95,8 +94,8 @@ async function store(key: CaseKey, mark: string, result: CaseResult, spendKey: s
 /*
  * The two SERV refusals that are decided before any model runs, so no account was billed (C5).
  * 401 is SERV's documented answer to a missing or invalid key; 402 with the engine's
- * insufficient_credits classification is an account with no credit, the same pre-model check the
- * balance probe relies on (C7). Any other refusal, 403 included, is undocumented and is stored.
+ * insufficient_credits classification is an account with no credit, which SERV decides before any
+ * model runs. Any other refusal, 403 included, is undocumented and is stored.
  */
 function servRefusal(result: CaseResult): HttpError | null {
   if (result.status !== "upstream_error") return null;
@@ -140,21 +139,6 @@ async function runTeamCase(w: Workload, key: CaseKey, mark: string, config: RunC
   return store(key, mark, result, teamKey, await settledCostUsd(config, result.usage));
 }
 
-/*
- * After a settled demo call: the day's first call and every CONFIG.demoOperatorProbeEvery after it
- * read the operator balance (C28). The call is already stored and settled, so a failure here is
- * logged and the result still goes back; the next reservation reads the same database and fails
- * closed on its own if the database is the problem.
- */
-async function afterDemoSettle(day: string, calls: number): Promise<void> {
-  if (!isOperatorProbeCall(calls)) return;
-  try {
-    await checkOperatorSpend(day);
-  } catch (err) {
-    console.error(`[urai] ${ROUTE}: operator balance check failed (${err instanceof Error ? err.name : "error"})`);
-  }
-}
-
 async function runDemoCase(w: Workload, key: CaseKey, mark: string, config: RunConfig): Promise<Response> {
   let reservation: Reservation | null;
   try {
@@ -183,8 +167,7 @@ async function runDemoCase(w: Workload, key: CaseKey, mark: string, config: RunC
   const costUsd = await settledCostUsd(config, result.usage);
   // A throw from store leaves the estimate reserved, which only makes the day's budget stricter.
   const response = await store(key, mark, result, operatorKey, costUsd);
-  const calls = await settleDemoCall(reservation, costUsd);
-  await afterDemoSettle(reservation.day, calls);
+  await settleDemoCall(reservation, costUsd);
   return response;
 }
 
@@ -209,10 +192,10 @@ export const runtime = "nodejs";
  * the key with 401 and 402 serv_insufficient_credits when SERV refused it for lack of credit, each
  * with the claim released, nothing stored and one refusal counted against the caller's address
  * (C5, C33); a demo call SERV refuses is stored like any other answer. 429 budget_exhausted when
- * the day's demo budget cannot cover one more call (C6), the day was stopped by the real-spend
- * check (C28), or the global probe_ran stop is set (C7); 503 unavailable when the budget or the
- * refusal budget cannot be read or written; 500 internal when the engine throws or a result holds
- * the key (C1).
+ * the day's settled demo spend cannot cover one more call (C6, C28), the operator stopped the day,
+ * or the operator's global demo_off stop is set, all checked before the operator key is read;
+ * 503 unavailable when the budget or the refusal budget cannot be read or written; 500 internal
+ * when the engine throws or a result holds the key (C1).
  */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string; caseId: string }> }): Promise<Response> {
   return handle(ROUTE, async () => {

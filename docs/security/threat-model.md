@@ -16,7 +16,7 @@ Vulnerability categories that typically bite this class, tied to this system:
 - **Secret leakage of the relayed credential.** The team key arrives in a request header on every per-case call. The places it can leak: Vercel function logs (request logging, error stack traces that include headers or the outbound request object), the Postgres row for the result if the outbound request is stored for debugging, an error message from SERV echoed back to the browser, and the browser side if it is kept in `localStorage`. Applies directly: the description says the key "is not meant to be stored anywhere", which is an intent, not yet a property.
 - **Payer confusion.** Flow 4 decides who pays by whether a header is present on each individual case call. A run created for a custom workload with a team key can then be driven with the header omitted, or with an empty header, and the server falls through to the operator key. Applies directly: the payer decision is made per request against a mutable signal, not bound to the run.
 - **Race and replay against a budget counter.** The browser calls flow 4 "a few at a time" and loops. If the budget check is read-then-write, N concurrent calls each see budget remaining and all spend. If `(run, case, config)` can be called twice, each call spends again. Applies directly: the counter lives in Postgres and the calls are concurrent by design.
-- **Unintended billable upstream call.** Flow 5 assumes the oversized balance probe always fails with 402. If a key has enough credit for the "oversized" request, or SERV changes what it rejects, the probe becomes a real, large, paid inference. Applies directly, and to the operator key too.
+- **Unintended billable upstream call.** Flow 5 assumes the oversized balance probe always fails with 402. If a key has enough credit for the "oversized" request, or SERV changes what it rejects, the probe becomes a real, large, paid inference. Applies directly, and to the operator key too. (This happened on 25 Sep: SERV began running the probe. C7 caught it and stopped the demo, and the probe was removed; see C7.)
 - **Insecure direct object reference and id guessing.** Workload ids, run ids, case ids and report ids are the whole access model. Sequential or short ids let a stranger read every team's system prompt and expected answers (which are often the team's private evaluation set). Applies directly.
 - **Capability confusion between report id and run id.** A share link (flow 7) is meant to expose a report. If the report page or its data fetch uses the run id, or the run id is derivable from the report id, a report reader can also call flow 4 and drive spending, or read the run's raw workload. Applies directly.
 - **Stored cross-site scripting.** The report renders text that three parties control: the team (prompt, cases, expected values), the model (answers, which any test case content can steer via prompt injection), and the lint rewrite. Applies directly to flow 6 and the report page.
@@ -64,7 +64,7 @@ Indirect:
 
 ### Privileged position and assets
 
-- The operator's SERV key and the credit behind it. A stranger cannot spend it directly; this server can, on every demo case call and every balance probe.
+- The operator's SERV key and the credit behind it. A stranger cannot spend it directly; this server can, on every demo case call.
 - Every team's SERV key, transiently, on every case call. A stranger cannot see it; the server holds it in memory and can log, store or forward it.
 - The database URL and the whole multi-tenant store: every workload, expected answer set, model answer and report, across all teams.
 - Outbound network from Vercel: the ability to send arbitrary content to OpenServ under the operator's organisation, where it may be retained.
@@ -90,7 +90,7 @@ Each invariant is an outcome the code must uphold. A cook's report names the fil
 - **C4. No user-supplied text ever travels with the operator key.** Demo runs can only reference sample workloads created by the operator, using only operator-fixed model ids and SERV modes. Test: create a workload through the public endpoint, create a run for it with no key, and confirm the run is rejected at creation, not at the first case call.
 - **C5. Operator credit is spent at most once per `(run, case, configuration)`.** A repeated call returns the stored result without an outbound request. Test: fire the same case call ten times concurrently and confirm exactly one SERV request id is recorded. (Amended 24 Sep: on a team run, a call SERV answers with 401, which SERV documents as a missing or invalid key and so bills to no account, is released instead of stored, so the owner can run it again with a corrected key. Every other status, 403 included, is stored as before. Demo calls are never released. Amended again after the final review: a team call SERV refuses with 402 insufficient_credits, which SERV decides before any model runs (the same property C7 relies on), is released the same way so the run resumes after a top-up. Both releases count against C33.)
 - **C6. The daily demo budget cannot be exceeded by concurrent calls.** Budget is reserved with a single atomic conditional write before the outbound request and reconciled after it; if the reservation fails, no request is sent. If the counter cannot be read or written, the call is denied. The window boundary uses one fixed time zone chosen in code.
-- **C7. The balance probe cannot become a paid inference.** The probe is constructed so the API rejects it before any model runs, and a 200 response to a probe is treated as a fault: the result is discarded, the run is flagged, and demo probes are disabled until an operator looks. Probes are rate-limited per run and per day for the operator key. (Amended at the backend gate review, 23 Sep: a single `probe_ran` anywhere sets one global stop that refuses every later balance probe and every demo call until the operator clears it, because the next probe on the same key would be just as dangerous. Team probes are limited per run; the per-day number applies to the operator key's own probes under C28.)
+- **C7. Urai never reads a balance by sending a request.** (Rewritten 25 Sep.) Until 24 Sep, a request SERV had to refuse with a 402 revealed a key's balance for free. On 25 Sep SERV ran that same request as a billed call instead; the original C7 guard caught the 200, set the global stop and halted the demo, as designed. The probe was then removed. Urai now sends SERV only case calls and the model list read, and every cost it shows comes from SERV's token counts (C28). The four sample reports keep the real balance readings taken on 23 Sep.
 
 ### Access to stored data
 
@@ -111,7 +111,7 @@ Each invariant is an outcome the code must uphold. A cook's report names the fil
 
 - **C17. Every field taken from a SERV response is validated before it is stored or shown.** Token counts are non-negative integers or null, finish reason is a bounded string, request id is a bounded string, answer text is capped. A response that fails validation is recorded as an upstream error, and the case is not scored.
 - **C18. A model list failure never invents a finding.** If the list endpoint is down or malformed, the lint reports "could not verify" for model ids rather than "unknown" or "valid", and the cached list has a bounded age.
-- **C19. The 402 balance text is parsed as untrusted input.** The parser accepts one known shape, rejects everything else, and a rejected parse reports "balance unavailable" rather than a number.
+- **C19. The 402 balance text is parsed as untrusted input.** (Retired 25 Sep with the balance probe in C7: no balance text is parsed any more. A 402 on a case call is still classified only by status and error type, never by its message.)
 
 ### Output
 
@@ -137,13 +137,13 @@ Each invariant is an outcome the code must uphold. A cook's report names the fil
 **C25. Validate outputs like inputs.**
 - Answer text, prompts, expected values and rewrites are inputs to the browser (C20) and to any export (C21).
 - Token counts and latency are inputs to the cost and speed tables; a null must show as unknown, not as zero (C17).
-- The balance number is an input to the cost report; an unparsed balance shows as unavailable (C19).
+- Costs in a report come from SERV's token counts; the only balance numbers shown are the 23 Sep readings stored with the four sample reports (C7).
 - Log lines are outputs to the operator's log store; C1 forbids the key there and C14 caps prompt text there.
 
 **C26. Fail closed.**
 - Unknown run mode, missing budget row, unreadable counter, schema compile failure, regex timeout, oversized body, unexpected upstream status, and a 200 on the probe all deny or abort. None default to "proceed".
 - Explicit numbers the implementation must carry in one config file: upstream timeout, body cap, schema size and depth, answer cap, cases per workload, configurations per run, concurrent case calls per run, probes per day, daily demo budget, id byte length. A cook's report lists the values.
-- New reports are private, new workloads have a retention period, and the operator key is readable only by the demo case handler, the operator balance check in C28, and the model list refresh (which sends no user text, so C4 holds).
+- New reports are private, new workloads have a retention period, and the operator key is readable only by the demo case handler and the model list refresh (which sends no user text, so C4 holds).
 
 **C27. Named non-goals.** This component does not defend against:
 - A team member who pastes their key into a hostile copy of the site, or a compromised browser or extension on their machine.
@@ -158,7 +158,7 @@ Each invariant is an outcome the code must uphold. A cook's report names the fil
 
 The review read the whole backend against C1 to C27 and asked what the standard misses. These close the gaps it found.
 
-- **C28. The demo budget is checked against real spend, not only estimates.** Token-priced estimates cannot see SERV's one-off reasoning-graph build or a price change. The operator key's balance is read (the free probe in C7) on the first demo call of each UTC day and every 20 demo calls after; once the day's realised drop passes the daily cap, demo calls are refused for the rest of the day. The cost settled per call is the higher of the configured price and SERV's live price for that model. Realised drop includes any other use of the operator key that day, which errs on the side of stopping.
+- **C28. The demo budget holds on settled cost.** (Rewritten 25 Sep, when SERV stopped offering a free balance read.) Each demo call reserves an estimate before it runs (C6) and settles at its real cost from SERV's token counts, priced at the higher of the configured price and SERV's live price for that model; the daily cap applies to the settled total. The one charge token counts cannot see, SERV's one-off reasoning-graph build for a system prompt it has not seen, cannot arise on the demo: demo runs only use the sample workloads on the allowlisted model, and their prompts are pre-warmed and held in SERV's 30-day cache (re-warm before 23 Oct 2026). The operator can stop the demo globally with the `demo_off` flag, or for one UTC day with `demo_budget.stopped`.
 - **C29. Every response body has a stated size cap.** Inputs were capped by C14; outputs were not. The run status endpoint returns status only, never answers; the report caps every answer by its serialised length as well as its text; the caps live in the config file.
 - **C30. The owner can take a shared report back.** The run owner token can make a public report private again, and the public route answers 404 from then on.
 - **C31. Public reads are rate-limited.** The public report route does real work per request (schema compile and lint over the stored workload), so it is limited per client address like every write route. (Amended 24 Sep after the final review: the landing page and /try also read stored sample reports and workloads on every request; they serve them from a short server cache instead, since the samples never change.)

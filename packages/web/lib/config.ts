@@ -14,11 +14,6 @@ export const CONFIG = {
   casesPerWorkloadMax: LIMITS.casesMax,
   configsPerRunMax: LIMITS.configsPerRunMax,
   concurrentCaseCallsPerRun: 4,
-  probesPerRunMax: 2,
-  // Operator balance probes per UTC day (C28). One at the first demo call, then one every
-  // demoOperatorProbeEvery calls, so this allows 400 demo calls a day before the day stops.
-  probesPerDayMax: 20,
-  demoOperatorProbeEvery: 20,
   // 16 bytes is 128 bits, the floor C8 sets for every public id.
   idBytes: 16,
   ownerTokenBytes: 32,

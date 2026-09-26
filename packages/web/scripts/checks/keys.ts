@@ -31,7 +31,8 @@ async function settle(call: () => Promise<Reply>): Promise<Reply> {
 
 /**
  * C1, C3, C4, C7 and C33: a made-up key of the right shape never leaves memory, the payer is fixed
- * at run creation, and an address that has used its key refusal budget is refused before SERV.
+ * at run creation, the balance route is gone, and an address that has used its key refusal budget
+ * is refused before SERV.
  */
 export async function keys(ctx: Ctx): Promise<void> {
   const { rec, sql } = ctx;
@@ -80,17 +81,13 @@ export async function keys(ctx: Ctx): Promise<void> {
     queryResults.push(`${p}: ${brief(r)}`);
     if (!(r.status === 400 && r.code === "payer_mismatch")) queryIgnored = false;
   }
-  const bq = await api.send("POST", `/api/runs/${idle.runId}/balance?x-serv-key=${encodeURIComponent(canary)}`, { headers: ownerHeaders(idle.ownerToken) });
-  queryResults.push(`balance: ${brief(bq)}`);
-  if (!(bq.status === 400 && bq.code === "payer_mismatch")) queryIgnored = false;
-  const idleProbes = Number((await sql`SELECT probes FROM runs WHERE id = ${idle.runId}`)[0]?.probes);
   const idleClaims = await claimCount(sql, [idle.runId]);
   rec.add(
     "C1",
     "key sent only in the query string is ignored",
-    `team run, no key header, key in the query as ${params.join(", ")}, and on the balance route`,
-    `${queryResults.join("; ")}; case_results rows ${idleClaims}, probes counted ${idleProbes}`,
-    queryIgnored && idleClaims === 0 && idleProbes === 0,
+    `team run, no key header, key in the query as ${params.join(", ")}`,
+    `${queryResults.join("; ")}; case_results rows ${idleClaims}`,
+    queryIgnored && idleClaims === 0,
   );
 
   const variants: [string, Record<string, string>][] = [
@@ -133,28 +130,14 @@ export async function keys(ctx: Ctx): Promise<void> {
     c4cfg.status === 403 && c4cfg.code === "config_not_allowed",
   );
 
-  const bd = await api.send("POST", `/api/runs/${demo.runId}/balance`, { headers: ownerHeaders(demo.ownerToken) });
-  const bdk = await api.send("POST", `/api/runs/${demo.runId}/balance`, { headers: ownerHeaders(demo.ownerToken, canary) });
+  // C7: the balance probe was removed on 25 Sep, so the old route must not answer even a fully credentialed call.
+  const gone = await api.send("POST", `/api/runs/${driven.runId}/balance`, { headers: ownerHeaders(driven.ownerToken, canary) });
   rec.add(
     "C7",
-    "balance probe on a demo run",
-    "POST balance on a demo run, once with no key and once with a key header",
-    `no key: ${brief(bd)}; with key: ${brief(bdk)}`,
-    bd.status === 400 && bdk.status === 400,
-  );
-
-  const probes: Reply[] = [];
-  for (let i = 0; i < CONFIG.probesPerRunMax + 1; i++) {
-    probes.push(await api.send("POST", `/api/runs/${driven.runId}/balance`, { headers: ownerHeaders(driven.ownerToken, canary) }));
-  }
-  const last = probes[probes.length - 1]!;
-  const counted = Number((await sql`SELECT probes FROM runs WHERE id = ${driven.runId}`)[0]?.probes);
-  rec.add(
-    "C7",
-    `balance request number ${CONFIG.probesPerRunMax + 1} on one team run`,
-    `${CONFIG.probesPerRunMax + 1} POST balance calls on one team run with the made-up key`,
-    `${probes.map(brief).join(", ")}; probes counted ${counted}`,
-    last.status >= 400 && last.status < 500 && counted === CONFIG.probesPerRunMax,
+    "the balance route no longer exists",
+    `POST /api/runs/:id/balance on a real team run with its owner token and x-serv-key ${SHOWN_KEY}`,
+    brief(gone),
+    gone.status === 404,
   );
 
   // The last case call of this group, because it spends this address's refusal budget for the hour.
@@ -182,7 +165,7 @@ export async function keys(ctx: Ctx): Promise<void> {
       refusalsAfter === CONFIG.keyRefusalsPerIpPerWindow,
   );
 
-  // The scans run last so they cover every place this group sent the key, including the probes.
+  // The scans run last so they cover every place this group sent the key.
   const responseHits = api.transcript.reduce((n, t) => n + leaks(t, find), 0);
   rec.add(
     "C1",

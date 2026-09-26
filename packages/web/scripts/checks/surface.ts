@@ -23,7 +23,6 @@ export async function surface(ctx: Ctx): Promise<void> {
     "/api/workloads",
     "/api/runs",
     `/api/runs/${id}`,
-    `/api/runs/${id}/balance`,
     `/api/runs/${id}/report`,
     `/api/runs/${id}/share`,
     `/api/runs/${id}/unshare`,

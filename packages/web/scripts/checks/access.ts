@@ -85,7 +85,6 @@ export async function access(ctx: Ctx): Promise<void> {
   const owner = ownerHeaders(runA.ownerToken);
   const asRun: [string, Reply][] = [
     ["GET run", await api.send("GET", `/api/runs/${rep}`, { headers: owner })],
-    ["POST balance", await api.send("POST", `/api/runs/${rep}/balance`, { headers: owner })],
     ["GET report", await api.send("GET", `/api/runs/${rep}/report`, { headers: owner })],
     ["POST share", await api.send("POST", `/api/runs/${rep}/share`, { headers: owner })],
     ["POST case", await api.caseCall(runA.reportId, runA.cases[0]!, "0", owner)],

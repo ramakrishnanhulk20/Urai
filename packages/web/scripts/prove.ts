@@ -7,8 +7,9 @@ import * as api from "./lib/client";
 /*
  * The prove-it command: exercises Urai end to end over HTTP against a running server and prints
  * PASS or FAIL per step. Spends real money (about 0.05 USD): a small team run paid with the
- * operator's key used as a team key, and a demo run paid from the day's demo budget. Stops new
- * calls once either would push the spend past CAP_USD. Exits 1 on any FAIL.
+ * operator's key used as a team key, and a demo run paid from the day's demo budget. Spend is
+ * counted from SERV's token counts at the live price, and new calls stop once it nears CAP_USD.
+ * Exits 1 on any FAIL.
  */
 
 const CAP_USD = 0.1;
@@ -100,23 +101,17 @@ async function main(): Promise<number> {
     const w = { ...fixed!, cases: fixed!.cases.slice(0, TEAM_CASES) };
     const created = await api.createWorkload(base, w);
     const run = await api.createRun(base, { workloadId: created.workloadId, configs: CONFIGS, payer: "team" }, created.ownerToken);
-    const b0 = await api.balance(base, run.runId, run.ownerToken, key);
-    check("usd" in b0, "balance before is unavailable");
     const summary = await api.driveRun(base, run, api.runHeaders(run.ownerToken, key), 3, {
       shouldStop,
       onResult: ({ result }) => {
         spent += callCost(result.usage);
       },
     });
-    const b1 = await api.balance(base, run.runId, run.ownerToken, key);
-    check("usd" in b1, "balance after is unavailable");
-    const before = (b0 as { usd: number }).usd;
-    const after = (b1 as { usd: number }).usd;
-    check(before - after <= CAP_USD, `the balance dropped ${usd(before - after)} USD, over the ${CAP_USD} cap`);
+    check(spent <= CAP_USD, `spend from token counts reached ${usd(spent)} USD, over the ${CAP_USD} cap`);
     check(summary.stopped === null, `stopped: ${summary.stopped}`);
     check(summary.results.length === TEAM_CASES * CONFIGS.length, `${summary.results.length} of ${TEAM_CASES * CONFIGS.length} calls came back`);
     const rep = await api.report(base, run.runId, run.ownerToken);
-    return [`accuracy: ${accuracyLine(rep)}`, `operator balance: ${usd(before)} -> ${usd(after)} USD (SERV reports whole cents), token estimate ${usd(spent)} USD`];
+    return [`accuracy: ${accuracyLine(rep)}`, `spend so far from token counts: ${usd(spent)} USD of the ${CAP_USD} cap`];
   });
 
   await step(4, `demo run: ${DEMO_SAMPLE}, ${DEMO_CASES} cases x ${CONFIGS.length} configs, no key`, async () => {
@@ -133,7 +128,7 @@ async function main(): Promise<number> {
     check(summary.results.length === DEMO_CASES * CONFIGS.length, `${summary.results.length} of ${DEMO_CASES * CONFIGS.length} calls came back`);
     const rep = await api.report(base, run.runId, run.ownerToken);
     const cost = rep.totals.reduce<number | null>((sum, t) => (sum === null || t.estCostUsd === null ? null : sum + t.estCostUsd), 0);
-    check(rep.balance === null, "a demo run carries a team balance reading");
+    check(rep.balance === null, "a demo run carries a balance reading");
     demo = { runId: run.runId, ownerToken: run.ownerToken, report: rep };
     return [`accuracy: ${accuracyLine(rep)}`, `demo budget effect: about ${cost === null ? "unknown" : usd(cost)} USD, from the report's per-config cost`];
   });

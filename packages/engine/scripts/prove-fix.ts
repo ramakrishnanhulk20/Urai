@@ -2,10 +2,11 @@
  * The signature moment, live: lint invoices-bad, apply the one-click layout fix, then run
  * gpt-6-luna under plain SERV on the bad workload and on the fixed one with the operator key.
  * The fixed system prompt is byte-identical to invoices-good's, so SERV reuses the reasoning
- * graph it already built for it and the run costs cents. The balance is read before, after each
- * run's first call and every CHECK_EVERY calls, and the run stops once spend passes STOP_AT_USD.
- * The stop line sits below the cap because the balance moves in whole cents and up to
- * CONCURRENCY calls are in flight.
+ * graph it already built for it and the run costs cents. Spend is a running total of each call's
+ * token counts at SERV's live price for the model, and new calls stop once it passes STOP_AT_USD.
+ * The stop line sits below the cap because up to CONCURRENCY calls are in flight. Token counts
+ * cannot see SERV's one-off graph build for a prompt it has not cached, so this script is only run
+ * on prompts SERV has already seen (threat model C28).
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -15,8 +16,8 @@ import {
   isPlausibleKey,
   lintWorkload,
   listModels,
+  normaliseModelId,
   parseWorkload,
-  readBalance,
   runCase,
   type CaseResult,
   type LintFinding,
@@ -28,7 +29,9 @@ const ENGINE_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".
 const CAP_USD = 0.2;
 const STOP_AT_USD = 0.15;
 const CONCURRENCY = 3;
-const CHECK_EVERY = 12;
+// A call SERV reported no token counts for is charged as if its prompt were this dense and its answer this long.
+const CHARS_PER_TOKEN = 3;
+const UNKNOWN_ANSWER_TOKENS = 1_000;
 const CFG: RunConfig = { model: "gpt-6-luna", mode: "plain" };
 
 function fail(message: string): never {
@@ -62,36 +65,39 @@ console.log(`Fix applied: moved ${moved.map((m) => `${m.heading ?? "DATA"} (${m.
 console.log(`System prompt ${bad.systemPrompt.length} -> ${fixed.systemPrompt.length} characters.`);
 console.log("");
 
-const before = await readBalance(apiKey);
-if (!before.ok) fail(`Balance unavailable before the run (${before.reason}); not spending blind.`);
-const startUsd = before.usd;
-console.log(`Balance before: ${startUsd.toFixed(2)} USD. Cap ${CAP_USD.toFixed(2)} USD, stop line ${STOP_AT_USD.toFixed(2)} USD.`);
+if (!models.ok) fail("SERV's model list could not be read, so spend cannot be priced; not spending blind.");
+const listed = models.models.find((m) => normaliseModelId(m.id) === normaliseModelId(CFG.model));
+if (listed === undefined) fail(`${CFG.model} is not in SERV's model list, so spend cannot be priced; not spending blind.`);
+const price = listed;
+console.log(`${CFG.model} live price ${price.inputUsdPerM} in / ${price.outputUsdPerM} out USD per million tokens. Cap ${CAP_USD.toFixed(2)} USD, stop line ${STOP_AT_USD.toFixed(2)} USD.`);
 
 const stop = new AbortController();
 let stopReason: string | null = null;
+let spentUsd = 0;
 
-async function checkSpend(where: string): Promise<void> {
-  const now = await readBalance(apiKey);
-  if (now.ok && startUsd - now.usd <= STOP_AT_USD) return;
-  stopReason = now.ok ? `spent ${(startUsd - now.usd).toFixed(2)} USD by ${where}, past the ${STOP_AT_USD.toFixed(2)} stop line` : `balance ${now.reason} at ${where}`;
-  stop.abort();
+// An unknown count is charged the whole prompt and a long answer, so a gap in SERV's usage can only make the guard stricter.
+function callUsd(w: Workload, r: CaseResult): number {
+  const { inputTokens, outputTokens } = r.usage;
+  if (inputTokens !== null && outputTokens !== null) return (inputTokens * price.inputUsdPerM + outputTokens * price.outputUsdPerM) / 1_000_000;
+  const chars = w.systemPrompt.length + (w.context?.length ?? 0) + (w.cases.find((c) => c.id === r.caseId)?.input.length ?? 0);
+  return ((chars / CHARS_PER_TOKEN) * price.inputUsdPerM + UNKNOWN_ANSWER_TOKENS * price.outputUsdPerM) / 1_000_000;
 }
 
 async function runAll(w: Workload, label: string): Promise<CaseResult[]> {
   const ids = w.cases.map((c) => c.id);
   const results: CaseResult[] = [];
-  const one = async (id: string) => {
-    if (stop.signal.aborted) return;
-    results.push(await runCase(w, id, CFG, apiKey, { signal: stop.signal }));
-    if (results.length % CHECK_EVERY === 0 && !stop.signal.aborted) await checkSpend(`${label} call ${results.length}`);
-  };
-  // The first call is where SERV would build a reasoning graph if its cache had lost this prompt, so it runs alone.
-  await one(ids.shift()!);
-  if (!stop.signal.aborted) await checkSpend(`${label} first call`);
   let next = 0;
   await Promise.all(
     Array.from({ length: CONCURRENCY }, async () => {
-      while (next < ids.length && !stop.signal.aborted) await one(ids[next++]!);
+      while (next < ids.length && !stop.signal.aborted) {
+        const r = await runCase(w, ids[next++]!, CFG, apiKey, { signal: stop.signal });
+        results.push(r);
+        spentUsd += callUsd(w, r);
+        if (spentUsd > STOP_AT_USD && !stop.signal.aborted) {
+          stopReason = `spent ${spentUsd.toFixed(4)} USD by ${label} call ${results.length}, past the ${STOP_AT_USD.toFixed(2)} stop line`;
+          stop.abort();
+        }
+      }
     }),
   );
   return results;
@@ -109,15 +115,14 @@ for (const [label, w] of [
   rows.push(`  ${label}: ${correct} of ${results.length} correct, ${((100 * correct) / Math.max(results.length, 1)).toFixed(1)}% (${statuses})`);
 }
 
-const after = await readBalance(apiKey);
 console.log("");
 console.log(`gpt-6-luna, plain SERV, ${CONCURRENCY} at a time:`);
 for (const r of rows) console.log(r);
-console.log(`Balance before ${startUsd.toFixed(2)} USD, after ${after.ok ? `${after.usd.toFixed(2)} USD, spent ${(startUsd - after.usd).toFixed(2)} USD` : `unavailable (${after.reason})`}.`);
+console.log(`Spent about ${spentUsd.toFixed(4)} USD from SERV's token counts at the live price.`);
 console.log("");
 
 const fixedFindings = lintWorkload(fixed, { models, configs: [CFG] });
 printFindings("the fixed workload", fixedFindings);
 if (fixedFindings.some((f) => f.id === "data-in-system-prompt")) fail("data-in-system-prompt is still present after the fix.");
 if (stopReason !== null) fail(`Stopped early: ${stopReason}.`);
-if (after.ok && startUsd - after.usd > CAP_USD) fail(`Spend passed the ${CAP_USD.toFixed(2)} USD cap.`);
+if (spentUsd > CAP_USD) fail(`Spend passed the ${CAP_USD.toFixed(2)} USD cap.`);

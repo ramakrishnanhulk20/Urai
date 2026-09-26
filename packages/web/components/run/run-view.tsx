@@ -6,9 +6,8 @@ import type { Report } from "../../lib/report";
 import { clearTeamKey, getTeamKey, privateRunLink, readOwnerToken, takeOwnerTokenFromHash } from "../app/session";
 import { Slash } from "../brand/slash";
 import { expectedText, splitName } from "../report/format";
-import { fromReport, getReport, getStatus, readBalance, runCase, shareRun, unshareRun, type BalanceOutcome, type Fail } from "./api";
+import { fromReport, getReport, getStatus, runCase, shareRun, unshareRun, type Fail } from "./api";
 import { Finished, type ShareState } from "./finished";
-import type { BalanceView } from "./ledger";
 import { RunGrid, type Cell, type GridCase, type LiveStage } from "./run-grid";
 import s from "./run.module.css";
 import { KeyForm, LoadFailed, Loading, NoToken, PrivateLink, type KeyNotice, type LoadProblem } from "./states";
@@ -36,21 +35,6 @@ function problemFor(fail: Fail): LoadProblem {
   return { kind: "unreachable", detail: `${fail.status} ${fail.code.replaceAll("_", " ")}` };
 }
 
-function balanceView(out: BalanceOutcome): BalanceView {
-  switch (out.kind) {
-    case "usd":
-      return { kind: "usd", usd: out.usd };
-    case "unavailable":
-      return { kind: "none", why: "SERV did not report a balance for this key, so this run's spend cannot be measured. The report's per-setting costs are estimates from token prices." };
-    case "disabled":
-      return { kind: "none", why: "Balance reading is switched off on Urai right now, a safety stop, so this run shows no measured spend. The run itself goes ahead as normal." };
-    case "limit":
-      return { kind: "none", why: "This run has already used its two balance readings, so no new one was taken." };
-    case "refused":
-      return { kind: "none", why: `Urai could not read the balance (${out.code.replaceAll("_", " ")}), so this run's spend cannot be measured. The run goes ahead.` };
-  }
-}
-
 function gridCases(report: Report): GridCase[] {
   return report.cases.map((c) => {
     const first = Object.entries(c.expected)[0];
@@ -68,21 +52,19 @@ function cellsFrom(report: Report): Cell[][] {
 }
 
 const allDone = (cells: Cell[][]): boolean => cells.every((row) => row.every((c) => c.kind === "done"));
-const anyDone = (cells: Cell[][]): boolean => cells.some((row) => row.some((c) => c.kind === "done"));
 
 /*
  * The owner's run. Reads the run with the owner token this tab saved or a private run link brought,
- * asks for the key when it is not in memory, reads the SERV balance once before the first call,
- * drives every unfinished case under every setting with at most IN_FLIGHT calls open, reads the
- * balance once after the last, then shows the full report. The key is read from session memory at each call and sent only in
- * the x-serv-key header (C1, C22); nothing here logs it or puts it in state or a URL.
+ * asks for the key when it is not in memory, drives every unfinished case under every setting with
+ * at most IN_FLIGHT calls open, then shows the full report with its cost from SERV's token counts.
+ * Urai sends SERV nothing but case calls, so no balance is read (C7). The key is read from session
+ * memory at each call and sent only in the x-serv-key header (C1, C22); nothing here logs it or puts
+ * it in state or a URL.
  */
 export function RunView({ runId }: { runId: string }) {
   const [view, setView] = useState<View>({ kind: "checking" });
   const [base, setBase] = useState<Report | null>(null);
   const [cells, setCells] = useState<Cell[][]>([]);
-  const [before, setBefore] = useState<BalanceView>({ kind: "later" });
-  const [after, setAfter] = useState<BalanceView>({ kind: "later" });
   const [stopNote, setStopNote] = useState<StopNote>(null);
   const [share, setShare] = useState<ShareState>({ kind: "unknown" });
   const [keyHeld, setKeyHeld] = useState(false);
@@ -94,10 +76,8 @@ export function RunView({ runId }: { runId: string }) {
   const tokenRef = useRef<string | null>(null);
   const baseRef = useRef<Report | null>(null);
   const cellsRef = useRef<Cell[][]>([]);
-  const beforeRef = useRef<BalanceView>({ kind: "later" });
   const pauseRef = useRef(false);
   const drivingRef = useRef(false);
-  const afterTriedRef = useRef(false);
   const ctrlRef = useRef<AbortController | null>(null);
   const aliveRef = useRef(true);
   const loadedRef = useRef(false);
@@ -107,36 +87,15 @@ export function RunView({ runId }: { runId: string }) {
     setCells(cellsRef.current);
   }, []);
 
-  const setBeforeView = useCallback((v: BalanceView) => {
-    beforeRef.current = v;
-    setBefore(v);
-  }, []);
-
-  /* Reads SERV's balance once more, then the finished report. A reading refused for the probe limit falls back to the one the server stored. */
   const close = useCallback(async () => {
     const token = tokenRef.current;
     if (token === null || !aliveRef.current) return;
     setView({ kind: "live", stage: "closing" });
-
-    const key = getTeamKey();
-    let limitHit = false;
-    if (beforeRef.current.kind === "usd" && key !== null && !afterTriedRef.current) {
-      afterTriedRef.current = true;
-      setAfter({ kind: "reading" });
-      const out = await readBalance(runId, token, key);
-      limitHit = out.kind === "limit";
-      if (!limitHit) setAfter(balanceView(out));
-    }
-
     const rep = await getReport(runId, token);
     if (!aliveRef.current) return;
     if (!rep.ok) {
       setView({ kind: "failed", problem: problemFor(rep.fail) });
       return;
-    }
-    const stored = rep.value.balance;
-    if (beforeRef.current.kind === "usd" && (limitHit || key === null || !afterTriedRef.current)) {
-      setAfter(stored?.after == null ? { kind: "none", why: "The closing balance was not read from this tab, so the spend cannot be measured." } : { kind: "usd", usd: stored.after });
     }
     setView({ kind: "finished", report: rep.value });
   }, [runId]);
@@ -157,23 +116,6 @@ export function RunView({ runId }: { runId: string }) {
     setStartedAt((t) => t ?? Date.now());
     setNow(Date.now());
     setView({ kind: "live", stage: "running" });
-
-    if (beforeRef.current.kind === "later") {
-      setBeforeView({ kind: "reading" });
-      const out = await readBalance(runId, token, getTeamKey() ?? "");
-      // The server refuses an implausible key before it counts a reading, so the next key still gets its "before".
-      if (out.kind === "refused" && out.code === "payer_mismatch") {
-        setBeforeView({ kind: "later" });
-        drivingRef.current = false;
-        clearTeamKey();
-        setKeyHeld(false);
-        setView({ kind: "key", notice: "bad_key" });
-        return;
-      }
-      const v = balanceView(out);
-      setBeforeView(v);
-      if (v.kind === "none") setAfter(v);
-    }
 
     // Case by case, every setting of a case next to each other, so the rows fill top to bottom.
     const jobs: { caseId: string; row: number; col: number }[] = [];
@@ -287,7 +229,7 @@ export function RunView({ runId }: { runId: string }) {
       return;
     }
     await close();
-  }, [runId, put, setBeforeView, close]);
+  }, [runId, put, close]);
 
   const load = useCallback(async () => {
     const token = takeOwnerTokenFromHash(runId) ?? readOwnerToken(runId);
@@ -320,20 +262,9 @@ export function RunView({ runId }: { runId: string }) {
     setBase(report);
     setCells(grid);
 
-    // A first reading taken after calls have already been paid for would understate the spend, so none is taken.
-    const stored = report.balance;
-    if (stored?.before != null) setBeforeView({ kind: "usd", usd: stored.before });
-    else if (anyDone(grid)) {
-      const none: BalanceView = { kind: "none", why: "The balance was not read before the first call, so this run's spend cannot be measured." };
-      setBeforeView(none);
-      setAfter(none);
-    }
-
     const held = getTeamKey() !== null;
     setKeyHeld(held);
     if (allDone(grid)) {
-      if (stored?.after != null && stored.before != null) setAfter({ kind: "usd", usd: stored.after });
-      afterTriedRef.current = !held;
       await close();
       return;
     }
@@ -342,7 +273,7 @@ export function RunView({ runId }: { runId: string }) {
       return;
     }
     await drive();
-  }, [runId, drive, close, setBeforeView]);
+  }, [runId, drive, close]);
 
   // StrictMode mounts twice in development: the load runs once, and the second mount marks the page alive again.
   useEffect(() => {
@@ -414,8 +345,6 @@ export function RunView({ runId }: { runId: string }) {
       body = (
         <Finished
           report={view.report}
-          before={before}
-          after={after}
           share={share}
           keyHeld={keyHeld}
           privateLink={link}
@@ -442,8 +371,6 @@ export function RunView({ runId }: { runId: string }) {
               now={now}
               elapsedMs={startedAt === null ? 0 : now - startedAt}
               stage={view.stage}
-              before={before}
-              after={after}
               notice={<StopNotice note={stopNote} stage={view.stage} />}
               actions={<Actions stage={view.stage} keyHeld={keyHeld} onPause={pause} onResume={() => void drive()} onForget={forget} />}
             />

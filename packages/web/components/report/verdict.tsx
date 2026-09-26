@@ -1,5 +1,5 @@
 import type { ConfigTotals, Report } from "../../lib/report";
-import { configLabels, count, percentNumber, seconds, usd } from "./format";
+import { configLabels, count, measuredDrop, percentNumber, seconds, tokenCost, usd } from "./format";
 import { CountUp, Reveal, RevealItem, RubBar } from "./motion";
 import { SectionHead } from "./parts";
 import s from "./report.module.css";
@@ -19,15 +19,25 @@ function unscored(totals: ConfigTotals): string[] {
     .map(([status, n]) => `${n} ${OTHER_STATUS_WORDS[status] ?? status}`);
 }
 
-function balanceLine(balance: NonNullable<Report["balance"]>): string {
-  const { before, after } = balance;
-  const spent = before !== null && after !== null ? `, ${usd(Math.max(0, before - after))} spent in total` : "";
-  return `Measured on the SERV key's balance: ${usd(before)} before the run, ${usd(after)} after${spent}. The per-setting costs above are estimates from token prices.`;
+/*
+ * The run's cost from SERV's token counts, and, for a run that stored two real readings before SERV
+ * stopped offering a free balance read on 25 Sep, the measured drop beside it.
+ */
+function costLine(report: Report): string {
+  const total = tokenCost(report.totals);
+  const cost =
+    total === null
+      ? "Estimated cost from SERV's token counts: unknown, because SERV did not send token counts for every call."
+      : `Estimated cost from SERV's token counts: ${usd(total)} for the whole run, each setting priced at the higher of Urai's own price and SERV's live price for the model. SERV's cache discounts can make the real charge lower.`;
+  const drop = measuredDrop(report.balance);
+  if (drop === null || report.balance === null) return cost;
+  const { before, after } = report.balance;
+  return `${cost} Measured drop in the key's SERV balance: ${usd(before)} before the run, ${usd(after)} after, ${usd(drop)} in total, read before SERV stopped offering a free balance read on 25 Sep.`;
 }
 
 /**
  * Accuracy per setting as a hallmark number stamped beside a gold bar, with right and wrong
- * counts, speed, tokens and estimated cost. Every figure comes from report.totals; a total that
+ * counts, speed, tokens and cost from SERV's token counts. Every figure comes from report.totals; a total that
  * is not known reads "unknown", never zero.
  */
 export function Verdict({ report }: { report: Report }) {
@@ -110,7 +120,7 @@ export function Verdict({ report }: { report: Report }) {
         })}
       </Reveal>
 
-      {report.balance !== null && <p className={s.balance}>{balanceLine(report.balance)}</p>}
+      {report.totals.length > 0 && <p className={s.costLine}>{costLine(report)}</p>}
     </section>
   );
 }

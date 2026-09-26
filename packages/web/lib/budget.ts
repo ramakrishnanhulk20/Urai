@@ -31,16 +31,17 @@ function roundUp(usd: number): number {
  * Reserves CONFIG.demoCallEstimateUsd from today's demo budget before a demo call (C6).
  * Creates the day's row with the cap from DEMO_DAILY_BUDGET_USD if it is missing (an existing
  * row keeps its cap), then reserves with one conditional UPDATE, so concurrent callers can never
- * together pass the cap. Returns null when the budget cannot cover one more estimate, when the
- * day was stopped by the real-spend check (C28), or when the global probe_ran stop is set (C7);
- * the stop and the flag are also in the UPDATE's own WHERE, so one set mid-request still holds.
+ * together pass the cap on settled spend (C28). Returns null when the budget cannot cover one more
+ * estimate, when the operator stopped the day (demo_budget.stopped), or when the operator's global
+ * demo_off flag is set; the flag is read before anything is written, and the stop and the flag are
+ * also in the UPDATE's own WHERE, so one set mid-request still holds.
  * Throws 503 unavailable on any database error: the call must not go ahead (C26).
  */
 export async function reserveDemoCall(): Promise<Reservation | null> {
   const day = budgetDay();
   const est = CONFIG.demoCallEstimateUsd;
-  if (await isSet("probe_ran")) {
-    console.warn(`[urai] demo call refused on ${day}: the probe_ran stop is set`);
+  if (await isSet("demo_off")) {
+    console.warn(`[urai] demo call refused on ${day}: the demo_off stop is set`);
     return null;
   }
   let rows: Record<string, unknown>[];
@@ -52,7 +53,7 @@ export async function reserveDemoCall(): Promise<Reservation | null> {
     rows = await sql`
       UPDATE demo_budget SET reserved_usd = reserved_usd + ${est}::numeric
       WHERE day = ${day}::date AND stopped = false AND spent_usd + reserved_usd + ${est}::numeric <= cap_usd
-        AND NOT EXISTS (SELECT 1 FROM app_flags WHERE name = 'probe_ran')
+        AND NOT EXISTS (SELECT 1 FROM app_flags WHERE name = 'demo_off')
       RETURNING day`;
   } catch {
     console.error(`[urai] demo budget reserve failed on ${day}, call denied`);
@@ -70,9 +71,9 @@ export async function reserveDemoCall(): Promise<Reservation | null> {
  * Swaps a reservation for the real cost after the call (C6): one UPDATE takes the estimate out of
  * reserved and adds the cost, rounded up, to spent. A null or unusable cost counts as the full
  * estimate. The day is the reservation's own, so a call that spans midnight settles where it
- * reserved. The same UPDATE counts the call, and the day's new call count is returned, which
- * decides when the operator balance is read (C28). Throws 503 unavailable on a database error or
- * a missing row; the reservation then stays counted, which can only make the budget stricter.
+ * reserved. The same UPDATE counts the call, and the day's new call count is returned for the log.
+ * Throws 503 unavailable on a database error or a missing row; the reservation then stays
+ * counted, which can only make the budget stricter.
  */
 export async function settleDemoCall(r: Reservation, costUsd: number | null): Promise<number> {
   const cost = costUsd !== null && Number.isFinite(costUsd) && costUsd >= 0 ? costUsd : r.estimateUsd;

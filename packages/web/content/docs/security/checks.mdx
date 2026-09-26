@@ -9,7 +9,7 @@ A threat model is only a list of intentions until something tries to break it. `
 
 <SecurityRecord />
 
-The same run listed the 12 unit tests that cover C15 to C19 and found all 12.
+The same run listed the 10 unit tests that cover C15 to C18 and found all 10.
 
 ## What it does
 
@@ -26,7 +26,7 @@ A few of the checks, to give the flavour:
 - C20: puts an HTML image tag with a script handler into a case, shares the report, and checks that the page shows it as text.
 - C30 and C31: takes a shared report back and checks the link now answers not found, then reads reports 121 times from one address and checks the 121st is refused.
 
-C15 to C19 are proved by unit tests in the engine and the web package rather than by requests. The suite lists those tests and confirms each one still exists.
+C15 to C18 are proved by unit tests in the engine and the web package rather than by requests. The suite lists those tests and confirms each one still exists.
 
 ## What the results mean
 

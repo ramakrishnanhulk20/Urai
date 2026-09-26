@@ -8,10 +8,11 @@ import { Slash } from "../brand/slash";
 import { Disagreements } from "../report/disagreements";
 import { EveryCase } from "../report/every-case";
 import { Findings } from "../report/findings";
+import { configLabels } from "../report/format";
 import r from "../report/report.module.css";
 import { ReportSummary } from "../report/summary";
 import { Verdict } from "../report/verdict";
-import { Ledger, type BalanceView } from "./ledger";
+import { Ledger } from "./ledger";
 import s from "./run.module.css";
 import { PrivateLink } from "./states";
 
@@ -113,8 +114,6 @@ function SharePanel({ state, onShare, onUnshare }: { state: ShareState; onShare:
 
 export interface FinishedProps {
   report: Report;
-  before: BalanceView;
-  after: BalanceView;
   share: ShareState;
   keyHeld: boolean;
   privateLink: string | null;
@@ -124,17 +123,17 @@ export interface FinishedProps {
 }
 
 /*
- * The finished run: the report's own opening with the measured spend and the share controls
+ * The finished run: the report's own opening with the cost ledger and the share controls
  * beside it, then the verdict, the disagreements, the setup findings and every case, rendered by
  * the same components as the public page, so the owner sees exactly what a shared link shows.
  */
-export function Finished({ report, before, after, share, keyHeld, privateLink, onShare, onUnshare, onForget }: FinishedProps) {
+export function Finished({ report, share, keyHeld, privateLink, onShare, onUnshare, onForget }: FinishedProps) {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6 }}>
       <div className={r.opening}>
         <ReportSummary report={report} />
         <div className={s.finishAside}>
-          <Ledger before={before} after={after} />
+          <Ledger labels={configLabels(report.configs)} totals={report.totals} balance={report.balance} />
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}

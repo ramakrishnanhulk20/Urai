@@ -23,7 +23,7 @@ The suite reads the root `.env` to reach the same database the server uses. It n
 - **BROKEN**: the rule did not hold, or a check could not finish. Either way the run exits non-zero.
 - **PENDING**: the rule is checked somewhere else later. No check is pending today: C20 fetches the real report page and requires the test markup to appear only escaped.
 
-C15 to C19 are proved by unit tests rather than requests. The suite lists those tests and confirms each one still exists.
+C15 to C18 are proved by unit tests rather than requests (C19 was retired with the balance probe on 25 Sep). The suite lists those tests and confirms each one still exists.
 
 ## What it cleans up
 
