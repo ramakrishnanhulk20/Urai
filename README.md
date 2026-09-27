@@ -6,7 +6,7 @@
 
 Urai is Tamil for testing gold on a touchstone. Cheaper models and middle layers all promise the same quality for less, and teams keep finding that claim breaks on their own data. Urai tests SERV Reasoning on your own AI agent, with your own cases, before you switch it on.
 
-[Live app](https://urai-serv.vercel.app) · [Docs](https://urai-serv.vercel.app/docs) · [Sample report](https://urai-serv.vercel.app/r/uVNL7475vDXOlUTxxCOVNA)
+[Live app](https://urai-web.vercel.app) · [Docs](https://urai-web.vercel.app/docs) · [Sample report](https://urai-web.vercel.app/r/uVNL7475vDXOlUTxxCOVNA)
 
 ## What it does
 
@@ -60,10 +60,10 @@ Every answer schema now reaches SERV with its fields in the order the team wrote
 
 | Report | What it compares | SERV off | SERV on | Estimated cost | Open it |
 |---|---|---|---|---|---|
-| Before the fix | Supplier book inside the system prompt | 39 of 40, 97.5% | 27 of 40, 67.5% | $0.0733 | [/r/2SC_jtj9dqui6VGFIrQQ0A](https://urai-serv.vercel.app/r/2SC_jtj9dqui6VGFIrQQ0A) |
-| After the one-click fix | Supplier book moved to the user message | 40 of 40, 100% | 39 of 40, 97.5% | $0.0835 | [/r/uVNL7475vDXOlUTxxCOVNA](https://urai-serv.vercel.app/r/uVNL7475vDXOlUTxxCOVNA) |
-| Good layout | The same agent, written with the supplier book in the user message | 39 of 40, 97.5% | 37 of 40, 92.5% | $0.0798 | [/r/l9eNk-PBGlRDmUnNIxzsxQ](https://urai-serv.vercel.app/r/l9eNk-PBGlRDmUnNIxzsxQ) |
-| Hard set | 152 clauses in four sources | 39 of 40, 97.5% | 18 of 40, 45% | $0.1618 | [/r/zTS-p-PZ_w8nRzVCCgHk1g](https://urai-serv.vercel.app/r/zTS-p-PZ_w8nRzVCCgHk1g) |
+| Before the fix | Supplier book inside the system prompt | 39 of 40, 97.5% | 27 of 40, 67.5% | $0.0733 | [/r/2SC_jtj9dqui6VGFIrQQ0A](https://urai-web.vercel.app/r/2SC_jtj9dqui6VGFIrQQ0A) |
+| After the one-click fix | Supplier book moved to the user message | 40 of 40, 100% | 39 of 40, 97.5% | $0.0835 | [/r/uVNL7475vDXOlUTxxCOVNA](https://urai-web.vercel.app/r/uVNL7475vDXOlUTxxCOVNA) |
+| Good layout | The same agent, written with the supplier book in the user message | 39 of 40, 97.5% | 37 of 40, 92.5% | $0.0798 | [/r/l9eNk-PBGlRDmUnNIxzsxQ](https://urai-web.vercel.app/r/l9eNk-PBGlRDmUnNIxzsxQ) |
+| Hard set | 152 clauses in four sources | 39 of 40, 97.5% | 18 of 40, 45% | $0.1618 | [/r/zTS-p-PZ_w8nRzVCCgHk1g](https://urai-web.vercel.app/r/zTS-p-PZ_w8nRzVCCgHk1g) |
 
 The first two are the same agent, the same 40 invoices and the same model. The only change is where the supplier data sits. The model alone scored 97.5% even with the supplier book inside the system prompt. SERV on scored 67.5% on that layout, and the one-click fix brought it to 97.5%. So the layout mistake only hurts when SERV is on, and the fix is what makes SERV usable on this agent. On the good layout SERV came within 5 points of the model alone on 33% fewer tokens. On the hard set SERV scored 45% against 97.5%. The losing run is here on purpose: a tester that only ever says yes is not a tester.
 
@@ -212,17 +212,17 @@ The full map, with the data model, is in [ARCHITECTURE.md](https://github.com/ra
 
 ## The two-minute judge path
 
-1. Open the [landing page](https://urai-serv.vercel.app). The first screen asks "Is SERV gold for your agent?" and shows the one layout fix that took SERV from 67.5% to 97.5%. Scroll to the setup check to watch that fix play out.
-2. Open [/try](https://urai-serv.vercel.app/try), pick a sample agent and press "Run it live". Twelve cases go out with SERV off and on, three calls at a time, and each answer lands in the grid as it comes back. No key needed.
-3. Open the [before the fix](https://urai-serv.vercel.app/r/2SC_jtj9dqui6VGFIrQQ0A) report, then the [after the fix](https://urai-serv.vercel.app/r/uVNL7475vDXOlUTxxCOVNA) report. Same agent, same invoices. SERV on went from 27 of 40 to 39 of 40, while the model alone scored 39 of 40 and then 40 of 40.
-4. Open [/new](https://urai-serv.vercel.app/new) and press "Data in the wrong place" under "Start from a sample". The setup check flags "Data sits inside the system prompt". Press "Fix layout" and watch the supplier book move out of the prompt.
-5. Open [/docs/proof](https://urai-serv.vercel.app/docs/proof) for every sample report, the latest security record and the prove command.
+1. Open the [landing page](https://urai-web.vercel.app). The first screen asks "Is SERV gold for your agent?" and shows the one layout fix that took SERV from 67.5% to 97.5%. Scroll to the setup check to watch that fix play out.
+2. Open [/try](https://urai-web.vercel.app/try), pick a sample agent and press "Run it live". Twelve cases go out with SERV off and on, three calls at a time, and each answer lands in the grid as it comes back. No key needed.
+3. Open the [before the fix](https://urai-web.vercel.app/r/2SC_jtj9dqui6VGFIrQQ0A) report, then the [after the fix](https://urai-web.vercel.app/r/uVNL7475vDXOlUTxxCOVNA) report. Same agent, same invoices. SERV on went from 27 of 40 to 39 of 40, while the model alone scored 39 of 40 and then 40 of 40.
+4. Open [/new](https://urai-web.vercel.app/new) and press "Data in the wrong place" under "Start from a sample". The setup check flags "Data sits inside the system prompt". Press "Fix layout" and watch the supplier book move out of the prompt.
+5. Open [/docs/proof](https://urai-web.vercel.app/docs/proof) for every sample report, the latest security record and the prove command.
 
 The prove command runs Urai end to end over HTTP against a running server. It spends about 0.05 USD of real SERV credit and stops before 0.10 USD.
 
 ```bash
 cd packages/web
-npm run prove -- --base https://urai-serv.vercel.app
+npm run prove -- --base https://urai-web.vercel.app
 ```
 
 Our run on 26 Sep 2026, against a local production build of this repo, printed:
@@ -269,7 +269,7 @@ npm run seed
 npm run dev -- --port 3101
 ```
 
-Open `http://localhost:3101`. `migrate` creates the tables and is safe to run twice. `seed` adds the three sample workloads. Port 3101 is the one `npm run prove` expects by default. The full guide, including how to run the security suite, is at [/docs/developers/self-host](https://urai-serv.vercel.app/docs/developers/self-host).
+Open `http://localhost:3101`. `migrate` creates the tables and is safe to run twice. `seed` adds the three sample workloads. Port 3101 is the one `npm run prove` expects by default. The full guide, including how to run the security suite, is at [/docs/developers/self-host](https://urai-web.vercel.app/docs/developers/self-host).
 
 ## API
 
@@ -286,7 +286,7 @@ The pages use the same routes you can call yourself. Every route takes and retur
 | POST /api/runs/:id/share and /unshare | run owner | x-urai-owner | { reportId } or { shared: false } |
 | GET /api/reports/:reportId | anyone with the link | nothing | the report, only while shared |
 
-Every route, header and error code is at [/docs/developers/api](https://urai-serv.vercel.app/docs/developers/api).
+Every route, header and error code is at [/docs/developers/api](https://urai-web.vercel.app/docs/developers/api).
 
 ## Test results
 
