@@ -225,25 +225,25 @@ cd packages/web
 npm run prove -- --base https://urai-web.vercel.app
 ```
 
-Our run on 26 Sep 2026, against a local production build of this repo, printed:
+Our run on 27 Sep 2026, against the live site, printed:
 
 ```text
-Urai prove-it against http://localhost:3102
+Urai prove-it against https://urai-web.vercel.app
 [PASS] 1 GET /api/models
-       34 models, verified true, fetched 2026-09-26T14:20:20.714Z
+       34 models, verified true, fetched 2026-09-27T12:07:51.804Z
        gpt-6-luna: 0.13 in / 0.65 out USD per million tokens
 [PASS] 2 POST /api/lint on invoices-bad
        findings: data-in-system-prompt (error), quotes-instructions (warning), first-sight-cost (info), large-system-prompt (info)
        fix: yes, moved SUPPLIER BOOK (7342 chars) out of the system prompt
 [PASS] 3 team run: the fixed workload's first 10 cases, raw and plain
-       accuracy: gpt-6-luna raw 9/10 = 90.0%, gpt-6-luna plain 10/10 = 100.0%
-       spend so far from token counts: 0.0209 USD of the 0.1 cap
+       accuracy: gpt-6-luna raw 10/10 = 100.0%, gpt-6-luna plain 10/10 = 100.0%
+       spend so far from token counts: 0.0210 USD of the 0.1 cap
 [PASS] 4 demo run: sample-invoices-good, 12 cases x 2 configs, no key
-       accuracy: gpt-6-luna raw 12/12 = 100.0%, gpt-6-luna plain 12/12 = 100.0%
-       demo budget effect: about 0.0237 USD, from the report's per-config cost
+       accuracy: gpt-6-luna raw 11/12 = 91.7%, gpt-6-luna plain 12/12 = 100.0%
+       demo budget effect: about 0.0244 USD, from the report's per-config cost
 [PASS] 5 share the demo run, then GET /api/reports/:reportId with no header
-       reportId 7WVntB8svLf0LA8CMFGuUg: same totals as the owner's report (gpt-6-luna raw 12/12 = 100.0%, gpt-6-luna plain 12/12 = 100.0%), and the run id is nowhere in it
-spend: about 0.0446 USD from token counts, cap 0.1
+       reportId QkbdDYyfwFnSLhXbGm2EiA: same totals as the owner's report (gpt-6-luna raw 11/12 = 91.7%, gpt-6-luna plain 12/12 = 100.0%), and the run id is nowhere in it
+spend: about 0.0453 USD from token counts, cap 0.1
 RESULT: PASS (5 of 5 steps)
 ```
 
